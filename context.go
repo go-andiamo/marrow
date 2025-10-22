@@ -29,8 +29,8 @@ type Context interface {
 	StoreCookie(cookie *http.Cookie)
 	GetCookie(name string) *http.Cookie
 
-	setCurrentEndpoint(*endpoint)
-	setCurrentMethod(*method)
+	setCurrentEndpoint(Endpoint_)
+	setCurrentMethod(Method_)
 	setCurrentBody(any)
 	doRequest(*http.Request) (*http.Response, bool)
 	reportFailure(err error)
@@ -57,8 +57,8 @@ type context struct {
 	testing      *testing.T
 	currTesting  []*testing.T
 	dbArgMarkers DatabaseArgMarkers
-	currEndpoint *endpoint
-	currMethod   *method
+	currEndpoint Endpoint_
+	currMethod   Method_
 	currRequest  *http.Request
 	currResponse *http.Response
 	currBody     any
@@ -195,7 +195,7 @@ func (c *context) GetCookie(name string) *http.Cookie {
 	return c.cookieJar[name]
 }
 
-func (c *context) setCurrentEndpoint(e *endpoint) {
+func (c *context) setCurrentEndpoint(e Endpoint_) {
 	c.currEndpoint = e
 	c.currMethod = nil
 	c.currRequest = nil
@@ -203,7 +203,7 @@ func (c *context) setCurrentEndpoint(e *endpoint) {
 	c.currBody = nil
 }
 
-func (c *context) setCurrentMethod(m *method) {
+func (c *context) setCurrentMethod(m Method_) {
 	c.currMethod = m
 	if m != nil {
 		c.currRequest = nil

@@ -19,6 +19,7 @@ type SuiteInit interface {
 	SetTesting(t *testing.T)
 	SetVar(name string, value any)
 	SetCookie(cookie *http.Cookie)
+	SetCoverageCollect(fn func(coverage *Coverage))
 	// todo etc. more things that can be set/initialised prior to run
 }
 
@@ -68,6 +69,13 @@ func WithCookie(cookie *http.Cookie) With {
 	return &with{
 		fn: func(init SuiteInit) {
 			init.SetCookie(cookie)
+		}}
+}
+
+func WithCoverageCollect(fn func(coverage *Coverage)) With {
+	return &with{
+		fn: func(init SuiteInit) {
+			init.SetCoverageCollect(fn)
 		}}
 }
 

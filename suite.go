@@ -32,6 +32,7 @@ type suite struct {
 	testing      *testing.T
 	vars         map[Var]any
 	cookies      map[string]*http.Cookie
+	covCollect   func(*Coverage)
 	//todo other fields... to match everything that can be set
 }
 
@@ -71,6 +72,10 @@ func (s *suite) SetCookie(cookie *http.Cookie) {
 	}
 }
 
+func (s *suite) SetCoverageCollect(fn func(coverage *Coverage)) {
+	s.covCollect = fn
+}
+
 func (s *suite) Init(withs ...With) Suite_ {
 	s.withs = append(s.withs, withs...)
 	return s
@@ -97,9 +102,10 @@ func (s *suite) Run() {
 	if host == "" {
 		host = "localhost"
 	}
+	cov := newCoverage()
 	ctx := &context{
 		suite:        s,
-		coverage:     newCoverage(),
+		coverage:     cov,
 		httpDo:       do,
 		host:         fmt.Sprintf("http://%s:%d", host, s.port),
 		db:           s.db,
@@ -112,5 +118,8 @@ func (s *suite) Run() {
 		if !ctx.run("Endpoint: "+e.Url()+" "+e.Description(), e) {
 			break
 		}
+	}
+	if s.covCollect != nil {
+		s.covCollect(cov)
 	}
 }
