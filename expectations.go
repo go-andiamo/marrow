@@ -116,7 +116,7 @@ func (e *expectStatusCode) Met(ctx Context) (unmet error, err error) {
 	unmet = &unmetError{
 		msg:      msg,
 		name:     e.Name(),
-		actual:   OperandValue{Resolved: Status(sc)},
+		actual:   OperandValue{Original: sc, Resolved: Status(sc)},
 		expected: ev,
 		frame:    e.frame,
 	}
