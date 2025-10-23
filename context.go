@@ -37,6 +37,7 @@ type Context interface {
 	reportFailure(err error)
 	reportUnmet(exp Expectation, err error)
 	reportMet(exp Expectation)
+	reportSkipped(exp Expectation)
 
 	run(name string, r Runnable) bool
 }
@@ -248,17 +249,30 @@ func (c *context) reportUnmet(exp Expectation, err error) {
 	c.coverage.reportUnmet(c.currEndpoint, c.currMethod, exp, err)
 	if len(c.currTesting) > 0 {
 		currT := c.currTesting[len(c.currTesting)-1]
-		if umerr, ok := err.(UnmetError); ok {
-			currT.Log(umerr.TestFormat())
-			currT.Fail()
+		if exp.IsRequired() {
+			if umerr, ok := err.(UnmetError); ok {
+				currT.Log(umerr.TestFormat())
+				currT.FailNow()
+			} else {
+				currT.Fatal(err)
+			}
 		} else {
-			currT.Error(err)
+			if umerr, ok := err.(UnmetError); ok {
+				currT.Log(umerr.TestFormat())
+				currT.Fail()
+			} else {
+				currT.Error(err)
+			}
 		}
 	}
 }
 
 func (c *context) reportMet(exp Expectation) {
 	c.coverage.reportMet(c.currEndpoint, c.currMethod, exp)
+}
+
+func (c *context) reportSkipped(exp Expectation) {
+	c.coverage.reportSkipped(c.currEndpoint, c.currMethod, exp)
 }
 
 func (c *context) run(name string, r Runnable) (ok bool) {

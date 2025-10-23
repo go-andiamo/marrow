@@ -12,7 +12,7 @@ import (
 
 func TestMethod(t *testing.T) {
 	m := Method(GET, "foo")
-	m.ExpectOK()
+	m.AssertOK()
 	raw := m.(*method)
 	assert.Len(t, raw.expectations, 1)
 	exp := raw.expectations[0]
@@ -123,21 +123,21 @@ func TestFoo(t *testing.T) {
 	Endpoint("/foos", "Test Foos",
 		DbClearTable(Before, "foo_table"),
 		Method(POST, "Add foo").
-			RequestBody(JSON{"foo": "bar"}).ExpectOK().
-			ExpectEqual(1, Query("SELECT COUNT(*) FROM foo_table")),
+			RequestBody(JSON{"foo": "bar"}).AssertOK().
+			AssertEqual(1, Query("SELECT COUNT(*) FROM foo_table")),
 	)
 
 	Endpoint("/foos", "Test Foos",
 		Method(POST, "Add foo").
 			SetVar(Before, "count", Query("SELECT COUNT(*) FROM foo_table")).
-			RequestBody(JSON{"foo": "bar"}).ExpectOK().
-			ExpectGreaterThan(Query("SELECT COUNT(*) FROM foo_table"), Var("count")),
+			RequestBody(JSON{"foo": "bar"}).AssertOK().
+			AssertGreaterThan(Query("SELECT COUNT(*) FROM foo_table"), Var("count")),
 	)
 
 	Endpoint("/foos", "Test Foos",
 		Method(POST, "Add foo").
 			SetVar(Before, "foo_id", "123").
-			RequestBody(JSON{"foo": Var("foo_id")}).ExpectOK())
+			RequestBody(JSON{"foo": Var("foo_id")}).AssertOK())
 }
 */
 

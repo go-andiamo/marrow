@@ -9,49 +9,49 @@ import (
 )
 
 func Test_newComparator(t *testing.T) {
-	c := newComparator(0, "", nil, nil, compEqual, false)
+	c := newComparator(0, "", nil, nil, compEqual, false, false)
 	assert.Equal(t, "==", c.Name())
 	f := c.Frame()
 	assert.NotNil(t, f)
 	assert.Equal(t, t.Name(), f.Name)
 
-	c = newComparator(0, "", nil, nil, compEqual, true)
+	c = newComparator(0, "", nil, nil, compEqual, true, false)
 	assert.Equal(t, "NOT(==)", c.Name())
 
-	c = newComparator(0, "Test", nil, nil, compEqual, true)
+	c = newComparator(0, "Test", nil, nil, compEqual, true, false)
 	assert.Equal(t, "Test", c.Name())
 }
 
 func Test_comparator_Met_WithNils(t *testing.T) {
 	t.Run("== both nil", func(t *testing.T) {
-		c := newComparator(0, "", nil, nil, compEqual, false)
+		c := newComparator(0, "", nil, nil, compEqual, false, false)
 		unmet, err := c.Met(nil)
 		assert.NoError(t, unmet)
 		assert.NoError(t, err)
 	})
 	t.Run("NOT(==) both nil", func(t *testing.T) {
-		c := newComparator(0, "", nil, nil, compEqual, true)
+		c := newComparator(0, "", nil, nil, compEqual, true, false)
 		unmet, err := c.Met(nil)
 		assert.Error(t, unmet)
 		assert.Equal(t, "expected NOT(==)", unmet.Error())
 		assert.NoError(t, err)
 	})
 	t.Run("== one nil", func(t *testing.T) {
-		c := newComparator(0, "", "foo", nil, compEqual, false)
+		c := newComparator(0, "", "foo", nil, compEqual, false, false)
 		unmet, err := c.Met(nil)
 		assert.Error(t, unmet)
 		assert.Equal(t, "expected ==", unmet.Error())
 		assert.NoError(t, err)
 	})
 	t.Run("== one nil (flipped)", func(t *testing.T) {
-		c := newComparator(0, "", nil, "foo", compEqual, false)
+		c := newComparator(0, "", nil, "foo", compEqual, false, false)
 		unmet, err := c.Met(nil)
 		assert.Error(t, unmet)
 		assert.Equal(t, "expected ==", unmet.Error())
 		assert.NoError(t, err)
 	})
 	t.Run("> both nil", func(t *testing.T) {
-		c := newComparator(0, "", nil, nil, compGreaterThan, false)
+		c := newComparator(0, "", nil, nil, compGreaterThan, false, false)
 		unmet, err := c.Met(nil)
 		assert.Error(t, unmet)
 		assert.Equal(t, "cannot compare with nil", unmet.Error())
@@ -61,14 +61,14 @@ func Test_comparator_Met_WithNils(t *testing.T) {
 
 func Test_comparator_Met_WithResolveFailures(t *testing.T) {
 	t.Run("left side", func(t *testing.T) {
-		c := newComparator(0, "", Var("missing"), "foo", compEqual, false)
+		c := newComparator(0, "", Var("missing"), "foo", compEqual, false, false)
 		unmet, err := c.Met(newContext(nil))
 		assert.NoError(t, unmet)
 		assert.Error(t, err)
 		assert.Equal(t, "comparator failed to resolve value v1 (left): unknown variable \"missing\"", err.Error())
 	})
 	t.Run("right side", func(t *testing.T) {
-		c := newComparator(0, "", "foo", Var("missing"), compEqual, false)
+		c := newComparator(0, "", "foo", Var("missing"), compEqual, false, false)
 		unmet, err := c.Met(newContext(nil))
 		assert.NoError(t, unmet)
 		assert.Error(t, err)
@@ -478,7 +478,7 @@ func Test_comparator_Met_Values(t *testing.T) {
 	}
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
-			c := newComparator(0, "", tc.v1, tc.v2, tc.comp, tc.not)
+			c := newComparator(0, "", tc.v1, tc.v2, tc.comp, tc.not, false)
 			unmet, err := c.Met(nil)
 			require.NoError(t, err)
 			if tc.expectOk {

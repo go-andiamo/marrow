@@ -24,25 +24,49 @@ type Method_ interface {
 	SetCookie(cookie *http.Cookie) Method_
 	StoreCookie(name string) Method_
 
-	ExpectOK() Method_
-	ExpectStatus(status any) Method_
+	Expect(exp Expectation) Method_
+
+	AssertOK() Method_
+	AssertStatus(status any) Method_
+	AssertFunc(fn func(Context) (unmet error, err error)) Method_
+	AssertEqual(v1, v2 any) Method_
+	AssertNotEqual(v1, v2 any) Method_
+	AssertLessThan(v1, v2 any) Method_
+	AssertLessThanOrEqual(v1, v2 any) Method_
+	AssertGreaterThan(v1, v2 any) Method_
+	AssertGreaterThanOrEqual(v1, v2 any) Method_
+	AssertNotLessThan(v1, v2 any) Method_
+	AssertNotGreaterThan(v1, v2 any) Method_
+	AssertMatch(value any, regex string) Method_
+	AssertType(value any, typ Type_) Method_
+	AssertNil(value any) Method_
+	AssertNotNil(value any) Method_
+	AssertLen(value any, length int) Method_
+
+	RequireOK() Method_
+	RequireStatus(status any) Method_
+	RequireFunc(fn func(Context) (unmet error, err error)) Method_
+	RequireEqual(v1, v2 any) Method_
+	RequireNotEqual(v1, v2 any) Method_
+	RequireLessThan(v1, v2 any) Method_
+	RequireLessThanOrEqual(v1, v2 any) Method_
+	RequireGreaterThan(v1, v2 any) Method_
+	RequireGreaterThanOrEqual(v1, v2 any) Method_
+	RequireNotLessThan(v1, v2 any) Method_
+	RequireNotGreaterThan(v1, v2 any) Method_
+	RequireMatch(value any, regex string) Method_
+	RequireType(value any, typ Type_) Method_
+	RequireNil(value any) Method_
+	RequireNotNil(value any) Method_
+	RequireLen(value any, length int) Method_
+
+	// FailFast instructs the method to fail on unmet assertions
+	//
+	// i.e. treat all `Assert...()` as `Require...()`
+	FailFast() Method_
+
 	Capture(op BeforeAfter_) Method_
 	CaptureFunc(when When, fn func(Context) error) Method_
-	Expect(exp Expectation) Method_
-	ExpectFunc(fn func(Context) (unmet error, err error)) Method_
-	ExpectEqual(v1, v2 any) Method_
-	ExpectNotEqual(v1, v2 any) Method_
-	ExpectLessThan(v1, v2 any) Method_
-	ExpectLessThanOrEqual(v1, v2 any) Method_
-	ExpectGreaterThan(v1, v2 any) Method_
-	ExpectGreaterThanOrEqual(v1, v2 any) Method_
-	ExpectNotLessThan(v1, v2 any) Method_
-	ExpectNotGreaterThan(v1, v2 any) Method_
-	ExpectMatch(value any, regex string) Method_
-	ExpectType(value any, typ Type_) Method_
-	ExpectNil(value any) Method_
-	ExpectNotNil(value any) Method_
-	ExpectLen(value any, length int) Method_
 	SetVar(when When, name string, value any) Method_
 	ClearVars(when When) Method_
 	DbInsert(when When, tableName string, row Columns) Method_
@@ -58,25 +82,29 @@ type Method_ interface {
 //go:noinline
 func Method(m MethodName, desc string, ops ...BeforeAfter_) Method_ {
 	result := &method{
-		desc:         desc,
-		frame:        frame(0),
-		method:       m,
-		queryParams:  queryParams{},
-		pathParams:   pathParams{},
-		headers:      make(map[string]any),
-		expectations: make([]Expectation, 0),
-		useCookies:   make(map[string]struct{}),
+		desc:        desc,
+		frame:       frame(0),
+		method:      m,
+		queryParams: queryParams{},
+		pathParams:  pathParams{},
+		headers:     make(map[string]any),
+		useCookies:  make(map[string]struct{}),
 	}
 	for _, op := range ops {
 		if op != nil {
 			if op.When() == Before {
 				result.preCaptures = append(result.preCaptures, op)
 			} else {
-				result.postCaptures = append(result.postCaptures, op)
+				result.addPostCapture(op)
 			}
 		}
 	}
 	return result
+}
+
+type postOp struct {
+	isExpectation bool
+	index         int
 }
 
 type method struct {
@@ -88,11 +116,29 @@ type method struct {
 	headers           map[string]any
 	body              any
 	preCaptures       []Runnable
+	postOps           []postOp
 	postCaptures      []Runnable
 	expectations      []Expectation
+	failFast          bool
 	useCookies        map[string]struct{}
 	requestMarshal    func(ctx Context, body any) ([]byte, error)
 	responseUnmarshal func(response *http.Response) (any, error)
+}
+
+func (m *method) addPostCapture(c Runnable) {
+	m.postOps = append(m.postOps, postOp{
+		isExpectation: false,
+		index:         len(m.postCaptures),
+	})
+	m.postCaptures = append(m.postCaptures, c)
+}
+
+func (m *method) addPostExpectation(exp Expectation) {
+	m.postOps = append(m.postOps, postOp{
+		isExpectation: true,
+		index:         len(m.expectations),
+	})
+	m.expectations = append(m.expectations, exp)
 }
 
 func (m *method) Method() MethodName {
@@ -105,6 +151,11 @@ func (m *method) Description() string {
 
 func (m *method) Frame() *Frame {
 	return m.frame
+}
+
+func (m *method) FailFast() Method_ {
+	m.failFast = true
+	return m
 }
 
 //go:noinline
@@ -159,7 +210,7 @@ func (m *method) SetCookie(cookie *http.Cookie) Method_ {
 
 //go:noinline
 func (m *method) StoreCookie(name string) Method_ {
-	m.postCaptures = append(m.postCaptures, &storeCookie{
+	m.addPostCapture(&storeCookie{
 		name:  name,
 		frame: frame(0),
 	})
@@ -167,8 +218,8 @@ func (m *method) StoreCookie(name string) Method_ {
 }
 
 //go:noinline
-func (m *method) ExpectOK() Method_ {
-	m.expectations = append(m.expectations, &expectStatusCode{
+func (m *method) AssertOK() Method_ {
+	m.addPostExpectation(&expectStatusCode{
 		name:   "Expect OK",
 		expect: http.StatusOK,
 		frame:  frame(0),
@@ -177,11 +228,33 @@ func (m *method) ExpectOK() Method_ {
 }
 
 //go:noinline
-func (m *method) ExpectStatus(status any) Method_ {
-	m.expectations = append(m.expectations, &expectStatusCode{
+func (m *method) RequireOK() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect OK",
+		expect:            http.StatusOK,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertStatus(status any) Method_ {
+	m.addPostExpectation(&expectStatusCode{
 		name:   "Expect Status Code",
 		expect: status,
 		frame:  frame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireStatus(status any) Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Status Code",
+		expect:            status,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
 	})
 	return m
 }
@@ -192,7 +265,7 @@ func (m *method) Capture(op BeforeAfter_) Method_ {
 		if op.When() == Before {
 			m.preCaptures = append(m.preCaptures, op)
 		} else {
-			m.postCaptures = append(m.postCaptures, op)
+			m.addPostCapture(op)
 		}
 	}
 	return m
@@ -207,7 +280,7 @@ func (m *method) CaptureFunc(when When, fn func(ctx Context) error) Method_ {
 				frame: frame(0),
 			})
 		} else {
-			m.preCaptures = append(m.preCaptures, &userDefinedCapture{
+			m.addPostCapture(&userDefinedCapture{
 				fn:    fn,
 				frame: frame(0),
 			})
@@ -218,14 +291,14 @@ func (m *method) CaptureFunc(when When, fn func(ctx Context) error) Method_ {
 
 //go:noinline
 func (m *method) Expect(exp Expectation) Method_ {
-	m.expectations = append(m.expectations, exp)
+	m.addPostExpectation(exp)
 	return m
 }
 
 //go:noinline
-func (m *method) ExpectFunc(fn func(Context) (unmet error, err error)) Method_ {
+func (m *method) AssertFunc(fn func(Context) (unmet error, err error)) Method_ {
 	if fn != nil {
-		m.expectations = append(m.expectations, &expectation{
+		m.addPostExpectation(&expectation{
 			fn:    fn,
 			frame: frame(0),
 		})
@@ -234,56 +307,116 @@ func (m *method) ExpectFunc(fn func(Context) (unmet error, err error)) Method_ {
 }
 
 //go:noinline
-func (m *method) ExpectEqual(v1, v2 any) Method_ {
-	m.expectations = append(m.expectations, newComparator(1, "ExpectEqual", v1, v2, compEqual, false))
+func (m *method) RequireFunc(fn func(Context) (unmet error, err error)) Method_ {
+	if fn != nil {
+		m.addPostExpectation(&expectation{
+			fn:                fn,
+			frame:             frame(0),
+			commonExpectation: commonExpectation{required: true},
+		})
+	}
 	return m
 }
 
 //go:noinline
-func (m *method) ExpectNotEqual(v1, v2 any) Method_ {
-	m.expectations = append(m.expectations, newComparator(1, "ExpectNotEqual", v1, v2, compEqual, true))
+func (m *method) AssertEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectEqual", v1, v2, compEqual, false, false))
 	return m
 }
 
 //go:noinline
-func (m *method) ExpectLessThan(v1, v2 any) Method_ {
-	m.expectations = append(m.expectations, newComparator(1, "ExpectLessThan", v1, v2, compLessThan, false))
+func (m *method) RequireEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectEqual", v1, v2, compEqual, false, true))
 	return m
 }
 
 //go:noinline
-func (m *method) ExpectLessThanOrEqual(v1, v2 any) Method_ {
-	m.expectations = append(m.expectations, newComparator(1, "ExpectLessThanOrEqual", v1, v2, compLessOrEqualThan, false))
+func (m *method) AssertNotEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectNotEqual", v1, v2, compEqual, true, false))
 	return m
 }
 
 //go:noinline
-func (m *method) ExpectGreaterThan(v1, v2 any) Method_ {
-	m.expectations = append(m.expectations, newComparator(1, "ExpectGreaterThan", v1, v2, compGreaterThan, false))
+func (m *method) RequireNotEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectNotEqual", v1, v2, compEqual, true, true))
 	return m
 }
 
 //go:noinline
-func (m *method) ExpectGreaterThanOrEqual(v1, v2 any) Method_ {
-	m.expectations = append(m.expectations, newComparator(1, "ExpectGreaterThanOrEqual", v1, v2, compGreaterOrEqualThan, false))
+func (m *method) AssertLessThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectLessThan", v1, v2, compLessThan, false, false))
 	return m
 }
 
 //go:noinline
-func (m *method) ExpectNotLessThan(v1, v2 any) Method_ {
-	m.expectations = append(m.expectations, newComparator(1, "ExpectNotLessThan", v1, v2, compLessThan, true))
+func (m *method) RequireLessThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectLessThan", v1, v2, compLessThan, false, true))
 	return m
 }
 
 //go:noinline
-func (m *method) ExpectNotGreaterThan(v1, v2 any) Method_ {
-	m.expectations = append(m.expectations, newComparator(1, "ExpectNotGreaterThan", v1, v2, compGreaterThan, true))
+func (m *method) AssertLessThanOrEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectLessThanOrEqual", v1, v2, compLessOrEqualThan, false, false))
 	return m
 }
 
 //go:noinline
-func (m *method) ExpectMatch(value any, regex string) Method_ {
-	m.expectations = append(m.expectations, &match{
+func (m *method) RequireLessThanOrEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectLessThanOrEqual", v1, v2, compLessOrEqualThan, false, true))
+	return m
+}
+
+//go:noinline
+func (m *method) AssertGreaterThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectGreaterThan", v1, v2, compGreaterThan, false, false))
+	return m
+}
+
+//go:noinline
+func (m *method) RequireGreaterThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectGreaterThan", v1, v2, compGreaterThan, false, true))
+	return m
+}
+
+//go:noinline
+func (m *method) AssertGreaterThanOrEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectGreaterThanOrEqual", v1, v2, compGreaterOrEqualThan, false, false))
+	return m
+}
+
+//go:noinline
+func (m *method) RequireGreaterThanOrEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectGreaterThanOrEqual", v1, v2, compGreaterOrEqualThan, false, true))
+	return m
+}
+
+//go:noinline
+func (m *method) AssertNotLessThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectNotLessThan", v1, v2, compLessThan, true, false))
+	return m
+}
+
+//go:noinline
+func (m *method) RequireNotLessThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectNotLessThan", v1, v2, compLessThan, true, true))
+	return m
+}
+
+//go:noinline
+func (m *method) AssertNotGreaterThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectNotGreaterThan", v1, v2, compGreaterThan, true, false))
+	return m
+}
+
+//go:noinline
+func (m *method) RequireNotGreaterThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectNotGreaterThan", v1, v2, compGreaterThan, true, true))
+	return m
+}
+
+//go:noinline
+func (m *method) AssertMatch(value any, regex string) Method_ {
+	m.addPostExpectation(&match{
 		value: value,
 		regex: regex,
 		frame: frame(0),
@@ -292,8 +425,19 @@ func (m *method) ExpectMatch(value any, regex string) Method_ {
 }
 
 //go:noinline
-func (m *method) ExpectType(value any, typ Type_) Method_ {
-	m.expectations = append(m.expectations, &matchType{
+func (m *method) RequireMatch(value any, regex string) Method_ {
+	m.addPostExpectation(&match{
+		value:             value,
+		regex:             regex,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertType(value any, typ Type_) Method_ {
+	m.addPostExpectation(&matchType{
 		value: value,
 		typ:   typ,
 		frame: frame(0),
@@ -302,8 +446,19 @@ func (m *method) ExpectType(value any, typ Type_) Method_ {
 }
 
 //go:noinline
-func (m *method) ExpectNil(value any) Method_ {
-	m.expectations = append(m.expectations, &nilCheck{
+func (m *method) RequireType(value any, typ Type_) Method_ {
+	m.addPostExpectation(&matchType{
+		value:             value,
+		typ:               typ,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertNil(value any) Method_ {
+	m.addPostExpectation(&nilCheck{
 		value: value,
 		frame: frame(0),
 	})
@@ -311,8 +466,18 @@ func (m *method) ExpectNil(value any) Method_ {
 }
 
 //go:noinline
-func (m *method) ExpectNotNil(value any) Method_ {
-	m.expectations = append(m.expectations, &notNilCheck{
+func (m *method) RequireNil(value any) Method_ {
+	m.addPostExpectation(&nilCheck{
+		value:             value,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertNotNil(value any) Method_ {
+	m.addPostExpectation(&notNilCheck{
 		value: value,
 		frame: frame(0),
 	})
@@ -320,11 +485,32 @@ func (m *method) ExpectNotNil(value any) Method_ {
 }
 
 //go:noinline
-func (m *method) ExpectLen(value any, length int) Method_ {
-	m.expectations = append(m.expectations, &lenCheck{
+func (m *method) RequireNotNil(value any) Method_ {
+	m.addPostExpectation(&notNilCheck{
+		value:             value,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertLen(value any, length int) Method_ {
+	m.addPostExpectation(&lenCheck{
 		value:  value,
 		length: length,
 		frame:  frame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireLen(value any, length int) Method_ {
+	m.addPostExpectation(&lenCheck{
+		value:             value,
+		length:            length,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
 	})
 	return m
 }
@@ -338,7 +524,7 @@ func (m *method) SetVar(when When, name string, value any) Method_ {
 			frame: frame(0),
 		})
 	} else {
-		m.postCaptures = append(m.postCaptures, &setVar{
+		m.addPostCapture(&setVar{
 			name:  name,
 			value: value,
 			frame: frame(0),
@@ -354,7 +540,7 @@ func (m *method) ClearVars(when When) Method_ {
 			frame: frame(0),
 		})
 	} else {
-		m.postCaptures = append(m.postCaptures, &clearVars{
+		m.addPostCapture(&clearVars{
 			frame: frame(0),
 		})
 	}
@@ -370,7 +556,7 @@ func (m *method) DbInsert(when When, tableName string, row Columns) Method_ {
 			frame:     frame(0),
 		})
 	} else {
-		m.postCaptures = append(m.postCaptures, &dbInsert{
+		m.addPostCapture(&dbInsert{
 			tableName: tableName,
 			row:       row,
 			frame:     frame(0),
@@ -388,7 +574,7 @@ func (m *method) DbExec(when When, query string, args ...any) Method_ {
 			frame: frame(0),
 		})
 	} else {
-		m.postCaptures = append(m.postCaptures, &dbExec{
+		m.addPostCapture(&dbExec{
 			query: query,
 			args:  args,
 			frame: frame(0),
@@ -408,7 +594,7 @@ func (m *method) DbClearTables(when When, tableNames ...string) Method_ {
 		}
 	} else {
 		for _, tableName := range tableNames {
-			m.postCaptures = append(m.postCaptures, &dbClearTable{
+			m.addPostCapture(&dbClearTable{
 				tableName: tableName,
 				frame:     frame(0),
 			})
@@ -444,23 +630,32 @@ func (m *method) Run(ctx Context) error {
 	}
 	if res, ok := ctx.doRequest(request); ok {
 		if m.unmarshalResponseBody(ctx, res) {
-			for _, c := range m.postCaptures {
-				if c != nil {
-					if err := c.Run(ctx); err != nil {
-						ctx.reportFailure(err)
-						return nil
+			for _, po := range m.postOps {
+				if po.isExpectation {
+					exp := m.expectations[po.index]
+					if exp != nil {
+						if unmetErr, xErr := exp.Met(ctx); xErr != nil {
+							ctx.reportFailure(xErr)
+							return nil
+						} else if unmetErr != nil {
+							ctx.reportUnmet(exp, unmetErr)
+							if m.failFast || exp.IsRequired() {
+								for s := po.index + 1; s < len(m.expectations); s++ {
+									ctx.reportSkipped(m.expectations[s])
+								}
+								return nil
+							}
+						} else {
+							ctx.reportMet(exp)
+						}
 					}
-				}
-			}
-			for _, exp := range m.expectations {
-				if exp != nil {
-					if unmet, err := exp.Met(ctx); err != nil {
-						ctx.reportFailure(err)
-						return nil
-					} else if unmet != nil {
-						ctx.reportUnmet(exp, unmet)
-					} else {
-						ctx.reportMet(exp)
+				} else {
+					c := m.postCaptures[po.index]
+					if c != nil {
+						if rErr := c.Run(ctx); rErr != nil {
+							ctx.reportFailure(rErr)
+							return nil
+						}
 					}
 				}
 			}

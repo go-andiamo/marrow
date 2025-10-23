@@ -9,14 +9,15 @@ import (
 )
 
 //go:noinline
-func newComparator(skip int, name string, v1, v2 any, c comp, not bool) Expectation {
+func newComparator(skip int, name string, v1, v2 any, c comp, not bool, required bool) Expectation {
 	return &comparator{
-		name:  name,
-		v1:    v1,
-		v2:    v2,
-		comp:  c,
-		not:   not,
-		frame: frame(skip),
+		name:              name,
+		v1:                v1,
+		v2:                v2,
+		comp:              c,
+		not:               not,
+		frame:             frame(skip),
+		commonExpectation: commonExpectation{required: required},
 	}
 }
 
@@ -27,6 +28,7 @@ type comparator struct {
 	comp  comp
 	not   bool
 	frame *Frame
+	commonExpectation
 }
 
 var _ Expectation = (*comparator)(nil)

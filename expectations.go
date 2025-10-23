@@ -12,7 +12,16 @@ import (
 type Expectation interface {
 	Name() string
 	Met(ctx Context) (unmet error, err error)
+	IsRequired() bool
 	Framed
+}
+
+type commonExpectation struct {
+	required bool
+}
+
+func (e commonExpectation) IsRequired() bool {
+	return e.required
 }
 
 //go:noinline
@@ -26,6 +35,7 @@ func ExpectationFunc(fn func(ctx Context) (unmet error, err error)) Expectation 
 type expectation struct {
 	fn    func(ctx Context) (unmet error, err error)
 	frame *Frame
+	commonExpectation
 }
 
 var _ Expectation = (*expectation)(nil)
@@ -53,31 +63,14 @@ func (e *expectation) Frame() *Frame {
 	return e.frame
 }
 
-/*
-//go:noinline
-func newExpectOk(skip int) Expectation {
-	return &expectStatusCode{
-		name:   "Expect OK",
-		frame:  frame(skip),
-		expect: http.StatusOK,
-	}
-}
-
-//go:noinline
-func newExpectStatusCode(skip int, status any) Expectation {
-	return &expectStatusCode{
-		name:   "Expect Status Code",
-		frame:  frame(skip),
-		expect: status,
-	}
-}
-*/
-
 type expectStatusCode struct {
 	name   string
 	expect any
 	frame  *Frame
+	commonExpectation
 }
+
+var _ Expectation = (*expectStatusCode)(nil)
 
 func (e *expectStatusCode) Name() string {
 	return e.name
@@ -143,6 +136,7 @@ type match struct {
 	regex string
 	rx    *regexp.Regexp
 	frame *Frame
+	commonExpectation
 }
 
 var _ Expectation = (*match)(nil)
@@ -202,6 +196,7 @@ type matchType struct {
 	value any
 	typ   Type_
 	frame *Frame
+	commonExpectation
 }
 
 var _ Expectation = (*matchType)(nil)
@@ -245,6 +240,7 @@ func (m *matchType) Frame() *Frame {
 type nilCheck struct {
 	value any
 	frame *Frame
+	commonExpectation
 }
 
 var _ Expectation = (*nilCheck)(nil)
@@ -275,6 +271,7 @@ func (n *nilCheck) Frame() *Frame {
 type notNilCheck struct {
 	value any
 	frame *Frame
+	commonExpectation
 }
 
 var _ Expectation = (*notNilCheck)(nil)
@@ -306,6 +303,7 @@ type lenCheck struct {
 	value  any
 	length int
 	frame  *Frame
+	commonExpectation
 }
 
 var _ Expectation = (*lenCheck)(nil)

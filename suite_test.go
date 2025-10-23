@@ -17,29 +17,30 @@ func TestSuite(t *testing.T) {
 			SetVar(Before, "rows", QueryRows("SELECT * FROM foos")),
 			SetVar(Before, "row", JsonPath(Var("rows"), LAST)),
 			Method(GET, "Get foos").
-				ExpectOK().
-				ExpectEqual(3, JsonPath(Var("rows"), LEN)).
-				ExpectLen(Var("rows"), 3).
-				ExpectLen(Body, 1).
-				ExpectEqual(JsonPath(Var("row"), "foo_col"), "foo3").
-				ExpectStatus(Var("OK")).
+				AssertOK().
+				AssertEqual(3, JsonPath(Var("rows"), LEN)).
+				AssertLen(Var("rows"), 3).
+				AssertLen(Body, 1).
+				AssertEqual(JsonPath(Var("row"), "foo_col"), "foo3").
+				AssertStatus(Var("OK")).
 				//SetVar(Before, "z", Query("xxx", Var("yyy"), Query("zzz"))).
 				SetVar(After, "body", BodyPath(".")).
 				SetVar(After, "foo", JsonPath(Var("body"), "foo")).
-				ExpectEqual(Var("foo"), "xxx").
-				ExpectEqual(JsonPath(Var("body"), "foo"), "xxx").
-				ExpectEqual(JsonPath(Var("body"), "foo"), 123.1),
-			Method(POST, "Post foos").ExpectOK(),
-			Method(DELETE, "Delete foos").ExpectOK(),
-			Method(PUT, "Put foos").ExpectOK(),
-			Method(PATCH, "Patch foos").ExpectOK(),
+				AssertEqual(Var("foo"), "xxx").
+				AssertEqual(JsonPath(Var("body"), "foo"), "xxx").
+				AssertEqual(JsonPath(Var("body"), "foo"), 123.1).
+				FailFast(),
+			Method(POST, "Post foos").AssertOK(),
+			Method(DELETE, "Delete foos").AssertOK(),
+			Method(PUT, "Put foos").AssertOK(),
+			Method(PATCH, "Patch foos").AssertOK(),
 		),
 		Endpoint("/foos", "Foos endpoint",
-			Method(GET, "Get foos").ExpectOK(),
-			Method(POST, "Post foos").ExpectOK(),
-			Method(DELETE, "Delete foos").ExpectOK(),
-			Method(PUT, "Put foos").ExpectOK(),
-			Method(PATCH, "Patch foos").ExpectOK(),
+			Method(GET, "Get foos").AssertOK(),
+			Method(POST, "Post foos").AssertOK(),
+			Method(DELETE, "Delete foos").AssertOK(),
+			Method(PUT, "Put foos").AssertOK(),
+			Method(PATCH, "Patch foos").AssertOK(),
 		),
 	)
 	db, mock, err := sqlmock.New()

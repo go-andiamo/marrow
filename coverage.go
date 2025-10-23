@@ -17,6 +17,7 @@ type CoverageCommon struct {
 	Failures []CoverageFailure
 	Unmet    []CoverageUnmet
 	Met      []CoverageMet
+	Skipped  []CoverageSkip
 	Timings  CoverageTimings
 }
 
@@ -92,6 +93,24 @@ func (c *Coverage) reportMet(endpoint Endpoint_, method Method_, exp Expectation
 	c.Met = append(c.Met, met)
 }
 
+func (c *Coverage) reportSkipped(endpoint Endpoint_, method Method_, exp Expectation) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	skip := CoverageSkip{
+		Endpoint:    endpoint,
+		Method:      method,
+		Expectation: exp,
+	}
+	covE, covM := c.add(endpoint, method)
+	if covE != nil {
+		covE.Skipped = append(covE.Skipped, skip)
+	}
+	if covM != nil {
+		covM.Skipped = append(covM.Skipped, skip)
+	}
+	c.Skipped = append(c.Skipped, skip)
+}
+
 func (c *Coverage) reportTiming(endpoint Endpoint_, method Method_, dur time.Duration) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -139,6 +158,12 @@ type CoverageFailure struct {
 }
 
 type CoverageMet struct {
+	Endpoint    Endpoint_
+	Method      Method_
+	Expectation Expectation
+}
+
+type CoverageSkip struct {
 	Endpoint    Endpoint_
 	Method      Method_
 	Expectation Expectation
