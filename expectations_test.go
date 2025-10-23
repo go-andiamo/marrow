@@ -37,39 +37,14 @@ func TestExpectationFunc(t *testing.T) {
 
 }
 
-func Test_newExpectOk(t *testing.T) {
-	exp := newExpectOk(0)
-	assert.Equal(t, "Expect OK", exp.Name())
-	f := exp.Frame()
-	assert.NotNil(t, f)
-	assert.Equal(t, t.Name(), f.Name)
-	t.Run("met", func(t *testing.T) {
-		ctx := newContext(nil)
-		ctx.currResponse = &http.Response{StatusCode: http.StatusOK}
-		unmet, err := exp.Met(ctx)
-		assert.NoError(t, unmet)
-		assert.NoError(t, err)
-	})
-	t.Run("unmet", func(t *testing.T) {
-		ctx := newContext(nil)
-		ctx.currResponse = &http.Response{StatusCode: http.StatusNotFound}
-		unmet, err := exp.Met(ctx)
-		assert.Error(t, unmet)
-		assert.NoError(t, err)
-		umerr, ok := unmet.(UnmetError)
-		assert.True(t, ok)
-		assert.Error(t, umerr)
-		assert.Equal(t, http.StatusOK, umerr.Expected().Original)
-		assert.Equal(t, http.StatusNotFound, umerr.Actual().Original)
-	})
-}
-
-func Test_newExpectStatusCode(t *testing.T) {
-	exp := newExpectStatusCode(0, http.StatusConflict)
+func Test_expectStatusCode(t *testing.T) {
+	exp := &expectStatusCode{
+		name:   "Expect Status Code",
+		expect: http.StatusConflict,
+		frame:  frame(0),
+	}
 	assert.Equal(t, "Expect Status Code", exp.Name())
-	f := exp.Frame()
-	assert.NotNil(t, f)
-	assert.Equal(t, t.Name(), f.Name)
+	assert.NotNil(t, exp.Frame())
 	t.Run("met", func(t *testing.T) {
 		ctx := newContext(nil)
 		ctx.currResponse = &http.Response{StatusCode: http.StatusConflict}

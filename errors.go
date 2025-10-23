@@ -66,7 +66,7 @@ func (v OperandValue) TestFormat() string {
 		b.WriteString(fmt.Sprintf(" << %s(%v)", strings.TrimPrefix(to.String(), "marrow."), ot))
 	}
 	if v.CoercionError != nil {
-		b.WriteString(fmt.Sprintf("\n\t            \tCoercion error: %s", v.CoercionError.Error()))
+		b.WriteString(fmt.Sprintf("\n\t          \tCoercion error: %s", v.CoercionError.Error()))
 	}
 	return b.String()
 }
@@ -138,17 +138,17 @@ func (e *unmetError) TestFormat() string {
 	var b strings.Builder
 	b.WriteString(e.msg)
 	if e.isComparator {
-		b.WriteString(fmt.Sprintf("\n\tLeft:       \t%v", e.left.TestFormat()))
-		b.WriteString(fmt.Sprintf("\n\tRight:      \t%v", e.right.TestFormat()))
+		b.WriteString(fmt.Sprintf("\n\tLeft:     \t%v", e.left.TestFormat()))
+		b.WriteString(fmt.Sprintf("\n\tRight:    \t%v", e.right.TestFormat()))
 	} else {
-		b.WriteString(fmt.Sprintf("\n\tExpected:   \t%v", e.expected.TestFormat()))
-		b.WriteString(fmt.Sprintf("\n\tActual:     \t%v", e.actual.TestFormat()))
+		b.WriteString(fmt.Sprintf("\n\tExpected: \t%v", e.expected.TestFormat()))
+		b.WriteString(fmt.Sprintf("\n\tActual:   \t%v", e.actual.TestFormat()))
 	}
 	if e.cause != nil {
-		b.WriteString(fmt.Sprintf("\n\tCause:      \t%s", e.cause.Error()))
+		b.WriteString(fmt.Sprintf("\n\tCause:    \t%s", e.cause.Error()))
 	}
 	if e.frame != nil {
-		b.WriteString(fmt.Sprintf("\n\tError Trace:\t%s:%d", e.frame.File, e.frame.Line))
+		b.WriteString(fmt.Sprintf("\n\tFrame:    \t%s:%d", e.frame.File, e.frame.Line))
 	}
 	return b.String()
 }
@@ -220,19 +220,19 @@ func (e *captureError) TestFormat() string {
 		if ov.Original != nil {
 			if rv, ok := ov.Original.(Resolvable); ok {
 				if sv, ok := ov.Original.(fmt.Stringer); ok {
-					b.WriteString(fmt.Sprintf("\n\tValue:      \t%s", sv.String()))
+					b.WriteString(fmt.Sprintf("\n\tValue:    \t%s", sv.String()))
 				} else {
 					t := strings.TrimPrefix(fmt.Sprintf("%T", rv), "marrow.")
-					b.WriteString(fmt.Sprintf("\n\tValue:      \t%s(%v)", t, rv))
+					b.WriteString(fmt.Sprintf("\n\tValue:    \t%s(%v)", t, rv))
 				}
 			}
 		}
 	}
 	if e.cause != nil {
-		b.WriteString(fmt.Sprintf("\n\tCause:      \t%s", e.cause.Error()))
+		b.WriteString(fmt.Sprintf("\n\tCause:    \t%s", e.cause.Error()))
 	}
 	if e.frame != nil {
-		b.WriteString(fmt.Sprintf("\n\tError Trace:\t%s:%d", e.frame.File, e.frame.Line))
+		b.WriteString(fmt.Sprintf("\n\tFrame:    \t%s:%d", e.frame.File, e.frame.Line))
 	}
 	return b.String()
 }

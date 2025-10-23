@@ -478,3 +478,23 @@ type TemplateString string
 
 type JSON map[string]any
 type JSONArray []any
+
+type BodyValue string
+
+const (
+	// Body is shorthand for the response body
+	Body BodyValue = "Body"
+)
+
+func (BodyValue) ResolveValue(ctx Context) (av any, err error) {
+	if body := ctx.CurrentBody(); body == nil {
+		err = errors.New("body is nil")
+	} else {
+		av = body
+	}
+	return av, err
+}
+
+func (BodyValue) String() string {
+	return "Body"
+}

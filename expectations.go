@@ -53,6 +53,7 @@ func (e *expectation) Frame() *Frame {
 	return e.frame
 }
 
+/*
 //go:noinline
 func newExpectOk(skip int) Expectation {
 	return &expectStatusCode{
@@ -70,6 +71,7 @@ func newExpectStatusCode(skip int, status any) Expectation {
 		expect: status,
 	}
 }
+*/
 
 type expectStatusCode struct {
 	name   string
@@ -298,4 +300,68 @@ func (n *notNilCheck) Met(ctx Context) (unmet error, err error) {
 
 func (n *notNilCheck) Frame() *Frame {
 	return n.frame
+}
+
+type lenCheck struct {
+	value  any
+	length int
+	frame  *Frame
+}
+
+var _ Expectation = (*lenCheck)(nil)
+
+func (l *lenCheck) Name() string {
+	return "Expect Len"
+}
+
+func (l *lenCheck) Met(ctx Context) (unmet error, err error) {
+	ov := OperandValue{Original: l.value}
+	if ov.Resolved, err = ResolveValue(ov.Original, ctx); err == nil {
+		ok := false
+		switch avt := ov.Resolved.(type) {
+		case string:
+			ov.Resolved = len(avt)
+			ok = len(avt) == l.length
+		case map[string]any:
+			ov.Resolved = len(avt)
+			ok = len(avt) == l.length
+		case []any:
+			ov.Resolved = len(avt)
+			ok = len(avt) == l.length
+		default:
+			checked := false
+			if ov.Resolved != nil {
+				to := reflect.ValueOf(ov.Resolved)
+				if to.Kind() == reflect.Map || to.Kind() == reflect.Slice {
+					checked = true
+					ov.Resolved = to.Len()
+					ok = to.Len() == l.length
+				}
+			}
+			if !checked {
+				unmet = &unmetError{
+					msg:      fmt.Sprintf("cannot check length on %T", ov.Resolved),
+					name:     l.Name(),
+					expected: OperandValue{Original: l.length, Resolved: l.length},
+					actual:   ov,
+					frame:    l.frame,
+				}
+				return
+			}
+		}
+		if !ok {
+			unmet = &unmetError{
+				msg:      fmt.Sprintf("expected length %d", l.length),
+				name:     l.Name(),
+				expected: OperandValue{Original: l.length, Resolved: l.length},
+				actual:   ov,
+				frame:    l.frame,
+			}
+		}
+	}
+	return
+}
+
+func (l *lenCheck) Frame() *Frame {
+	return l.frame
 }

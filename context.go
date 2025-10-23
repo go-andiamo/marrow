@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 type Context interface {
@@ -219,7 +220,11 @@ func (c *context) setCurrentBody(body any) {
 func (c *context) doRequest(request *http.Request) (*http.Response, bool) {
 	c.currRequest = request
 	var err error
-	if c.currResponse, err = c.httpDo.Do(request); err == nil {
+	start := time.Now()
+	c.currResponse, err = c.httpDo.Do(request)
+	dur := time.Since(start)
+	if err == nil {
+		c.coverage.reportTiming(c.currEndpoint, c.currMethod, dur)
 		return c.currResponse, true
 	}
 	c.reportFailure(err)

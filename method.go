@@ -29,6 +29,7 @@ type Method_ interface {
 	Capture(op BeforeAfter_) Method_
 	CaptureFunc(when When, fn func(Context) error) Method_
 	Expect(exp Expectation) Method_
+	ExpectFunc(fn func(Context) (unmet error, err error)) Method_
 	ExpectEqual(v1, v2 any) Method_
 	ExpectNotEqual(v1, v2 any) Method_
 	ExpectLessThan(v1, v2 any) Method_
@@ -41,6 +42,7 @@ type Method_ interface {
 	ExpectType(value any, typ Type_) Method_
 	ExpectNil(value any) Method_
 	ExpectNotNil(value any) Method_
+	ExpectLen(value any, length int) Method_
 	SetVar(when When, name string, value any) Method_
 	ClearVars(when When) Method_
 	DbInsert(when When, tableName string, row Columns) Method_
@@ -166,13 +168,21 @@ func (m *method) StoreCookie(name string) Method_ {
 
 //go:noinline
 func (m *method) ExpectOK() Method_ {
-	m.expectations = append(m.expectations, newExpectOk(1))
+	m.expectations = append(m.expectations, &expectStatusCode{
+		name:   "Expect OK",
+		expect: http.StatusOK,
+		frame:  frame(0),
+	})
 	return m
 }
 
 //go:noinline
 func (m *method) ExpectStatus(status any) Method_ {
-	m.expectations = append(m.expectations, newExpectStatusCode(1, status))
+	m.expectations = append(m.expectations, &expectStatusCode{
+		name:   "Expect Status Code",
+		expect: status,
+		frame:  frame(0),
+	})
 	return m
 }
 
@@ -209,6 +219,17 @@ func (m *method) CaptureFunc(when When, fn func(ctx Context) error) Method_ {
 //go:noinline
 func (m *method) Expect(exp Expectation) Method_ {
 	m.expectations = append(m.expectations, exp)
+	return m
+}
+
+//go:noinline
+func (m *method) ExpectFunc(fn func(Context) (unmet error, err error)) Method_ {
+	if fn != nil {
+		m.expectations = append(m.expectations, &expectation{
+			fn:    fn,
+			frame: frame(0),
+		})
+	}
 	return m
 }
 
@@ -294,6 +315,16 @@ func (m *method) ExpectNotNil(value any) Method_ {
 	m.expectations = append(m.expectations, &notNilCheck{
 		value: value,
 		frame: frame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) ExpectLen(value any, length int) Method_ {
+	m.expectations = append(m.expectations, &lenCheck{
+		value:  value,
+		length: length,
+		frame:  frame(0),
 	})
 	return m
 }
