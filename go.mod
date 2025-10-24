@@ -7,6 +7,7 @@ require (
 	github.com/go-andiamo/chioas v1.19.0
 	github.com/go-andiamo/columbus v1.2.0
 	github.com/go-andiamo/gopt v1.6.1
+	github.com/go-andiamo/splitter v1.2.5
 	github.com/go-andiamo/urit v1.2.1
 	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.11.1
@@ -15,7 +16,6 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/go-andiamo/splitter v1.2.5 // indirect
 	github.com/go-chi/chi/v5 v5.2.3 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

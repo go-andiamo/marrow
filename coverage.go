@@ -3,20 +3,24 @@ package marrow
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/go-andiamo/chioas"
+	"github.com/go-andiamo/splitter"
 	"gopkg.in/yaml.v3"
 	"io"
 	"math"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
 
 func newCoverage() *Coverage {
 	return &Coverage{
-		Endpoints: map[string]*CoverageEndpoint{},
+		Endpoints:       make(map[string]*CoverageEndpoint),
+		normalizedPaths: make(map[string]map[string]struct{}),
 	}
 }
 
@@ -41,7 +45,8 @@ type Coverage struct {
 	Endpoints map[string]*CoverageEndpoint
 	OAS       *chioas.Definition
 	CoverageCommon
-	mutex sync.Mutex
+	mutex           sync.Mutex
+	normalizedPaths map[string]map[string]struct{}
 }
 
 var _ CoverageCollector = (*Coverage)(nil)
@@ -174,8 +179,43 @@ func (c *Coverage) ReportTiming(endpoint Endpoint_, method Method_, req *http.Re
 	c.Timings = append(c.Timings, timing)
 }
 
+var normSplitter = splitter.MustCreateSplitter('/', splitter.CurlyBrackets).AddDefaultOptions(
+	splitter.IgnoreEmptyFirst,
+	splitter.IgnoreEmptyLast,
+	&normCapture{})
+
+type normCapture struct{}
+
+func (nc *normCapture) Apply(s string, pos int, totalLen int, captured int, skipped int, isLast bool, subParts ...splitter.SubPart) (cap string, add bool, err error) {
+	add = true
+	cap = s
+	if strings.HasPrefix(cap, "{") && strings.HasSuffix(cap, "}") {
+		cap = "{}"
+	}
+	return
+}
+
+func normalizePath(path string) string {
+	if parts, err := normSplitter.Split(path); err == nil {
+		return "/" + strings.Join(parts, "/")
+	} else {
+		return path
+	}
+}
+
+func (c *Coverage) addNormalizedPath(endpoint Endpoint_) {
+	path := endpoint.Url()
+	nPath := normalizePath(path)
+	if m, ok := c.normalizedPaths[nPath]; ok {
+		m[path] = struct{}{}
+	} else {
+		c.normalizedPaths[nPath] = map[string]struct{}{path: {}}
+	}
+}
+
 func (c *Coverage) add(endpoint Endpoint_, method Method_) (covE *CoverageEndpoint, covM *CoverageMethod) {
 	if endpoint != nil {
+		c.addNormalizedPath(endpoint)
 		var ok bool
 		if covE, ok = c.Endpoints[endpoint.Url()]; !ok {
 			covE = &CoverageEndpoint{
@@ -226,12 +266,138 @@ type CoverageSkip struct {
 }
 
 type SpecCoverage struct {
-	//todo
+	CoveredPaths    map[string]*SpecPathCoverage
+	NonCoveredPaths map[string]*SpecPathCoverage
+	UnknownPaths    map[string]*SpecPathCoverage
+}
+
+func (s *SpecCoverage) PathsCovered() (total int, covered int, perc float64) {
+	covered = len(s.CoveredPaths)
+	total = covered + len(s.NonCoveredPaths)
+	perc = float64(covered) / float64(total)
+	return
+}
+
+func (s *SpecCoverage) MethodsCovered() (total int, covered int, perc float64) {
+	for _, cp := range s.CoveredPaths {
+		total += len(cp.CoveredMethods) + len(cp.NonCoveredMethods)
+		covered += len(cp.CoveredMethods)
+	}
+	for _, cp := range s.NonCoveredPaths {
+		total += len(cp.PathDef.Methods)
+	}
+	perc = float64(covered) / float64(total)
+	return
+}
+
+func newSpecCoverage() *SpecCoverage {
+	return &SpecCoverage{
+		CoveredPaths:    make(map[string]*SpecPathCoverage),
+		NonCoveredPaths: make(map[string]*SpecPathCoverage),
+		UnknownPaths:    make(map[string]*SpecPathCoverage),
+	}
+}
+
+type SpecPathCoverage struct {
+	Path              string
+	PathDef           *chioas.Path
+	CoveredMethods    map[string]*SpecMethodCoverage
+	NonCoveredMethods map[string]*SpecMethodCoverage
+	UnknownMethods    map[string]*SpecMethodCoverage
+}
+
+func newSpecPathCoverage(path string, def *chioas.Path) *SpecPathCoverage {
+	return &SpecPathCoverage{
+		Path:              path,
+		PathDef:           def,
+		CoveredMethods:    make(map[string]*SpecMethodCoverage),
+		NonCoveredMethods: make(map[string]*SpecMethodCoverage),
+		UnknownMethods:    make(map[string]*SpecMethodCoverage),
+	}
+}
+
+type SpecMethodCoverage struct {
+	Method    string
+	MethodDef *chioas.Method
+	CoverageCommon
+}
+
+func (c *Coverage) checkMethodCoverage(pathCov *SpecPathCoverage, methods chioas.Methods, tPaths map[string]struct{}) {
+	for m, mDef := range methods {
+		mCov := &SpecMethodCoverage{
+			Method:    m,
+			MethodDef: &mDef,
+		}
+		found := false
+		for tPath := range tPaths {
+			if cc, ok := c.Endpoints[tPath]; ok {
+				if cm, ok := cc.Methods[m]; ok {
+					found = true
+					mCov.Met = append(mCov.Met, cm.Met...)
+					mCov.Unmet = append(mCov.Unmet, cm.Unmet...)
+					mCov.Failures = append(mCov.Failures, cm.Failures...)
+					mCov.Skipped = append(mCov.Skipped, cm.Skipped...)
+					mCov.Timings = append(mCov.Timings, cm.Timings...)
+				}
+			}
+		}
+		if found {
+			pathCov.CoveredMethods[m] = mCov
+		} else {
+			pathCov.NonCoveredMethods[m] = mCov
+		}
+	}
+	for tPath := range tPaths {
+		if cc, ok := c.Endpoints[tPath]; ok {
+			for m, cm := range cc.Methods {
+				if _, ok := methods[m]; !ok {
+					if um, ok := pathCov.UnknownMethods[m]; ok {
+						um.Failures = append(um.Failures, cm.Failures...)
+						um.Unmet = append(um.Unmet, cm.Unmet...)
+						um.Met = append(um.Met, cm.Met...)
+						um.Skipped = append(um.Skipped, cm.Skipped...)
+						um.Timings = append(um.Timings, cm.Timings...)
+					} else {
+						pathCov.UnknownMethods[m] = &SpecMethodCoverage{
+							Method: m,
+							CoverageCommon: CoverageCommon{
+								Failures: append([]CoverageFailure{}, cm.Failures...),
+								Unmet:    append([]CoverageUnmet{}, cm.Unmet...),
+								Met:      append([]CoverageMet{}, cm.Met...),
+								Skipped:  append([]CoverageSkip{}, cm.Skipped...),
+								Timings:  append(CoverageTimings{}, cm.Timings...),
+							},
+						}
+					}
+				}
+			}
+		}
+	}
+	//todo unknown methods
 }
 
 func (c *Coverage) SpecCoverage() (*SpecCoverage, error) {
-	//todo
-	return nil, nil
+	if c.OAS == nil {
+		return nil, errors.New("spec not supplied")
+	}
+	result := newSpecCoverage()
+	if len(c.OAS.Methods) > 0 {
+		//todo root methods???
+	}
+	_ = c.OAS.WalkPaths(func(path string, pathDef *chioas.Path) (cont bool, err error) {
+		if len(pathDef.Methods) > 0 {
+			nPath := normalizePath(path)
+			if tPaths, ok := c.normalizedPaths[nPath]; ok {
+				pathCov := newSpecPathCoverage(nPath, pathDef)
+				result.CoveredPaths[path] = pathCov
+				c.checkMethodCoverage(pathCov, pathDef.Methods, tPaths)
+			} else {
+				result.NonCoveredPaths[path] = newSpecPathCoverage(path, pathDef)
+			}
+		}
+		return true, nil
+	})
+	return result, nil
 }
 
 type CoverageTiming struct {

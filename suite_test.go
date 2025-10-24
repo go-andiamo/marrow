@@ -13,7 +13,7 @@ import (
 
 func TestSuite(t *testing.T) {
 	t.Skip()
-	specF, err := os.Open("petstore.yaml")
+	specF, err := os.Open("./_examples/petstore.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,6 +24,15 @@ func TestSuite(t *testing.T) {
 			AssertStatus(Var("OK")),
 	)
 	s := Suite(
+		Endpoint("/api/pets", "Pets",
+			Method(GET, "Get pets").AssertOK(),
+			Endpoint("/{pet_id}", "Get pet",
+				Method(GET, "Get pet").
+					PathParam(12345).
+					AssertOK(),
+			),
+			Method(DELETE, "Delete pets").AssertOK(),
+		),
 		Endpoint("/foos", "Foos endpoint",
 			SetVar(Before, "rows", QueryRows("SELECT * FROM foos")),
 			SetVar(Before, "row", JsonPath(Var("rows"), LAST)),
@@ -83,6 +92,13 @@ func TestSuite(t *testing.T) {
 	_ = st
 	outliers := coverage.Timings.Outliers(0.99)
 	require.Len(t, outliers, 1)
+
+	specCov, err := coverage.SpecCoverage()
+	require.NoError(t, err)
+	tot, cov, perc := specCov.PathsCovered()
+	fmt.Printf("specCov Paths: Total: %d, Covered: %d, Perc: %.2f%%\n", tot, cov, perc*100)
+	tot, cov, perc = specCov.MethodsCovered()
+	fmt.Printf("specCov Methods: Total: %d, Covered: %d, Perc: %.2f%%\n", tot, cov, perc*100)
 }
 
 type dummyDo struct {

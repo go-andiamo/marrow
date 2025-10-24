@@ -8,6 +8,12 @@ import (
 	"time"
 )
 
+func Test_normalizePath(t *testing.T) {
+	path := "/foo/{id}/bar/{id}"
+	nPath := normalizePath(path)
+	assert.Equal(t, "/foo/{}/bar/{}", nPath)
+}
+
 func TestCoverageTimings_Outliers(t *testing.T) {
 	mk := func(ns ...int64) CoverageTimings {
 		out := make(CoverageTimings, len(ns))
