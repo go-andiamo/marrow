@@ -51,7 +51,7 @@ const (
 
 type context struct {
 	suite        Suite_
-	coverage     *Coverage
+	coverage     CoverageCollector
 	httpDo       HttpDo
 	host         string
 	vars         map[Var]any
@@ -225,7 +225,7 @@ func (c *context) doRequest(request *http.Request) (*http.Response, bool) {
 	c.currResponse, err = c.httpDo.Do(request)
 	dur := time.Since(start)
 	if err == nil {
-		c.coverage.reportTiming(c.currEndpoint, c.currMethod, dur)
+		c.coverage.ReportTiming(c.currEndpoint, c.currMethod, c.currRequest, dur)
 		return c.currResponse, true
 	}
 	c.reportFailure(err)
@@ -233,7 +233,7 @@ func (c *context) doRequest(request *http.Request) (*http.Response, bool) {
 }
 
 func (c *context) reportFailure(err error) {
-	c.coverage.reportFailure(c.currEndpoint, c.currMethod, err)
+	c.coverage.ReportFailure(c.currEndpoint, c.currMethod, c.currRequest, err)
 	if len(c.currTesting) > 0 {
 		currT := c.currTesting[len(c.currTesting)-1]
 		if eerr, ok := err.(Error); ok {
@@ -246,7 +246,7 @@ func (c *context) reportFailure(err error) {
 }
 
 func (c *context) reportUnmet(exp Expectation, err error) {
-	c.coverage.reportUnmet(c.currEndpoint, c.currMethod, exp, err)
+	c.coverage.ReportUnmet(c.currEndpoint, c.currMethod, c.currRequest, exp, err)
 	if len(c.currTesting) > 0 {
 		currT := c.currTesting[len(c.currTesting)-1]
 		if exp.IsRequired() {
@@ -268,11 +268,11 @@ func (c *context) reportUnmet(exp Expectation, err error) {
 }
 
 func (c *context) reportMet(exp Expectation) {
-	c.coverage.reportMet(c.currEndpoint, c.currMethod, exp)
+	c.coverage.ReportMet(c.currEndpoint, c.currMethod, c.currRequest, exp)
 }
 
 func (c *context) reportSkipped(exp Expectation) {
-	c.coverage.reportSkipped(c.currEndpoint, c.currMethod, exp)
+	c.coverage.ReportSkipped(c.currEndpoint, c.currMethod, c.currRequest, exp)
 }
 
 func (c *context) run(name string, r Runnable) (ok bool) {

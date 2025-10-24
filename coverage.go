@@ -1,7 +1,14 @@
 package marrow
 
 import (
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"github.com/go-andiamo/chioas"
+	"gopkg.in/yaml.v3"
+	"io"
 	"math"
+	"net/http"
 	"sort"
 	"sync"
 	"time"
@@ -11,6 +18,15 @@ func newCoverage() *Coverage {
 	return &Coverage{
 		Endpoints: map[string]*CoverageEndpoint{},
 	}
+}
+
+type CoverageCollector interface {
+	LoadSpec(r io.Reader) (err error)
+	ReportFailure(endpoint Endpoint_, method Method_, req *http.Request, err error)
+	ReportUnmet(endpoint Endpoint_, method Method_, req *http.Request, exp Expectation, err error)
+	ReportMet(endpoint Endpoint_, method Method_, req *http.Request, exp Expectation)
+	ReportSkipped(endpoint Endpoint_, method Method_, req *http.Request, exp Expectation)
+	ReportTiming(endpoint Endpoint_, method Method_, req *http.Request, dur time.Duration)
 }
 
 type CoverageCommon struct {
@@ -23,8 +39,32 @@ type CoverageCommon struct {
 
 type Coverage struct {
 	Endpoints map[string]*CoverageEndpoint
+	OAS       *chioas.Definition
 	CoverageCommon
 	mutex sync.Mutex
+}
+
+var _ CoverageCollector = (*Coverage)(nil)
+
+func (c *Coverage) LoadSpec(r io.Reader) (err error) {
+	br := bufio.NewReader(r)
+	var spec *chioas.Definition
+	var first []byte
+	// sniff for json or yaml...
+	if first, err = br.Peek(1); err == nil {
+		spec = new(chioas.Definition)
+		if first[0] == '{' {
+			err = json.NewDecoder(br).Decode(spec)
+		} else {
+			err = yaml.NewDecoder(br).Decode(spec)
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("unable to read OAS: %w", err)
+	} else {
+		c.OAS = spec
+		return nil
+	}
 }
 
 type CoverageEndpoint struct {
@@ -38,12 +78,13 @@ type CoverageMethod struct {
 	CoverageCommon
 }
 
-func (c *Coverage) reportFailure(endpoint Endpoint_, method Method_, err error) {
+func (c *Coverage) ReportFailure(endpoint Endpoint_, method Method_, req *http.Request, err error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	fail := CoverageFailure{
 		Endpoint: endpoint,
 		Method:   method,
+		Request:  req,
 		Error:    err,
 	}
 	covE, covM := c.add(endpoint, method)
@@ -56,12 +97,13 @@ func (c *Coverage) reportFailure(endpoint Endpoint_, method Method_, err error) 
 	c.Failures = append(c.Failures, fail)
 }
 
-func (c *Coverage) reportUnmet(endpoint Endpoint_, method Method_, exp Expectation, err error) {
+func (c *Coverage) ReportUnmet(endpoint Endpoint_, method Method_, req *http.Request, exp Expectation, err error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	unmet := CoverageUnmet{
 		Endpoint:    endpoint,
 		Method:      method,
+		Request:     req,
 		Expectation: exp,
 		Error:       err,
 	}
@@ -75,12 +117,13 @@ func (c *Coverage) reportUnmet(endpoint Endpoint_, method Method_, exp Expectati
 	c.Unmet = append(c.Unmet, unmet)
 }
 
-func (c *Coverage) reportMet(endpoint Endpoint_, method Method_, exp Expectation) {
+func (c *Coverage) ReportMet(endpoint Endpoint_, method Method_, req *http.Request, exp Expectation) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	met := CoverageMet{
 		Endpoint:    endpoint,
 		Method:      method,
+		Request:     req,
 		Expectation: exp,
 	}
 	covE, covM := c.add(endpoint, method)
@@ -93,12 +136,13 @@ func (c *Coverage) reportMet(endpoint Endpoint_, method Method_, exp Expectation
 	c.Met = append(c.Met, met)
 }
 
-func (c *Coverage) reportSkipped(endpoint Endpoint_, method Method_, exp Expectation) {
+func (c *Coverage) ReportSkipped(endpoint Endpoint_, method Method_, req *http.Request, exp Expectation) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	skip := CoverageSkip{
 		Endpoint:    endpoint,
 		Method:      method,
+		Request:     req,
 		Expectation: exp,
 	}
 	covE, covM := c.add(endpoint, method)
@@ -111,12 +155,13 @@ func (c *Coverage) reportSkipped(endpoint Endpoint_, method Method_, exp Expecta
 	c.Skipped = append(c.Skipped, skip)
 }
 
-func (c *Coverage) reportTiming(endpoint Endpoint_, method Method_, dur time.Duration) {
+func (c *Coverage) ReportTiming(endpoint Endpoint_, method Method_, req *http.Request, dur time.Duration) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	timing := CoverageTiming{
 		Endpoint: endpoint,
 		Method:   method,
+		Request:  req,
 		Duration: dur,
 	}
 	covE, covM := c.add(endpoint, method)
@@ -154,31 +199,45 @@ func (c *Coverage) add(endpoint Endpoint_, method Method_) (covE *CoverageEndpoi
 type CoverageFailure struct {
 	Endpoint Endpoint_
 	Method   Method_
+	Request  *http.Request
 	Error    error
+}
+
+type CoverageUnmet struct {
+	Endpoint    Endpoint_
+	Method      Method_
+	Request     *http.Request
+	Expectation Expectation
+	Error       error
 }
 
 type CoverageMet struct {
 	Endpoint    Endpoint_
 	Method      Method_
+	Request     *http.Request
 	Expectation Expectation
 }
 
 type CoverageSkip struct {
 	Endpoint    Endpoint_
 	Method      Method_
+	Request     *http.Request
 	Expectation Expectation
 }
 
-type CoverageUnmet struct {
-	Endpoint    Endpoint_
-	Method      Method_
-	Expectation Expectation
-	Error       error
+type SpecCoverage struct {
+	//todo
+}
+
+func (c *Coverage) SpecCoverage() (*SpecCoverage, error) {
+	//todo
+	return nil, nil
 }
 
 type CoverageTiming struct {
 	Endpoint Endpoint_
 	Method   Method_
+	Request  *http.Request
 	Duration time.Duration
 }
 
@@ -326,4 +385,33 @@ func (ct CoverageTimings) Outliers(percentile float64) []CoverageTiming {
 		start--
 	}
 	return durs[start:]
+}
+
+type nullCoverage struct{}
+
+var _ CoverageCollector = (*nullCoverage)(nil)
+
+func (n *nullCoverage) LoadSpec(r io.Reader) (err error) {
+	// nullCoverage does nothing
+	return nil
+}
+
+func (n *nullCoverage) ReportFailure(endpoint Endpoint_, method Method_, req *http.Request, err error) {
+	// nullCoverage does nothing
+}
+
+func (n *nullCoverage) ReportUnmet(endpoint Endpoint_, method Method_, req *http.Request, exp Expectation, err error) {
+	// nullCoverage does nothing
+}
+
+func (n *nullCoverage) ReportMet(endpoint Endpoint_, method Method_, req *http.Request, exp Expectation) {
+	// nullCoverage does nothing
+}
+
+func (n *nullCoverage) ReportSkipped(endpoint Endpoint_, method Method_, req *http.Request, exp Expectation) {
+	// nullCoverage does nothing
+}
+
+func (n *nullCoverage) ReportTiming(endpoint Endpoint_, method Method_, req *http.Request, dur time.Duration) {
+	// nullCoverage does nothing
 }

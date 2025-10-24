@@ -2,6 +2,7 @@ package marrow
 
 import (
 	"database/sql"
+	"io"
 	"net/http"
 	"testing"
 )
@@ -19,7 +20,9 @@ type SuiteInit interface {
 	SetTesting(t *testing.T)
 	SetVar(name string, value any)
 	SetCookie(cookie *http.Cookie)
-	SetCoverageCollect(fn func(coverage *Coverage))
+	SetReportCoverage(fn func(coverage *Coverage))
+	SetCoverageCollector(collector CoverageCollector)
+	SetOAS(r io.Reader)
 	// todo etc. more things that can be set/initialised prior to run
 }
 
@@ -72,10 +75,17 @@ func WithCookie(cookie *http.Cookie) With {
 		}}
 }
 
-func WithCoverageCollect(fn func(coverage *Coverage)) With {
+func WithReportCoverage(fn func(coverage *Coverage)) With {
 	return &with{
 		fn: func(init SuiteInit) {
-			init.SetCoverageCollect(fn)
+			init.SetReportCoverage(fn)
+		}}
+}
+
+func WithOAS(r io.Reader) With {
+	return &with{
+		fn: func(init SuiteInit) {
+			init.SetOAS(r)
 		}}
 }
 

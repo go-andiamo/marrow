@@ -7,11 +7,22 @@ import (
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
+	"os"
 	"testing"
 )
 
 func TestSuite(t *testing.T) {
 	t.Skip()
+	specF, err := os.Open("petstore.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer specF.Close()
+	sub := Endpoint("/bars/{id}", "Bars",
+		Method(GET, "Get bars").
+			PathParam(Var("bar_id")).
+			AssertStatus(Var("OK")),
+	)
 	s := Suite(
 		Endpoint("/foos", "Foos endpoint",
 			SetVar(Before, "rows", QueryRows("SELECT * FROM foos")),
@@ -28,12 +39,13 @@ func TestSuite(t *testing.T) {
 				SetVar(After, "foo", JsonPath(Var("body"), "foo")).
 				AssertEqual(Var("foo"), "xxx").
 				AssertEqual(JsonPath(Var("body"), "foo"), "xxx").
-				AssertEqual(JsonPath(Var("body"), "foo"), 123.1).
-				FailFast(),
-			Method(POST, "Post foos").AssertOK(),
+				AssertEqual(JsonPath(Var("body"), "foo"), 123.1),
+			Method(POST, "Post foos").AssertOK().
+				SetVar(After, "bar_id", "1234"),
 			Method(DELETE, "Delete foos").AssertOK(),
 			Method(PUT, "Put foos").AssertOK(),
 			Method(PATCH, "Patch foos").AssertOK(),
+			sub,
 		),
 		Endpoint("/foos", "Foos endpoint",
 			Method(GET, "Get foos").AssertOK(),
@@ -52,8 +64,9 @@ func TestSuite(t *testing.T) {
 		AddRow("foo3", 3, true))
 	var coverage *Coverage
 	s.Init(
+		WithOAS(specF),
 		WithDatabase(db),
-		WithCoverageCollect(func(cov *Coverage) {
+		WithReportCoverage(func(cov *Coverage) {
 			coverage = cov
 		}),
 		WithTesting(t),

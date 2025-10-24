@@ -2,7 +2,9 @@ package marrow
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"testing"
 )
@@ -10,7 +12,7 @@ import (
 type Suite_ interface {
 	Init(withs ...With) Suite_
 	InitFunc(func(init SuiteInit)) Suite_
-	Run()
+	Run() error
 }
 
 func Suite(endpoints ...Endpoint_) Suite_ {
@@ -32,8 +34,14 @@ type suite struct {
 	testing      *testing.T
 	vars         map[Var]any
 	cookies      map[string]*http.Cookie
-	covCollect   func(*Coverage)
+	reportCov    func(*Coverage)
+	covCollector CoverageCollector
+	oasReader    io.Reader
 	//todo other fields... to match everything that can be set
+}
+
+func (s *suite) SetOAS(r io.Reader) {
+	s.oasReader = r
 }
 
 func (s *suite) SetDb(db *sql.DB) {
@@ -72,8 +80,14 @@ func (s *suite) SetCookie(cookie *http.Cookie) {
 	}
 }
 
-func (s *suite) SetCoverageCollect(fn func(coverage *Coverage)) {
-	s.covCollect = fn
+func (s *suite) SetReportCoverage(fn func(coverage *Coverage)) {
+	s.reportCov = fn
+}
+
+func (s *suite) SetCoverageCollector(collector CoverageCollector) {
+	if collector != nil {
+		s.covCollector = collector
+	}
 }
 
 func (s *suite) Init(withs ...With) Suite_ {
@@ -88,7 +102,7 @@ func (s *suite) InitFunc(fn func(init SuiteInit)) Suite_ {
 	return s
 }
 
-func (s *suite) Run() {
+func (s *suite) Run() error {
 	for _, w := range s.withs {
 		if w != nil {
 			w.Init(s)
@@ -102,7 +116,23 @@ func (s *suite) Run() {
 	if host == "" {
 		host = "localhost"
 	}
-	cov := newCoverage()
+	var cov CoverageCollector = &nullCoverage{}
+	if s.covCollector != nil {
+		cov = s.covCollector
+	}
+	var actualCov *Coverage
+	if s.reportCov != nil {
+		if s.covCollector != nil {
+			return errors.New("cannot report coverage with custom coverage collector")
+		}
+		actualCov = newCoverage()
+		cov = actualCov
+	}
+	if s.oasReader != nil {
+		if err := cov.LoadSpec(s.oasReader); err != nil {
+			return err
+		}
+	}
 	ctx := &context{
 		suite:        s,
 		coverage:     cov,
@@ -115,11 +145,12 @@ func (s *suite) Run() {
 		cookieJar:    s.cookies,
 	}
 	for _, e := range s.endpoints {
-		if !ctx.run("Endpoint: "+e.Url()+" "+e.Description(), e) {
+		if !ctx.run(e.Url(), e) {
 			break
 		}
 	}
-	if s.covCollect != nil {
-		s.covCollect(cov)
+	if s.reportCov != nil {
+		s.reportCov(actualCov)
 	}
+	return nil
 }

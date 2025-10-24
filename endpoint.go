@@ -3,12 +3,14 @@ package marrow
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 type Endpoint_ interface {
 	Url() string
 	Description() string
 	Runnable
+	setAncestry([]Endpoint_)
 	fmt.Stringer
 }
 
@@ -32,6 +34,15 @@ func Endpoint(url string, desc string, operations ...any) Endpoint_ {
 					continue
 				}
 				result.methods = append(result.methods, m)
+			}
+		case Endpoint_:
+			result.subs = append(result.subs, op)
+		case []Endpoint_:
+			for _, e := range op {
+				if e == nil {
+					continue
+				}
+				result.subs = append(result.subs, e)
 			}
 		case BeforeAfter_:
 			if op.When() == Before {
@@ -58,6 +69,8 @@ func Endpoint(url string, desc string, operations ...any) Endpoint_ {
 					switch opv := v.(type) {
 					case Method_:
 						result.methods = append(result.methods, opv)
+					case Endpoint_:
+						result.subs = append(result.subs, opv)
 					case BeforeAfter_:
 						if opv.When() == Before {
 							result.befores = append(result.befores, opv)
@@ -79,12 +92,14 @@ func Endpoint(url string, desc string, operations ...any) Endpoint_ {
 }
 
 type endpoint struct {
-	desc    string
-	url     string
-	frame   *Frame
-	methods []Method_
-	befores []BeforeAfter_
-	afters  []BeforeAfter_
+	desc      string
+	url       string
+	frame     *Frame
+	methods   []Method_
+	ancestors []Endpoint_
+	subs      []Endpoint_
+	befores   []BeforeAfter_
+	afters    []BeforeAfter_
 }
 
 func (e *endpoint) String() string {
@@ -92,6 +107,14 @@ func (e *endpoint) String() string {
 }
 
 func (e *endpoint) Url() string {
+	if len(e.ancestors) > 0 {
+		parts := make([]string, 0, len(e.ancestors)+1)
+		for _, a := range e.ancestors {
+			parts = append(parts, strings.TrimPrefix(a.Url(), "/"))
+		}
+		parts = append(parts, strings.TrimPrefix(e.url, "/"))
+		return "/" + strings.Join(parts, "/")
+	}
 	return e.url
 }
 
@@ -101,17 +124,29 @@ func (e *endpoint) Description() string {
 
 func (e *endpoint) Run(ctx Context) error {
 	ctx.setCurrentEndpoint(e)
+	defer func() {
+		e.ancestors = nil
+	}()
 	for i, b := range e.befores {
 		if !ctx.run(fmt.Sprintf("Before[%d]", i+1), b) {
 			return nil
 		}
 	}
 	for _, m := range e.methods {
-		if !ctx.run("Method: "+string(m.Method())+" "+m.Description(), m) {
+		if !ctx.run(string(m.Method()), m) {
 			return nil
 		}
 	}
 	ctx.setCurrentMethod(nil)
+	ancestry := append(e.ancestors, e)
+	for _, sub := range e.subs {
+		sub.setAncestry(nil)
+		url := sub.Url()
+		sub.setAncestry(ancestry)
+		if !ctx.run(url, sub) {
+			return nil
+		}
+	}
 	for i, a := range e.afters {
 		if !ctx.run(fmt.Sprintf("After[%d]", i+1), a) {
 			return nil
@@ -122,4 +157,8 @@ func (e *endpoint) Run(ctx Context) error {
 
 func (e *endpoint) Frame() *Frame {
 	return e.frame
+}
+
+func (e *endpoint) setAncestry(ancestors []Endpoint_) {
+	e.ancestors = ancestors
 }
