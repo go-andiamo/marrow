@@ -2,6 +2,8 @@ package marrow
 
 import (
 	"bufio"
+	ctx "context"
+	
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -89,7 +91,7 @@ func (c *Coverage) ReportFailure(endpoint Endpoint_, method Method_, req *http.R
 	fail := CoverageFailure{
 		Endpoint: endpoint,
 		Method:   method,
-		Request:  req,
+		Request:  requestShallowClone(req),
 		Error:    err,
 	}
 	covE, covM := c.add(endpoint, method)
@@ -108,7 +110,7 @@ func (c *Coverage) ReportUnmet(endpoint Endpoint_, method Method_, req *http.Req
 	unmet := CoverageUnmet{
 		Endpoint:    endpoint,
 		Method:      method,
-		Request:     req,
+		Request:     requestShallowClone(req),
 		Expectation: exp,
 		Error:       err,
 	}
@@ -128,7 +130,7 @@ func (c *Coverage) ReportMet(endpoint Endpoint_, method Method_, req *http.Reque
 	met := CoverageMet{
 		Endpoint:    endpoint,
 		Method:      method,
-		Request:     req,
+		Request:     requestShallowClone(req),
 		Expectation: exp,
 	}
 	covE, covM := c.add(endpoint, method)
@@ -147,7 +149,7 @@ func (c *Coverage) ReportSkipped(endpoint Endpoint_, method Method_, req *http.R
 	skip := CoverageSkip{
 		Endpoint:    endpoint,
 		Method:      method,
-		Request:     req,
+		Request:     requestShallowClone(req),
 		Expectation: exp,
 	}
 	covE, covM := c.add(endpoint, method)
@@ -166,7 +168,7 @@ func (c *Coverage) ReportTiming(endpoint Endpoint_, method Method_, req *http.Re
 	timing := CoverageTiming{
 		Endpoint: endpoint,
 		Method:   method,
-		Request:  req,
+		Request:  requestShallowClone(req),
 		Duration: dur,
 	}
 	covE, covM := c.add(endpoint, method)
@@ -177,6 +179,17 @@ func (c *Coverage) ReportTiming(endpoint Endpoint_, method Method_, req *http.Re
 		covM.Timings = append(covM.Timings, timing)
 	}
 	c.Timings = append(c.Timings, timing)
+}
+
+func requestShallowClone(req *http.Request) *http.Request {
+	// Clone copies URL, Header, etc., with a fresh context.
+	r2 := req.Clone(ctx.Background())
+	// nuke live/streaming fields so we never hold sockets/buffers...
+	r2.Body = http.NoBody
+	r2.GetBody = nil
+	r2.Trailer = nil
+	r2.MultipartForm = nil
+	return r2
 }
 
 var normSplitter = splitter.MustCreateSplitter('/', splitter.CurlyBrackets).AddDefaultOptions(
@@ -373,7 +386,6 @@ func (c *Coverage) checkMethodCoverage(pathCov *SpecPathCoverage, methods chioas
 			}
 		}
 	}
-	//todo unknown methods
 }
 
 func (c *Coverage) SpecCoverage() (*SpecCoverage, error) {
