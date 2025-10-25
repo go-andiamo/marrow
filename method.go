@@ -11,22 +11,20 @@ import (
 	"strings"
 )
 
-type Method_ interface {
-	Method() MethodName
-	Description() string
-
-	Authorize(func(ctx Context) error) Method_
-	QueryParam(name string, values ...any) Method_
-	PathParam(value any) Method_
-	RequestHeader(name string, value any) Method_
-	RequestBody(value any) Method_
-	UseCookie(name string) Method_
-	SetCookie(cookie *http.Cookie) Method_
-	StoreCookie(name string) Method_
-
+type methodExpectations interface {
 	Expect(exp Expectation) Method_
 
 	AssertOK() Method_
+	AssertCreated() Method_
+	AssertAccepted() Method_
+	AssertNoContent() Method_
+	AssertBadRequest() Method_
+	AssertUnauthorized() Method_
+	AssertForbidden() Method_
+	AssertNotFound() Method_
+	AssertConflict() Method_
+	AssertGone() Method_
+	AssertUnprocessableEntity() Method_
 	AssertStatus(status any) Method_
 	AssertFunc(fn func(Context) (unmet error, err error)) Method_
 	AssertEqual(v1, v2 any) Method_
@@ -44,6 +42,16 @@ type Method_ interface {
 	AssertLen(value any, length int) Method_
 
 	RequireOK() Method_
+	RequireCreated() Method_
+	RequireAccepted() Method_
+	RequireNoContent() Method_
+	RequireBadRequest() Method_
+	RequireUnauthorized() Method_
+	RequireForbidden() Method_
+	RequireNotFound() Method_
+	RequireConflict() Method_
+	RequireGone() Method_
+	RequireUnprocessableEntity() Method_
 	RequireStatus(status any) Method_
 	RequireFunc(fn func(Context) (unmet error, err error)) Method_
 	RequireEqual(v1, v2 any) Method_
@@ -64,6 +72,22 @@ type Method_ interface {
 	//
 	// i.e. treat all `Assert...()` as `Require...()`
 	FailFast() Method_
+}
+
+type Method_ interface {
+	Method() MethodName
+	Description() string
+
+	Authorize(func(ctx Context) error) Method_
+	QueryParam(name string, values ...any) Method_
+	PathParam(value any) Method_
+	RequestHeader(name string, value any) Method_
+	RequestBody(value any) Method_
+	UseCookie(name string) Method_
+	SetCookie(cookie *http.Cookie) Method_
+	StoreCookie(name string) Method_
+
+	methodExpectations
 
 	Capture(op BeforeAfter_) Method_
 	CaptureFunc(when When, fn func(Context) error) Method_
@@ -84,7 +108,7 @@ func Method(m MethodName, desc string, ops ...BeforeAfter_) Method_ {
 	result := &method{
 		desc:        desc,
 		frame:       frame(0),
-		method:      m,
+		method:      m.Normalize(),
 		queryParams: queryParams{},
 		pathParams:  pathParams{},
 		headers:     make(map[string]any),
@@ -232,6 +256,216 @@ func (m *method) RequireOK() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:              "Expect OK",
 		expect:            http.StatusOK,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertCreated() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Created",
+		expect: http.StatusCreated,
+		frame:  frame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireCreated() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Created",
+		expect:            http.StatusCreated,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertAccepted() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Accepted",
+		expect: http.StatusAccepted,
+		frame:  frame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireAccepted() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Accepted",
+		expect:            http.StatusAccepted,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertNoContent() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect No Content",
+		expect: http.StatusNoContent,
+		frame:  frame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireNoContent() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect No Content",
+		expect:            http.StatusNoContent,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertBadRequest() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Bad Request",
+		expect: http.StatusBadRequest,
+		frame:  frame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireBadRequest() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Bad Request",
+		expect:            http.StatusBadRequest,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertUnauthorized() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Unauthorized",
+		expect: http.StatusUnauthorized,
+		frame:  frame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireUnauthorized() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Unauthorized",
+		expect:            http.StatusUnauthorized,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertForbidden() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Forbidden",
+		expect: http.StatusForbidden,
+		frame:  frame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireForbidden() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Forbidden",
+		expect:            http.StatusForbidden,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertNotFound() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Not Found",
+		expect: http.StatusNotFound,
+		frame:  frame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireNotFound() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Not Found",
+		expect:            http.StatusNotFound,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertConflict() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Conflict",
+		expect: http.StatusConflict,
+		frame:  frame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireConflict() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Conflict",
+		expect:            http.StatusConflict,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertGone() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Gone",
+		expect: http.StatusGone,
+		frame:  frame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireGone() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Gone",
+		expect:            http.StatusGone,
+		frame:             frame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertUnprocessableEntity() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Unprocessable Entity",
+		expect: http.StatusUnprocessableEntity,
+		frame:  frame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireUnprocessableEntity() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Unprocessable Entity",
+		expect:            http.StatusUnprocessableEntity,
 		frame:             frame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
@@ -844,6 +1078,10 @@ func (m *method) String() string {
 }
 
 type MethodName string
+
+func (m MethodName) Normalize() MethodName {
+	return MethodName(strings.ToUpper(string(m)))
+}
 
 const (
 	GET     MethodName = http.MethodGet

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
@@ -86,19 +87,20 @@ func TestSuite(t *testing.T) {
 		WithVar("OK", 201)).
 		Run()
 	require.NotNil(t, coverage)
-	fmt.Printf("coverage: %+v\n", coverage)
-	st, ok := coverage.Timings.Stats(false)
+	//fmt.Printf("coverage: %+v\n", coverage)
+	stats, ok := coverage.Timings.Stats(false)
 	require.True(t, ok)
-	_ = st
+	assert.Equal(t, 14, stats.Count)
+	assert.Less(t, stats.Variance, 0.01)
 	outliers := coverage.Timings.Outliers(0.99)
 	require.Len(t, outliers, 1)
 
 	specCov, err := coverage.SpecCoverage()
 	require.NoError(t, err)
 	tot, cov, perc := specCov.PathsCovered()
-	fmt.Printf("specCov Paths: Total: %d, Covered: %d, Perc: %.2f%%\n", tot, cov, perc*100)
+	fmt.Printf("Spec Coverage Paths: Total: %d, Covered: %d, Perc: %.2f%%\n", tot, cov, perc*100)
 	tot, cov, perc = specCov.MethodsCovered()
-	fmt.Printf("specCov Methods: Total: %d, Covered: %d, Perc: %.2f%%\n", tot, cov, perc*100)
+	fmt.Printf("Spec Coverage Methods: Total: %d, Covered: %d, Perc: %.2f%%\n", tot, cov, perc*100)
 }
 
 type dummyDo struct {

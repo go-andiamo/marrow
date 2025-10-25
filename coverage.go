@@ -3,7 +3,7 @@ package marrow
 import (
 	"bufio"
 	ctx "context"
-	
+
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -389,26 +389,63 @@ func (c *Coverage) checkMethodCoverage(pathCov *SpecPathCoverage, methods chioas
 }
 
 func (c *Coverage) SpecCoverage() (*SpecCoverage, error) {
+	const root = "/"
 	if c.OAS == nil {
 		return nil, errors.New("spec not supplied")
 	}
 	result := newSpecCoverage()
-	if len(c.OAS.Methods) > 0 {
-		//todo root methods???
+	seenPaths := make(map[string]struct{})
+	seenPath := func(tPaths map[string]struct{}) {
+		for tPath := range tPaths {
+			seenPaths[tPath] = struct{}{}
+		}
 	}
+	if len(c.OAS.Methods) > 0 {
+		rootCov := newSpecPathCoverage(root, nil)
+		if tPaths, ok := c.normalizedPaths[root]; ok {
+			seenPath(tPaths)
+			result.CoveredPaths[root] = rootCov
+			c.checkMethodCoverage(rootCov, c.OAS.Methods, tPaths)
+		} else {
+			seenPath(tPaths)
+			result.NonCoveredPaths[root] = rootCov
+		}
+	}
+	// covered paths...
 	_ = c.OAS.WalkPaths(func(path string, pathDef *chioas.Path) (cont bool, err error) {
 		if len(pathDef.Methods) > 0 {
 			nPath := normalizePath(path)
+			pathCov := newSpecPathCoverage(path, pathDef)
 			if tPaths, ok := c.normalizedPaths[nPath]; ok {
-				pathCov := newSpecPathCoverage(nPath, pathDef)
+				seenPath(tPaths)
 				result.CoveredPaths[path] = pathCov
 				c.checkMethodCoverage(pathCov, pathDef.Methods, tPaths)
 			} else {
-				result.NonCoveredPaths[path] = newSpecPathCoverage(path, pathDef)
+				seenPath(tPaths)
+				result.NonCoveredPaths[path] = pathCov
 			}
 		}
 		return true, nil
 	})
+	// unknown paths...
+	for p, ce := range c.Endpoints {
+		if _, ok := seenPaths[p]; !ok {
+			pathCov := newSpecPathCoverage(p, nil)
+			result.UnknownPaths[p] = pathCov
+			for m, cm := range ce.Methods {
+				pathCov.UnknownMethods[m] = &SpecMethodCoverage{
+					Method: m,
+					CoverageCommon: CoverageCommon{
+						Failures: append([]CoverageFailure{}, cm.Failures...),
+						Unmet:    append([]CoverageUnmet{}, cm.Unmet...),
+						Met:      append([]CoverageMet{}, cm.Met...),
+						Skipped:  append([]CoverageSkip{}, cm.Skipped...),
+						Timings:  append(CoverageTimings{}, cm.Timings...),
+					},
+				}
+			}
+		}
+	}
 	return result, nil
 }
 
