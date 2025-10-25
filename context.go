@@ -50,7 +50,6 @@ const (
 )
 
 type context struct {
-	suite        Suite_
 	coverage     CoverageCollector
 	httpDo       HttpDo
 	host         string

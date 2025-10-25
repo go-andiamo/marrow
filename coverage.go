@@ -33,6 +33,7 @@ type CoverageCollector interface {
 	ReportMet(endpoint Endpoint_, method Method_, req *http.Request, exp Expectation)
 	ReportSkipped(endpoint Endpoint_, method Method_, req *http.Request, exp Expectation)
 	ReportTiming(endpoint Endpoint_, method Method_, req *http.Request, dur time.Duration)
+	HasFailures() bool
 }
 
 type CoverageCommon struct {
@@ -181,7 +182,14 @@ func (c *Coverage) ReportTiming(endpoint Endpoint_, method Method_, req *http.Re
 	c.Timings = append(c.Timings, timing)
 }
 
+func (c *Coverage) HasFailures() bool {
+	return len(c.Failures) > 0 || len(c.Unmet) > 0
+}
+
 func requestShallowClone(req *http.Request) *http.Request {
+	if req == nil {
+		return nil
+	}
 	// Clone copies URL, Header, etc., with a fresh context.
 	r2 := req.Clone(ctx.Background())
 	// nuke live/streaming fields so we never hold sockets/buffers...
@@ -493,6 +501,10 @@ type TimingStats struct {
 
 const sec = float64(time.Second)
 
+// Stats creates a TimingStats from the CoverageTimings
+//
+// sample arg determines whether resulting TimingStats.StdDev & TimingStats.Variance are computed
+// using sample (n-1) or population (n)
 func (ct CoverageTimings) Stats(sample bool) (TimingStats, bool) {
 	if len(ct) == 0 {
 		return TimingStats{}, false
@@ -602,7 +614,9 @@ func (ct CoverageTimings) Outliers(percentile float64) []CoverageTiming {
 	return durs[start:]
 }
 
-type nullCoverage struct{}
+type nullCoverage struct {
+	hasFailures bool
+}
 
 var _ CoverageCollector = (*nullCoverage)(nil)
 
@@ -612,10 +626,12 @@ func (n *nullCoverage) LoadSpec(r io.Reader) (err error) {
 }
 
 func (n *nullCoverage) ReportFailure(endpoint Endpoint_, method Method_, req *http.Request, err error) {
+	n.hasFailures = true
 	// nullCoverage does nothing
 }
 
 func (n *nullCoverage) ReportUnmet(endpoint Endpoint_, method Method_, req *http.Request, exp Expectation, err error) {
+	n.hasFailures = true
 	// nullCoverage does nothing
 }
 
@@ -629,4 +645,8 @@ func (n *nullCoverage) ReportSkipped(endpoint Endpoint_, method Method_, req *ht
 
 func (n *nullCoverage) ReportTiming(endpoint Endpoint_, method Method_, req *http.Request, dur time.Duration) {
 	// nullCoverage does nothing
+}
+
+func (n *nullCoverage) HasFailures() bool {
+	return n.hasFailures
 }

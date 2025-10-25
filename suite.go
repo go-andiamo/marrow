@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"testing"
 )
@@ -24,24 +25,22 @@ func Suite(endpoints ...Endpoint_) Suite_ {
 }
 
 type suite struct {
-	endpoints    []Endpoint_
-	withs        []With
-	db           *sql.DB
-	dbArgMarkers DatabaseArgMarkers
-	host         string
-	port         int
-	httpDo       HttpDo
-	testing      *testing.T
-	vars         map[Var]any
-	cookies      map[string]*http.Cookie
-	reportCov    func(*Coverage)
-	covCollector CoverageCollector
-	oasReader    io.Reader
-	//todo other fields... to match everything that can be set
-}
-
-func (s *suite) SetOAS(r io.Reader) {
-	s.oasReader = r
+	endpoints     []Endpoint_
+	withs         []With
+	db            *sql.DB
+	dbArgMarkers  DatabaseArgMarkers
+	host          string
+	port          int
+	httpDo        HttpDo
+	testing       *testing.T
+	vars          map[Var]any
+	cookies       map[string]*http.Cookie
+	reportCov     func(*Coverage)
+	covCollector  CoverageCollector
+	oasReader     io.Reader
+	repeats       int
+	repeatResets  []func(si SuiteInit)
+	stopOnFailure bool
 }
 
 func (s *suite) SetDb(db *sql.DB) {
@@ -90,6 +89,16 @@ func (s *suite) SetCoverageCollector(collector CoverageCollector) {
 	}
 }
 
+func (s *suite) SetOAS(r io.Reader) {
+	s.oasReader = r
+}
+
+func (s *suite) SetRepeats(n int, stopOnFailure bool, resets ...func(si SuiteInit)) {
+	s.repeats = n
+	s.repeatResets = resets
+	s.stopOnFailure = stopOnFailure
+}
+
 func (s *suite) Init(withs ...With) Suite_ {
 	s.withs = append(s.withs, withs...)
 	return s
@@ -134,19 +143,37 @@ func (s *suite) Run() error {
 		}
 	}
 	ctx := &context{
-		suite:        s,
 		coverage:     cov,
 		httpDo:       do,
 		host:         fmt.Sprintf("http://%s:%d", host, s.port),
 		db:           s.db,
 		dbArgMarkers: s.dbArgMarkers,
 		testing:      s.testing,
-		vars:         s.vars,
-		cookieJar:    s.cookies,
+		vars:         maps.Clone(s.vars),
+		cookieJar:    maps.Clone(s.cookies),
 	}
 	for _, e := range s.endpoints {
 		if !ctx.run(e.Url(), e) {
 			break
+		}
+	}
+	if s.repeats > 0 && (!s.stopOnFailure || !cov.HasFailures()) {
+		ctx.vars = maps.Clone(s.vars)
+		ctx.cookieJar = maps.Clone(s.cookies)
+		ctx.testing = nil
+		ctx.currTesting = nil
+		for r := 0; r < s.repeats; r++ {
+			for _, reset := range s.repeatResets {
+				reset(s)
+			}
+			for _, e := range s.endpoints {
+				if !ctx.run(e.Url(), e) {
+					break
+				}
+			}
+			if s.stopOnFailure && cov.HasFailures() {
+				break
+			}
 		}
 	}
 	if s.reportCov != nil {

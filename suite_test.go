@@ -2,7 +2,6 @@ package marrow
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +12,7 @@ import (
 )
 
 func TestSuite(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	specF, err := os.Open("./_examples/petstore.yaml")
 	if err != nil {
 		t.Fatal(err)
@@ -80,6 +79,12 @@ func TestSuite(t *testing.T) {
 			coverage = cov
 		}),
 		WithTesting(t),
+		WithRepeats(10, false, func(si SuiteInit) {
+			mock.ExpectQuery("").WillReturnRows(sqlmock.NewRows([]string{"foo_col", "bar_col", "baz_col"}).
+				AddRow("foo1", 1, true).
+				AddRow("foo2", 2, false).
+				AddRow("foo3", 3, true))
+		}),
 		WithHttpDo(&dummyDo{
 			status: http.StatusOK,
 			body:   []byte(`{"foo": "bar"}`),
@@ -93,14 +98,14 @@ func TestSuite(t *testing.T) {
 	assert.Equal(t, 14, stats.Count)
 	assert.Less(t, stats.Variance, 0.01)
 	outliers := coverage.Timings.Outliers(0.99)
-	require.Len(t, outliers, 1)
+	assert.Len(t, outliers, 1)
 
 	specCov, err := coverage.SpecCoverage()
 	require.NoError(t, err)
 	tot, cov, perc := specCov.PathsCovered()
-	fmt.Printf("Spec Coverage Paths: Total: %d, Covered: %d, Perc: %.2f%%\n", tot, cov, perc*100)
+	t.Logf("Spec Coverage Paths:\n\tTotal: %d, Covered: %d, Perc: %.2f%%\n", tot, cov, perc*100)
 	tot, cov, perc = specCov.MethodsCovered()
-	fmt.Printf("Spec Coverage Methods: Total: %d, Covered: %d, Perc: %.2f%%\n", tot, cov, perc*100)
+	t.Logf("Spec Coverage Methods:\n\tTotal: %d, Covered: %d, Perc: %.2f%%\n", tot, cov, perc*100)
 }
 
 type dummyDo struct {

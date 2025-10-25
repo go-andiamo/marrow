@@ -23,6 +23,7 @@ type SuiteInit interface {
 	SetReportCoverage(fn func(coverage *Coverage))
 	SetCoverageCollector(collector CoverageCollector)
 	SetOAS(r io.Reader)
+	SetRepeats(n int, stopOnFailure bool, resets ...func(si SuiteInit))
 	// todo etc. more things that can be set/initialised prior to run
 }
 
@@ -86,6 +87,13 @@ func WithOAS(r io.Reader) With {
 	return &with{
 		fn: func(init SuiteInit) {
 			init.SetOAS(r)
+		}}
+}
+
+func WithRepeats(n int, stopOnFailure bool, resets ...func(si SuiteInit)) With {
+	return &with{
+		fn: func(init SuiteInit) {
+			init.SetRepeats(n, stopOnFailure, resets...)
 		}}
 }
 
