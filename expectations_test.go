@@ -46,6 +46,7 @@ func Test_expectStatusCode(t *testing.T) {
 	}
 	assert.Equal(t, "Expect Status Code", exp.Name())
 	assert.NotNil(t, exp.Frame())
+	assert.False(t, exp.IsRequired())
 	t.Run("met", func(t *testing.T) {
 		ctx := newContext(nil)
 		ctx.currResponse = &http.Response{StatusCode: http.StatusConflict}
@@ -65,6 +66,60 @@ func Test_expectStatusCode(t *testing.T) {
 		assert.Equal(t, http.StatusConflict, umerr.Expected().Original)
 		assert.Equal(t, http.StatusNotFound, umerr.Actual().Original)
 	})
+	t.Run("missing var", func(t *testing.T) {
+		ctx := newContext(nil)
+		ctx.currResponse = &http.Response{StatusCode: http.StatusNotFound}
+		exp := &expectStatusCode{
+			name:   "Expect Status Code",
+			expect: Var("missing"),
+			frame:  framing.NewFrame(0),
+		}
+		_, err := exp.Met(ctx)
+		assert.Error(t, err)
+	})
+	t.Run("expect string", func(t *testing.T) {
+		ctx := newContext(nil)
+		ctx.currResponse = &http.Response{StatusCode: http.StatusNotFound}
+		exp := &expectStatusCode{
+			name:   "Expect Status Code",
+			expect: "404",
+			frame:  framing.NewFrame(0),
+		}
+		unmet, err := exp.Met(ctx)
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("expect int64", func(t *testing.T) {
+		ctx := newContext(nil)
+		ctx.currResponse = &http.Response{StatusCode: http.StatusNotFound}
+		exp := &expectStatusCode{
+			name:   "Expect Status Code",
+			expect: int64(http.StatusNotFound),
+			frame:  framing.NewFrame(0),
+		}
+		unmet, err := exp.Met(ctx)
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("invalid type", func(t *testing.T) {
+		ctx := newContext(nil)
+		ctx.currResponse = &http.Response{StatusCode: http.StatusNotFound}
+		exp := &expectStatusCode{
+			name:   "Expect Status Code",
+			expect: true,
+			frame:  framing.NewFrame(0),
+		}
+		unmet, err := exp.Met(ctx)
+		assert.Error(t, unmet)
+		assert.NoError(t, err)
+	})
+}
+
+func TestStatus_stringify(t *testing.T) {
+	sc := Status(http.StatusNotFound)
+	assert.Equal(t, `404 "Not Found"`, sc.stringify())
+	sc = Status(999)
+	assert.Equal(t, `999`, sc.stringify())
 }
 
 func Test_match(t *testing.T) {
@@ -145,6 +200,97 @@ func Test_match(t *testing.T) {
 		assert.True(t, ok)
 		assert.Error(t, umerr)
 		assert.Error(t, umerr.Actual().CoercionError)
+	})
+}
+
+func Test_lenCheck(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		exp := &lenCheck{
+			value:  "foo",
+			length: 3,
+			frame:  framing.NewFrame(0),
+		}
+		assert.Equal(t, "Expect Len", exp.Name())
+		assert.NotNil(t, exp.Frame())
+	})
+	t.Run("met (string)", func(t *testing.T) {
+		exp := &lenCheck{
+			value:  "foo",
+			length: 3,
+			frame:  framing.NewFrame(0),
+		}
+		unmet, err := exp.Met(newContext(nil))
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("met (map[string]any)", func(t *testing.T) {
+		exp := &lenCheck{
+			value:  map[string]any{"foo": nil, "bar": nil, "baz": nil},
+			length: 3,
+			frame:  framing.NewFrame(0),
+		}
+		unmet, err := exp.Met(newContext(nil))
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("met ([]any)", func(t *testing.T) {
+		exp := &lenCheck{
+			value:  []any{nil, nil, nil},
+			length: 3,
+			frame:  framing.NewFrame(0),
+		}
+		unmet, err := exp.Met(newContext(nil))
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("met (map)", func(t *testing.T) {
+		exp := &lenCheck{
+			value:  map[string]string{"foo": "", "bar": "", "baz": ""},
+			length: 3,
+			frame:  framing.NewFrame(0),
+		}
+		unmet, err := exp.Met(newContext(nil))
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("met (slice)", func(t *testing.T) {
+		exp := &lenCheck{
+			value:  []string{"", "", ""},
+			length: 3,
+			frame:  framing.NewFrame(0),
+		}
+		unmet, err := exp.Met(newContext(nil))
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("unmet", func(t *testing.T) {
+		exp := &lenCheck{
+			value:  "foo",
+			length: 4,
+			frame:  framing.NewFrame(0),
+		}
+		unmet, err := exp.Met(newContext(nil))
+		assert.Error(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("unmet (invalid type)", func(t *testing.T) {
+		exp := &lenCheck{
+			value:  true,
+			length: 4,
+			frame:  framing.NewFrame(0),
+		}
+		unmet, err := exp.Met(newContext(nil))
+		assert.Error(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("missing var", func(t *testing.T) {
+		exp := &lenCheck{
+			value:  Var("foo"),
+			length: 3,
+			frame:  framing.NewFrame(0),
+		}
+		_, err := exp.Met(newContext(nil))
+		assert.Error(t, err)
 	})
 }
 

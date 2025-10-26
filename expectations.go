@@ -89,8 +89,6 @@ func (e *expectStatusCode) Met(ctx Context) (unmet error, err error) {
 		ev.Coerced = evt
 	case int64:
 		ev.Coerced = int(evt)
-	case float64:
-		ev.Coerced = int(evt)
 	default:
 		ev.CoercionError = fmt.Errorf("cannot coerce %T to %T", ev.Resolved, 0)
 	}
