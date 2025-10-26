@@ -46,32 +46,6 @@ type stringy interface {
 	stringify() string
 }
 
-func (v OperandValue) TestFormat() string {
-	var b strings.Builder
-	switch rt := v.Resolved.(type) {
-	case nil:
-		b.WriteString(fmt.Sprintf("%v", v.Original))
-	case stringy:
-		b.WriteString(rt.stringify())
-	case string:
-		b.WriteString(strconv.Quote(rt))
-	default:
-		to := reflect.TypeOf(v.Resolved)
-		b.WriteString(fmt.Sprintf("%s(%v)", to.String(), rt))
-	}
-	switch ot := v.Original.(type) {
-	case fmt.Stringer:
-		b.WriteString(fmt.Sprintf(" << %s", ot.String()))
-	case Resolvable:
-		to := reflect.TypeOf(v.Original)
-		b.WriteString(fmt.Sprintf(" << %s(%v)", strings.TrimPrefix(to.String(), "marrow."), ot))
-	}
-	if v.CoercionError != nil {
-		b.WriteString(fmt.Sprintf("\n\t          \tCoercion error: %s", v.CoercionError.Error()))
-	}
-	return b.String()
-}
-
 type unmetError struct {
 	msg          string
 	name         string
@@ -155,11 +129,18 @@ func (e *unmetError) TestFormat() string {
 }
 
 type captureError struct {
-	msg    string
-	name   string
-	cause  error
-	frame  *framing.Frame
-	values []OperandValue
+	msg     string
+	name    string
+	cause   error
+	frame   *framing.Frame
+	capture Capture
+	values  []OperandValue
+}
+
+type CaptureError interface {
+	Error
+	Capture() Capture
+	Values() []OperandValue
 }
 
 func wrapCaptureError(cause error, msg string, capture Capture, values ...OperandValue) error {
@@ -170,25 +151,36 @@ func wrapCaptureError(cause error, msg string, capture Capture, values ...Operan
 		msg = cause.Error()
 	}
 	return &captureError{
-		msg:    msg,
-		name:   capture.Name(),
-		cause:  cause,
-		frame:  capture.Frame(),
-		values: values,
+		msg:     msg,
+		name:    capture.Name(),
+		cause:   cause,
+		frame:   capture.Frame(),
+		capture: capture,
+		values:  values,
 	}
 }
 
 func newCaptureError(msg string, cause error, capture Capture, values ...OperandValue) error {
 	return &captureError{
-		msg:    msg,
-		name:   capture.Name(),
-		cause:  cause,
-		frame:  capture.Frame(),
-		values: values,
+		msg:     msg,
+		name:    capture.Name(),
+		cause:   cause,
+		frame:   capture.Frame(),
+		capture: capture,
+		values:  values,
 	}
 }
 
 var _ Error = (*captureError)(nil)
+var _ CaptureError = (*captureError)(nil)
+
+func (e *captureError) Capture() Capture {
+	return e.capture
+}
+
+func (e *captureError) Values() []OperandValue {
+	return e.values
+}
 
 func (e *captureError) Error() string {
 	return e.msg
@@ -218,15 +210,18 @@ func (e *captureError) TestFormat() string {
 	var b strings.Builder
 	b.WriteString(e.msg)
 	for _, ov := range e.values {
+		out := false
 		if ov.Original != nil {
-			if rv, ok := ov.Original.(Resolvable); ok {
+			if _, ok := ov.Original.(Resolvable); ok {
 				if sv, ok := ov.Original.(fmt.Stringer); ok {
+					out = true
 					b.WriteString(fmt.Sprintf("\n\tValue:    \t%s", sv.String()))
-				} else {
-					t := strings.TrimPrefix(fmt.Sprintf("%T", rv), "marrow.")
-					b.WriteString(fmt.Sprintf("\n\tValue:    \t%s(%v)", t, rv))
 				}
 			}
+		}
+		if !out {
+			t := strings.TrimPrefix(fmt.Sprintf("%T", ov.Original), "marrow.")
+			b.WriteString(fmt.Sprintf("\n\tValue:    \t%s(%v)", t, ov.Original))
 		}
 	}
 	if e.cause != nil {
@@ -234,6 +229,32 @@ func (e *captureError) TestFormat() string {
 	}
 	if e.frame != nil {
 		b.WriteString(fmt.Sprintf("\n\tFrame:    \t%s:%d", e.frame.File, e.frame.Line))
+	}
+	return b.String()
+}
+
+func (v OperandValue) TestFormat() string {
+	var b strings.Builder
+	switch rt := v.Resolved.(type) {
+	case nil:
+		b.WriteString(fmt.Sprintf("%v", v.Original))
+	case stringy:
+		b.WriteString(rt.stringify())
+	case string:
+		b.WriteString(strconv.Quote(rt))
+	default:
+		to := reflect.TypeOf(v.Resolved)
+		b.WriteString(fmt.Sprintf("%s(%v)", to.String(), rt))
+	}
+	switch ot := v.Original.(type) {
+	case fmt.Stringer:
+		b.WriteString(fmt.Sprintf(" << %s", ot.String()))
+	case Resolvable:
+		to := reflect.TypeOf(v.Original)
+		b.WriteString(fmt.Sprintf(" << %s(%v)", strings.TrimPrefix(to.String(), "marrow."), ot))
+	}
+	if v.CoercionError != nil {
+		b.WriteString(fmt.Sprintf("\n\t          \tCoercion error: %s", v.CoercionError.Error()))
 	}
 	return b.String()
 }
