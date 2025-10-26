@@ -36,23 +36,28 @@ func (p pathParams) GetPositional(position int) (string, bool) {
 }
 
 func (p pathParams) GetNamed(name string, position int) (string, bool) {
-	panic("not implemented, not used")
+	// not implemented
+	return "", false
 }
 
 func (p pathParams) GetNamedFirst(name string) (string, bool) {
-	panic("not implemented, not used")
+	// not implemented
+	return "", false
 }
 
 func (p pathParams) GetNamedLast(name string) (string, bool) {
-	panic("not implemented, not used")
+	// not implemented
+	return "", false
 }
 
 func (p pathParams) Get(idents ...interface{}) (string, bool) {
-	panic("not implemented, not used")
+	// not implemented
+	return "", false
 }
 
 func (p pathParams) GetAll() []urit.PathVar {
-	panic("not implemented, not used")
+	// not implemented
+	return nil
 }
 
 func (p pathParams) Len() int {
@@ -60,7 +65,7 @@ func (p pathParams) Len() int {
 }
 
 func (p pathParams) Clear() {
-	panic("not implemented, not used")
+	// not implemented
 }
 
 func (p pathParams) VarsType() urit.PathVarsType {
@@ -68,9 +73,11 @@ func (p pathParams) VarsType() urit.PathVarsType {
 }
 
 func (p pathParams) AddNamedValue(name string, val interface{}) error {
-	panic("not implemented, not used")
+	// not implemented
+	return nil
 }
 
 func (p pathParams) AddPositionalValue(val interface{}) error {
-	panic("not implemented, not used")
+	// not implemented
+	return nil
 }
