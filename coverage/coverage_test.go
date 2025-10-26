@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func TestNullCoverage_ReportFailure(t *testing.T) {
+func TestCoverage_ReportFailure(t *testing.T) {
 	t.Run("top level", func(t *testing.T) {
 		cov := NewCoverage()
 		cov.ReportFailure(nil, nil, nil, nil)
@@ -39,7 +39,7 @@ func TestNullCoverage_ReportFailure(t *testing.T) {
 	})
 }
 
-func TestNullCoverage_ReportUnmet(t *testing.T) {
+func TestCoverage_ReportUnmet(t *testing.T) {
 	t.Run("top level", func(t *testing.T) {
 		cov := NewCoverage()
 		cov.ReportUnmet(nil, nil, nil, nil, nil)
@@ -68,7 +68,7 @@ func TestNullCoverage_ReportUnmet(t *testing.T) {
 	})
 }
 
-func TestNullCoverage_ReportMet(t *testing.T) {
+func TestCoverage_ReportMet(t *testing.T) {
 	t.Run("top level", func(t *testing.T) {
 		cov := NewCoverage()
 		cov.ReportMet(nil, nil, nil, nil)
@@ -97,7 +97,7 @@ func TestNullCoverage_ReportMet(t *testing.T) {
 	})
 }
 
-func TestNullCoverage_ReportSkipped(t *testing.T) {
+func TestCoverage_ReportSkipped(t *testing.T) {
 	t.Run("top level", func(t *testing.T) {
 		cov := NewCoverage()
 		cov.ReportSkipped(nil, nil, nil, nil)
@@ -126,7 +126,7 @@ func TestNullCoverage_ReportSkipped(t *testing.T) {
 	})
 }
 
-func TestNullCoverage_ReportTiming(t *testing.T) {
+func TestCoverage_ReportTiming(t *testing.T) {
 	t.Run("top level", func(t *testing.T) {
 		cov := NewCoverage()
 		cov.ReportTiming(nil, nil, nil, time.Second)
