@@ -4,6 +4,7 @@ import (
 	gctx "context"
 	"database/sql"
 	"encoding/json"
+	"github.com/go-andiamo/marrow/coverage"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -50,7 +51,7 @@ const (
 )
 
 type context struct {
-	coverage     CoverageCollector
+	coverage     coverage.Collector
 	httpDo       HttpDo
 	host         string
 	vars         map[Var]any

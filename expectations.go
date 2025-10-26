@@ -3,6 +3,8 @@ package marrow
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-andiamo/marrow/common"
+	"github.com/go-andiamo/marrow/framing"
 	"net/http"
 	"reflect"
 	"regexp"
@@ -10,10 +12,9 @@ import (
 )
 
 type Expectation interface {
-	Name() string
+	common.Expectation
 	Met(ctx Context) (unmet error, err error)
 	IsRequired() bool
-	Framed
 }
 
 type commonExpectation struct {
@@ -28,13 +29,13 @@ func (e commonExpectation) IsRequired() bool {
 func ExpectationFunc(fn func(ctx Context) (unmet error, err error)) Expectation {
 	return &expectation{
 		fn:    fn,
-		frame: frame(0),
+		frame: framing.NewFrame(0),
 	}
 }
 
 type expectation struct {
 	fn    func(ctx Context) (unmet error, err error)
-	frame *Frame
+	frame *framing.Frame
 	commonExpectation
 }
 
@@ -59,14 +60,14 @@ func (e *expectation) Met(ctx Context) (unmet error, err error) {
 	return
 }
 
-func (e *expectation) Frame() *Frame {
+func (e *expectation) Frame() *framing.Frame {
 	return e.frame
 }
 
 type expectStatusCode struct {
 	name   string
 	expect any
-	frame  *Frame
+	frame  *framing.Frame
 	commonExpectation
 }
 
@@ -127,7 +128,7 @@ func (s Status) stringify() string {
 	return strconv.Itoa(int(s))
 }
 
-func (e *expectStatusCode) Frame() *Frame {
+func (e *expectStatusCode) Frame() *framing.Frame {
 	return e.frame
 }
 
@@ -135,7 +136,7 @@ type match struct {
 	value any
 	regex string
 	rx    *regexp.Regexp
-	frame *Frame
+	frame *framing.Frame
 	commonExpectation
 }
 
@@ -188,14 +189,14 @@ func (m *match) Met(ctx Context) (unmet error, err error) {
 	return
 }
 
-func (m *match) Frame() *Frame {
+func (m *match) Frame() *framing.Frame {
 	return m.frame
 }
 
 type matchType struct {
 	value any
 	typ   Type_
-	frame *Frame
+	frame *framing.Frame
 	commonExpectation
 }
 
@@ -233,13 +234,13 @@ func (m *matchType) Met(ctx Context) (unmet error, err error) {
 	return
 }
 
-func (m *matchType) Frame() *Frame {
+func (m *matchType) Frame() *framing.Frame {
 	return m.frame
 }
 
 type nilCheck struct {
 	value any
-	frame *Frame
+	frame *framing.Frame
 	commonExpectation
 }
 
@@ -264,13 +265,13 @@ func (n *nilCheck) Met(ctx Context) (unmet error, err error) {
 	return
 }
 
-func (n *nilCheck) Frame() *Frame {
+func (n *nilCheck) Frame() *framing.Frame {
 	return n.frame
 }
 
 type notNilCheck struct {
 	value any
-	frame *Frame
+	frame *framing.Frame
 	commonExpectation
 }
 
@@ -295,14 +296,14 @@ func (n *notNilCheck) Met(ctx Context) (unmet error, err error) {
 	return
 }
 
-func (n *notNilCheck) Frame() *Frame {
+func (n *notNilCheck) Frame() *framing.Frame {
 	return n.frame
 }
 
 type lenCheck struct {
 	value  any
 	length int
-	frame  *Frame
+	frame  *framing.Frame
 	commonExpectation
 }
 
@@ -360,6 +361,6 @@ func (l *lenCheck) Met(ctx Context) (unmet error, err error) {
 	return
 }
 
-func (l *lenCheck) Frame() *Frame {
+func (l *lenCheck) Frame() *framing.Frame {
 	return l.frame
 }

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/go-andiamo/marrow/coverage"
 	"io"
 	"maps"
 	"net/http"
@@ -35,8 +36,8 @@ type suite struct {
 	testing       *testing.T
 	vars          map[Var]any
 	cookies       map[string]*http.Cookie
-	reportCov     func(*Coverage)
-	covCollector  CoverageCollector
+	reportCov     func(*coverage.Coverage)
+	covCollector  coverage.Collector
 	oasReader     io.Reader
 	repeats       int
 	repeatResets  []func(si SuiteInit)
@@ -79,11 +80,11 @@ func (s *suite) SetCookie(cookie *http.Cookie) {
 	}
 }
 
-func (s *suite) SetReportCoverage(fn func(coverage *Coverage)) {
+func (s *suite) SetReportCoverage(fn func(coverage *coverage.Coverage)) {
 	s.reportCov = fn
 }
 
-func (s *suite) SetCoverageCollector(collector CoverageCollector) {
+func (s *suite) SetCoverageCollector(collector coverage.Collector) {
 	if collector != nil {
 		s.covCollector = collector
 	}
@@ -125,16 +126,16 @@ func (s *suite) Run() error {
 	if host == "" {
 		host = "localhost"
 	}
-	var cov CoverageCollector = &nullCoverage{}
+	var cov coverage.Collector = coverage.NewNullCoverage()
 	if s.covCollector != nil {
 		cov = s.covCollector
 	}
-	var actualCov *Coverage
+	var actualCov *coverage.Coverage
 	if s.reportCov != nil {
 		if s.covCollector != nil {
 			return errors.New("cannot report coverage with custom coverage collector")
 		}
-		actualCov = newCoverage()
+		actualCov = coverage.NewCoverage()
 		cov = actualCov
 	}
 	if s.oasReader != nil {

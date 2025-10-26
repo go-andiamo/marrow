@@ -3,6 +3,7 @@ package marrow
 import (
 	"bytes"
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-andiamo/marrow/coverage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -71,12 +72,12 @@ func TestSuite(t *testing.T) {
 		AddRow("foo1", 1, true).
 		AddRow("foo2", 2, false).
 		AddRow("foo3", 3, true))
-	var coverage *Coverage
+	var cov *coverage.Coverage
 	s.Init(
 		WithOAS(specF),
 		WithDatabase(db),
-		WithReportCoverage(func(cov *Coverage) {
-			coverage = cov
+		WithReportCoverage(func(c *coverage.Coverage) {
+			cov = c
 		}),
 		WithTesting(t),
 		WithRepeats(10, false, func(si SuiteInit) {
@@ -91,21 +92,21 @@ func TestSuite(t *testing.T) {
 		}),
 		WithVar("OK", 201)).
 		Run()
-	require.NotNil(t, coverage)
+	require.NotNil(t, cov)
 	//fmt.Printf("coverage: %+v\n", coverage)
-	stats, ok := coverage.Timings.Stats(false)
+	stats, ok := cov.Timings.Stats(false)
 	require.True(t, ok)
 	assert.Equal(t, 14, stats.Count)
 	assert.Less(t, stats.Variance, 0.01)
-	outliers := coverage.Timings.Outliers(0.99)
+	outliers := cov.Timings.Outliers(0.99)
 	assert.Len(t, outliers, 1)
 
-	specCov, err := coverage.SpecCoverage()
+	specCov, err := cov.SpecCoverage()
 	require.NoError(t, err)
-	tot, cov, perc := specCov.PathsCovered()
-	t.Logf("Spec Coverage Paths:\n\tTotal: %d, Covered: %d, Perc: %.1f%%\n", tot, cov, perc*100)
-	tot, cov, perc = specCov.MethodsCovered()
-	t.Logf("Spec Coverage Methods:\n\tTotal: %d, Covered: %d, Perc: %.1f%%\n", tot, cov, perc*100)
+	tot, covd, perc := specCov.PathsCovered()
+	t.Logf("Spec Coverage Paths:\n\tTotal: %d, Covered: %d, Perc: %.1f%%\n", tot, covd, perc*100)
+	tot, covd, perc = specCov.MethodsCovered()
+	t.Logf("Spec Coverage Methods:\n\tTotal: %d, Covered: %d, Perc: %.1f%%\n", tot, covd, perc*100)
 }
 
 type dummyDo struct {

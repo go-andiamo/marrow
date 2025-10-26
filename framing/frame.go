@@ -1,4 +1,4 @@
-package marrow
+package framing
 
 import (
 	"runtime"
@@ -9,7 +9,8 @@ type Framed interface {
 	Frame() *Frame
 }
 
-func frame(skip int) (f *Frame) {
+//go:noinline
+func NewFrame(skip int) (f *Frame) {
 	stack := make([]uintptr, 1)
 	if l := runtime.Callers(3+skip, stack[:]); l > 0 {
 		f = &Frame{

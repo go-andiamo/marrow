@@ -1,10 +1,13 @@
 package marrow
 
-import "net/http"
+import (
+	"github.com/go-andiamo/marrow/coverage"
+	"net/http"
+)
 
 func newContext(vars map[Var]any) *context {
 	result := &context{
-		coverage:  newCoverage(),
+		coverage:  coverage.NewNullCoverage(),
 		vars:      make(map[Var]any),
 		cookieJar: make(map[string]*http.Cookie),
 	}
