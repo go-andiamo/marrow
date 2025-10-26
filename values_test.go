@@ -451,6 +451,23 @@ func TestResolveValue(t *testing.T) {
 			}),
 			expect: map[string]any{"foo": []any{42}},
 		},
+		{
+			value:  JSON{"foo": 42},
+			expect: map[string]any{"foo": 42},
+		},
+		{
+			value:  JSONArray{"foo", 42},
+			expect: []any{"foo", 42},
+		},
+		{
+			value:     Body,
+			expectErr: "body is nil",
+		},
+		{
+			value:  Body,
+			body:   map[string]any{"foo": 42},
+			expect: map[string]any{"foo": 42},
+		},
 	}
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
@@ -480,4 +497,14 @@ func TestResolveValue(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_stringifyValue(t *testing.T) {
+	assert.Equal(t, "<nil>", stringifyValue(nil))
+	assert.Equal(t, `"test"`, stringifyValue("test"))
+	assert.Equal(t, `Var(test)`, stringifyValue(Var("test")))
+	assert.Equal(t, "42", stringifyValue(42))
+	assert.Equal(t, `Query("SELECT *", "foo")`, stringifyValue(QueryValue{Query: "SELECT *", Args: []any{"foo"}}))
+	assert.Equal(t, `JsonPath(Var(test), ".")`, stringifyValue(JsonPathValue{Value: Var("test"), Path: "."}))
+	assert.Equal(t, "Body", stringifyValue(Body))
 }
