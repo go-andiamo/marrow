@@ -2,13 +2,14 @@ package marrow
 
 import (
 	"fmt"
+	"github.com/go-andiamo/marrow/common"
+	"github.com/go-andiamo/marrow/framing"
 	"reflect"
 	"strings"
 )
 
 type Endpoint_ interface {
-	Url() string
-	Description() string
+	common.Endpoint
 	Runnable
 	setAncestry([]Endpoint_)
 	fmt.Stringer
@@ -19,7 +20,7 @@ func Endpoint(url string, desc string, operations ...any) Endpoint_ {
 	result := &endpoint{
 		url:   url,
 		desc:  desc,
-		frame: frame(0),
+		frame: framing.NewFrame(0),
 	}
 	for _, o := range operations {
 		if o == nil {
@@ -94,7 +95,7 @@ func Endpoint(url string, desc string, operations ...any) Endpoint_ {
 type endpoint struct {
 	desc      string
 	url       string
-	frame     *Frame
+	frame     *framing.Frame
 	methods   []Method_
 	ancestors []Endpoint_
 	subs      []Endpoint_
@@ -133,7 +134,7 @@ func (e *endpoint) Run(ctx Context) error {
 		}
 	}
 	for _, m := range e.methods {
-		if !ctx.run(string(m.Method()), m) {
+		if !ctx.run(m.MethodName(), m) {
 			return nil
 		}
 	}
@@ -155,7 +156,7 @@ func (e *endpoint) Run(ctx Context) error {
 	return nil
 }
 
-func (e *endpoint) Frame() *Frame {
+func (e *endpoint) Frame() *framing.Frame {
 	return e.frame
 }
 

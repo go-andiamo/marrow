@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/go-andiamo/marrow/common"
+	"github.com/go-andiamo/marrow/framing"
 	"github.com/go-andiamo/urit"
 	"io"
 	"maps"
@@ -75,8 +77,7 @@ type methodExpectations interface {
 }
 
 type Method_ interface {
-	Method() MethodName
-	Description() string
+	common.Method
 
 	Authorize(func(ctx Context) error) Method_
 	QueryParam(name string, values ...any) Method_
@@ -107,7 +108,7 @@ type Method_ interface {
 func Method(m MethodName, desc string, ops ...BeforeAfter_) Method_ {
 	result := &method{
 		desc:        desc,
-		frame:       frame(0),
+		frame:       framing.NewFrame(0),
 		method:      m.Normalize(),
 		queryParams: queryParams{},
 		pathParams:  pathParams{},
@@ -133,7 +134,7 @@ type postOp struct {
 
 type method struct {
 	desc              string
-	frame             *Frame
+	frame             *framing.Frame
 	method            MethodName
 	pathParams        pathParams
 	queryParams       queryParams
@@ -165,15 +166,15 @@ func (m *method) addPostExpectation(exp Expectation) {
 	m.expectations = append(m.expectations, exp)
 }
 
-func (m *method) Method() MethodName {
-	return m.method
+func (m *method) MethodName() string {
+	return string(m.method)
 }
 
 func (m *method) Description() string {
 	return m.desc
 }
 
-func (m *method) Frame() *Frame {
+func (m *method) Frame() *framing.Frame {
 	return m.frame
 }
 
@@ -188,7 +189,7 @@ func (m *method) Authorize(fn func(ctx Context) error) Method_ {
 		m.preCaptures = append(m.preCaptures, &userDefinedCapture{
 			name:  "Authorize",
 			fn:    fn,
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		})
 
 	}
@@ -225,7 +226,7 @@ func (m *method) SetCookie(cookie *http.Cookie) Method_ {
 	if cookie != nil {
 		m.preCaptures = append(m.preCaptures, &setCookie{
 			cookie: cookie,
-			frame:  frame(0),
+			frame:  framing.NewFrame(0),
 		})
 		m.useCookies[cookie.Name] = struct{}{}
 	}
@@ -236,7 +237,7 @@ func (m *method) SetCookie(cookie *http.Cookie) Method_ {
 func (m *method) StoreCookie(name string) Method_ {
 	m.addPostCapture(&storeCookie{
 		name:  name,
-		frame: frame(0),
+		frame: framing.NewFrame(0),
 	})
 	return m
 }
@@ -246,7 +247,7 @@ func (m *method) AssertOK() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:   "Expect OK",
 		expect: http.StatusOK,
-		frame:  frame(0),
+		frame:  framing.NewFrame(0),
 	})
 	return m
 }
@@ -256,7 +257,7 @@ func (m *method) RequireOK() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:              "Expect OK",
 		expect:            http.StatusOK,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -267,7 +268,7 @@ func (m *method) AssertCreated() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:   "Expect Created",
 		expect: http.StatusCreated,
-		frame:  frame(0),
+		frame:  framing.NewFrame(0),
 	})
 	return m
 }
@@ -277,7 +278,7 @@ func (m *method) RequireCreated() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:              "Expect Created",
 		expect:            http.StatusCreated,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -288,7 +289,7 @@ func (m *method) AssertAccepted() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:   "Expect Accepted",
 		expect: http.StatusAccepted,
-		frame:  frame(0),
+		frame:  framing.NewFrame(0),
 	})
 	return m
 }
@@ -298,7 +299,7 @@ func (m *method) RequireAccepted() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:              "Expect Accepted",
 		expect:            http.StatusAccepted,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -309,7 +310,7 @@ func (m *method) AssertNoContent() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:   "Expect No Content",
 		expect: http.StatusNoContent,
-		frame:  frame(0),
+		frame:  framing.NewFrame(0),
 	})
 	return m
 }
@@ -319,7 +320,7 @@ func (m *method) RequireNoContent() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:              "Expect No Content",
 		expect:            http.StatusNoContent,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -330,7 +331,7 @@ func (m *method) AssertBadRequest() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:   "Expect Bad Request",
 		expect: http.StatusBadRequest,
-		frame:  frame(0),
+		frame:  framing.NewFrame(0),
 	})
 	return m
 }
@@ -340,7 +341,7 @@ func (m *method) RequireBadRequest() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:              "Expect Bad Request",
 		expect:            http.StatusBadRequest,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -351,7 +352,7 @@ func (m *method) AssertUnauthorized() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:   "Expect Unauthorized",
 		expect: http.StatusUnauthorized,
-		frame:  frame(0),
+		frame:  framing.NewFrame(0),
 	})
 	return m
 }
@@ -361,7 +362,7 @@ func (m *method) RequireUnauthorized() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:              "Expect Unauthorized",
 		expect:            http.StatusUnauthorized,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -372,7 +373,7 @@ func (m *method) AssertForbidden() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:   "Expect Forbidden",
 		expect: http.StatusForbidden,
-		frame:  frame(0),
+		frame:  framing.NewFrame(0),
 	})
 	return m
 }
@@ -382,7 +383,7 @@ func (m *method) RequireForbidden() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:              "Expect Forbidden",
 		expect:            http.StatusForbidden,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -393,7 +394,7 @@ func (m *method) AssertNotFound() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:   "Expect Not Found",
 		expect: http.StatusNotFound,
-		frame:  frame(0),
+		frame:  framing.NewFrame(0),
 	})
 	return m
 }
@@ -403,7 +404,7 @@ func (m *method) RequireNotFound() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:              "Expect Not Found",
 		expect:            http.StatusNotFound,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -414,7 +415,7 @@ func (m *method) AssertConflict() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:   "Expect Conflict",
 		expect: http.StatusConflict,
-		frame:  frame(0),
+		frame:  framing.NewFrame(0),
 	})
 	return m
 }
@@ -424,7 +425,7 @@ func (m *method) RequireConflict() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:              "Expect Conflict",
 		expect:            http.StatusConflict,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -435,7 +436,7 @@ func (m *method) AssertGone() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:   "Expect Gone",
 		expect: http.StatusGone,
-		frame:  frame(0),
+		frame:  framing.NewFrame(0),
 	})
 	return m
 }
@@ -445,7 +446,7 @@ func (m *method) RequireGone() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:              "Expect Gone",
 		expect:            http.StatusGone,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -456,7 +457,7 @@ func (m *method) AssertUnprocessableEntity() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:   "Expect Unprocessable Entity",
 		expect: http.StatusUnprocessableEntity,
-		frame:  frame(0),
+		frame:  framing.NewFrame(0),
 	})
 	return m
 }
@@ -466,7 +467,7 @@ func (m *method) RequireUnprocessableEntity() Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:              "Expect Unprocessable Entity",
 		expect:            http.StatusUnprocessableEntity,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -477,7 +478,7 @@ func (m *method) AssertStatus(status any) Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:   "Expect Status Code",
 		expect: status,
-		frame:  frame(0),
+		frame:  framing.NewFrame(0),
 	})
 	return m
 }
@@ -487,7 +488,7 @@ func (m *method) RequireStatus(status any) Method_ {
 	m.addPostExpectation(&expectStatusCode{
 		name:              "Expect Status Code",
 		expect:            status,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -511,12 +512,12 @@ func (m *method) CaptureFunc(when When, fn func(ctx Context) error) Method_ {
 		if when == Before {
 			m.preCaptures = append(m.preCaptures, &userDefinedCapture{
 				fn:    fn,
-				frame: frame(0),
+				frame: framing.NewFrame(0),
 			})
 		} else {
 			m.addPostCapture(&userDefinedCapture{
 				fn:    fn,
-				frame: frame(0),
+				frame: framing.NewFrame(0),
 			})
 		}
 	}
@@ -534,7 +535,7 @@ func (m *method) AssertFunc(fn func(Context) (unmet error, err error)) Method_ {
 	if fn != nil {
 		m.addPostExpectation(&expectation{
 			fn:    fn,
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		})
 	}
 	return m
@@ -545,7 +546,7 @@ func (m *method) RequireFunc(fn func(Context) (unmet error, err error)) Method_ 
 	if fn != nil {
 		m.addPostExpectation(&expectation{
 			fn:                fn,
-			frame:             frame(0),
+			frame:             framing.NewFrame(0),
 			commonExpectation: commonExpectation{required: true},
 		})
 	}
@@ -653,7 +654,7 @@ func (m *method) AssertMatch(value any, regex string) Method_ {
 	m.addPostExpectation(&match{
 		value: value,
 		regex: regex,
-		frame: frame(0),
+		frame: framing.NewFrame(0),
 	})
 	return m
 }
@@ -663,7 +664,7 @@ func (m *method) RequireMatch(value any, regex string) Method_ {
 	m.addPostExpectation(&match{
 		value:             value,
 		regex:             regex,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -674,7 +675,7 @@ func (m *method) AssertType(value any, typ Type_) Method_ {
 	m.addPostExpectation(&matchType{
 		value: value,
 		typ:   typ,
-		frame: frame(0),
+		frame: framing.NewFrame(0),
 	})
 	return m
 }
@@ -684,7 +685,7 @@ func (m *method) RequireType(value any, typ Type_) Method_ {
 	m.addPostExpectation(&matchType{
 		value:             value,
 		typ:               typ,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -694,7 +695,7 @@ func (m *method) RequireType(value any, typ Type_) Method_ {
 func (m *method) AssertNil(value any) Method_ {
 	m.addPostExpectation(&nilCheck{
 		value: value,
-		frame: frame(0),
+		frame: framing.NewFrame(0),
 	})
 	return m
 }
@@ -703,7 +704,7 @@ func (m *method) AssertNil(value any) Method_ {
 func (m *method) RequireNil(value any) Method_ {
 	m.addPostExpectation(&nilCheck{
 		value:             value,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -713,7 +714,7 @@ func (m *method) RequireNil(value any) Method_ {
 func (m *method) AssertNotNil(value any) Method_ {
 	m.addPostExpectation(&notNilCheck{
 		value: value,
-		frame: frame(0),
+		frame: framing.NewFrame(0),
 	})
 	return m
 }
@@ -722,7 +723,7 @@ func (m *method) AssertNotNil(value any) Method_ {
 func (m *method) RequireNotNil(value any) Method_ {
 	m.addPostExpectation(&notNilCheck{
 		value:             value,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -733,7 +734,7 @@ func (m *method) AssertLen(value any, length int) Method_ {
 	m.addPostExpectation(&lenCheck{
 		value:  value,
 		length: length,
-		frame:  frame(0),
+		frame:  framing.NewFrame(0),
 	})
 	return m
 }
@@ -743,7 +744,7 @@ func (m *method) RequireLen(value any, length int) Method_ {
 	m.addPostExpectation(&lenCheck{
 		value:             value,
 		length:            length,
-		frame:             frame(0),
+		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m
@@ -755,13 +756,13 @@ func (m *method) SetVar(when When, name string, value any) Method_ {
 		m.preCaptures = append(m.preCaptures, &setVar{
 			name:  name,
 			value: value,
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		})
 	} else {
 		m.addPostCapture(&setVar{
 			name:  name,
 			value: value,
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		})
 	}
 	return m
@@ -771,11 +772,11 @@ func (m *method) SetVar(when When, name string, value any) Method_ {
 func (m *method) ClearVars(when When) Method_ {
 	if when == Before {
 		m.preCaptures = append(m.preCaptures, &clearVars{
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		})
 	} else {
 		m.addPostCapture(&clearVars{
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		})
 	}
 	return m
@@ -787,13 +788,13 @@ func (m *method) DbInsert(when When, tableName string, row Columns) Method_ {
 		m.preCaptures = append(m.preCaptures, &dbInsert{
 			tableName: tableName,
 			row:       row,
-			frame:     frame(0),
+			frame:     framing.NewFrame(0),
 		})
 	} else {
 		m.addPostCapture(&dbInsert{
 			tableName: tableName,
 			row:       row,
-			frame:     frame(0),
+			frame:     framing.NewFrame(0),
 		})
 	}
 	return m
@@ -805,13 +806,13 @@ func (m *method) DbExec(when When, query string, args ...any) Method_ {
 		m.preCaptures = append(m.preCaptures, &dbExec{
 			query: query,
 			args:  args,
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		})
 	} else {
 		m.addPostCapture(&dbExec{
 			query: query,
 			args:  args,
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		})
 	}
 	return m
@@ -823,14 +824,14 @@ func (m *method) DbClearTables(when When, tableNames ...string) Method_ {
 		for _, tableName := range tableNames {
 			m.preCaptures = append(m.preCaptures, &dbClearTable{
 				tableName: tableName,
-				frame:     frame(0),
+				frame:     framing.NewFrame(0),
 			})
 		}
 	} else {
 		for _, tableName := range tableNames {
 			m.addPostCapture(&dbClearTable{
 				tableName: tableName,
-				frame:     frame(0),
+				frame:     framing.NewFrame(0),
 			})
 		}
 	}

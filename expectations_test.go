@@ -2,6 +2,7 @@ package marrow
 
 import (
 	"errors"
+	"github.com/go-andiamo/marrow/framing"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
@@ -41,7 +42,7 @@ func Test_expectStatusCode(t *testing.T) {
 	exp := &expectStatusCode{
 		name:   "Expect Status Code",
 		expect: http.StatusConflict,
-		frame:  frame(0),
+		frame:  framing.NewFrame(0),
 	}
 	assert.Equal(t, "Expect Status Code", exp.Name())
 	assert.NotNil(t, exp.Frame())
@@ -71,7 +72,7 @@ func Test_match(t *testing.T) {
 		exp := &match{
 			value: "foo",
 			regex: "[a-z]{3}",
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		assert.Equal(t, "Expect match: \"[a-z]{3}\"", exp.Name())
 		assert.NotNil(t, exp.Frame())
@@ -80,7 +81,7 @@ func Test_match(t *testing.T) {
 		exp := &match{
 			value: "foo",
 			regex: "[a-z]{3}",
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		unmet, err := exp.Met(nil)
 		assert.NoError(t, unmet)
@@ -90,7 +91,7 @@ func Test_match(t *testing.T) {
 		exp := &match{
 			value: map[string]any{"foo": nil},
 			regex: "[a-z]{3}",
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		unmet, err := exp.Met(nil)
 		assert.NoError(t, unmet)
@@ -99,7 +100,7 @@ func Test_match(t *testing.T) {
 	t.Run("bad regex", func(t *testing.T) {
 		exp := &match{
 			regex: "[",
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		_, err := exp.Met(nil)
 		assert.Error(t, err)
@@ -108,7 +109,7 @@ func Test_match(t *testing.T) {
 		exp := &match{
 			value: Var("foo"),
 			regex: "[a-z]{3}",
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		_, err := exp.Met(newContext(nil))
 		assert.Error(t, err)
@@ -117,7 +118,7 @@ func Test_match(t *testing.T) {
 		exp := &match{
 			value: Var("foo"),
 			regex: "[a-z]{3}",
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		unmet, err := exp.Met(newContext(map[Var]any{
 			"foo": 42,
@@ -135,7 +136,7 @@ func Test_match(t *testing.T) {
 		exp := &match{
 			value: map[string]any{"x": &unmarshalable{}},
 			regex: "[a-z]{3}",
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		unmet, err := exp.Met(nil)
 		assert.Error(t, unmet)
@@ -158,7 +159,7 @@ func Test_matchType(t *testing.T) {
 		exp := &matchType{
 			value: "foo",
 			typ:   Type[string](),
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		assert.Equal(t, "Expect type: string", exp.Name())
 		assert.NotNil(t, exp.Frame())
@@ -167,7 +168,7 @@ func Test_matchType(t *testing.T) {
 		exp := &matchType{
 			value: "foo",
 			typ:   Type[string](),
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		unmet, err := exp.Met(nil)
 		assert.NoError(t, unmet)
@@ -177,7 +178,7 @@ func Test_matchType(t *testing.T) {
 		exp := &matchType{
 			value: 42,
 			typ:   Type[string](),
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		unmet, err := exp.Met(nil)
 		assert.Error(t, unmet)
@@ -194,7 +195,7 @@ func Test_matchType(t *testing.T) {
 		exp := &matchType{
 			value: nil,
 			typ:   Type[string](),
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		unmet, err := exp.Met(nil)
 		assert.Error(t, unmet)
@@ -210,7 +211,7 @@ func Test_matchType(t *testing.T) {
 		exp := &matchType{
 			value: Var("foo"),
 			typ:   Type[string](),
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		_, err := exp.Met(newContext(nil))
 		assert.Error(t, err)
@@ -221,7 +222,7 @@ func Test_nilCheck(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		exp := &nilCheck{
 			value: "foo",
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		assert.Equal(t, "Expect Nil", exp.Name())
 		assert.NotNil(t, exp.Frame())
@@ -229,7 +230,7 @@ func Test_nilCheck(t *testing.T) {
 	t.Run("met", func(t *testing.T) {
 		exp := &nilCheck{
 			value: nil,
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		unmet, err := exp.Met(nil)
 		assert.NoError(t, unmet)
@@ -238,7 +239,7 @@ func Test_nilCheck(t *testing.T) {
 	t.Run("unmet", func(t *testing.T) {
 		exp := &nilCheck{
 			value: "not nil",
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		unmet, err := exp.Met(nil)
 		assert.Error(t, unmet)
@@ -253,7 +254,7 @@ func Test_nilCheck(t *testing.T) {
 	t.Run("missing var", func(t *testing.T) {
 		exp := &nilCheck{
 			value: Var("foo"),
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		_, err := exp.Met(newContext(nil))
 		assert.Error(t, err)
@@ -264,7 +265,7 @@ func Test_notNilCheck(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		exp := &notNilCheck{
 			value: "foo",
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		assert.Equal(t, "Expect Not Nil", exp.Name())
 		assert.NotNil(t, exp.Frame())
@@ -272,7 +273,7 @@ func Test_notNilCheck(t *testing.T) {
 	t.Run("met", func(t *testing.T) {
 		exp := &notNilCheck{
 			value: "not nil",
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		unmet, err := exp.Met(nil)
 		assert.NoError(t, unmet)
@@ -281,7 +282,7 @@ func Test_notNilCheck(t *testing.T) {
 	t.Run("unmet", func(t *testing.T) {
 		exp := &notNilCheck{
 			value: nil,
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		unmet, err := exp.Met(nil)
 		assert.Error(t, unmet)
@@ -296,7 +297,7 @@ func Test_notNilCheck(t *testing.T) {
 	t.Run("missing var", func(t *testing.T) {
 		exp := &notNilCheck{
 			value: Var("foo"),
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		}
 		_, err := exp.Met(newContext(nil))
 		assert.Error(t, err)

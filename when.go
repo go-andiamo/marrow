@@ -1,5 +1,7 @@
 package marrow
 
+import "github.com/go-andiamo/marrow/framing"
+
 type BeforeAfter_ interface {
 	When() When
 	Runnable
@@ -27,7 +29,7 @@ func (b *beforeAfter) Run(ctx Context) error {
 	return b.do.Run(ctx)
 }
 
-func (b *beforeAfter) Frame() *Frame {
+func (b *beforeAfter) Frame() *framing.Frame {
 	return b.do.Frame()
 }
 
@@ -38,7 +40,7 @@ func SetVar(when When, name string, value any) BeforeAfter_ {
 		do: &setVar{
 			name:  name,
 			value: value,
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		},
 	}
 }
@@ -48,7 +50,7 @@ func ClearVars(when When) BeforeAfter_ {
 	return &beforeAfter{
 		when: when,
 		do: &clearVars{
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		},
 	}
 }
@@ -60,7 +62,7 @@ func DbInsert(when When, tableName string, row Columns) BeforeAfter_ {
 		do: &dbInsert{
 			tableName: tableName,
 			row:       row,
-			frame:     frame(0),
+			frame:     framing.NewFrame(0),
 		},
 	}
 }
@@ -72,7 +74,7 @@ func DbExec(when When, query string, args ...any) BeforeAfter_ {
 		do: &dbExec{
 			query: query,
 			args:  args,
-			frame: frame(0),
+			frame: framing.NewFrame(0),
 		},
 	}
 }
@@ -83,7 +85,7 @@ func DbClearTable(when When, tableName string) BeforeAfter_ {
 		when: when,
 		do: &dbClearTable{
 			tableName: tableName,
-			frame:     frame(0),
+			frame:     framing.NewFrame(0),
 		},
 	}
 }

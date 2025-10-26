@@ -2,6 +2,7 @@ package marrow
 
 import (
 	"database/sql"
+	"github.com/go-andiamo/marrow/coverage"
 	"io"
 	"net/http"
 	"testing"
@@ -20,8 +21,8 @@ type SuiteInit interface {
 	SetTesting(t *testing.T)
 	SetVar(name string, value any)
 	SetCookie(cookie *http.Cookie)
-	SetReportCoverage(fn func(coverage *Coverage))
-	SetCoverageCollector(collector CoverageCollector)
+	SetReportCoverage(fn func(coverage *coverage.Coverage))
+	SetCoverageCollector(collector coverage.Collector)
 	SetOAS(r io.Reader)
 	SetRepeats(n int, stopOnFailure bool, resets ...func(si SuiteInit))
 	// todo etc. more things that can be set/initialised prior to run
@@ -76,7 +77,7 @@ func WithCookie(cookie *http.Cookie) With {
 		}}
 }
 
-func WithReportCoverage(fn func(coverage *Coverage)) With {
+func WithReportCoverage(fn func(coverage *coverage.Coverage)) With {
 	return &with{
 		fn: func(init SuiteInit) {
 			init.SetReportCoverage(fn)

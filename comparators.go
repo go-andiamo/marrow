@@ -3,6 +3,7 @@ package marrow
 import (
 	"cmp"
 	"fmt"
+	"github.com/go-andiamo/marrow/framing"
 	"github.com/shopspring/decimal"
 	"strconv"
 	"strings"
@@ -16,7 +17,7 @@ func newComparator(skip int, name string, v1, v2 any, c comp, not bool, required
 		v2:                v2,
 		comp:              c,
 		not:               not,
-		frame:             frame(skip),
+		frame:             framing.NewFrame(skip),
 		commonExpectation: commonExpectation{required: required},
 	}
 }
@@ -27,7 +28,7 @@ type comparator struct {
 	v2    any
 	comp  comp
 	not   bool
-	frame *Frame
+	frame *framing.Frame
 	commonExpectation
 }
 
@@ -304,7 +305,7 @@ func (c *comparator) Met(ctx Context) (unmet error, err error) {
 	return
 }
 
-func (c *comparator) Frame() *Frame {
+func (c *comparator) Frame() *framing.Frame {
 	return c.frame
 }
 

@@ -2,6 +2,7 @@ package marrow
 
 import (
 	"fmt"
+	"github.com/go-andiamo/marrow/framing"
 	"reflect"
 	"strconv"
 	"strings"
@@ -21,7 +22,7 @@ type Error interface {
 	Cause() error
 	Unwrap() error
 	TestFormat() string
-	Framed
+	framing.Framed
 }
 
 type UnmetError interface {
@@ -81,7 +82,7 @@ type unmetError struct {
 	left         OperandValue
 	right        OperandValue
 	cause        error
-	frame        *Frame
+	frame        *framing.Frame
 }
 
 var _ UnmetError = (*unmetError)(nil)
@@ -130,7 +131,7 @@ func (e *unmetError) Unwrap() error {
 	return e.cause
 }
 
-func (e *unmetError) Frame() *Frame {
+func (e *unmetError) Frame() *framing.Frame {
 	return e.frame
 }
 
@@ -157,7 +158,7 @@ type captureError struct {
 	msg    string
 	name   string
 	cause  error
-	frame  *Frame
+	frame  *framing.Frame
 	values []OperandValue
 }
 
@@ -209,7 +210,7 @@ func (e *captureError) Unwrap() error {
 	return e.cause
 }
 
-func (e *captureError) Frame() *Frame {
+func (e *captureError) Frame() *framing.Frame {
 	return e.frame
 }
 

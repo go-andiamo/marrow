@@ -2,6 +2,7 @@ package marrow
 
 import (
 	"fmt"
+	"github.com/go-andiamo/marrow/framing"
 	"net/http"
 )
 
@@ -13,7 +14,7 @@ type Capture interface {
 type setVar struct {
 	name  string
 	value any
-	frame *Frame
+	frame *framing.Frame
 }
 
 var _ Capture = (*setVar)(nil)
@@ -30,12 +31,12 @@ func (c *setVar) Run(ctx Context) (err error) {
 	return wrapCaptureError(err, fmt.Sprintf("cannot set var %q", c.name), c, OperandValue{Original: c.value})
 }
 
-func (c *setVar) Frame() *Frame {
+func (c *setVar) Frame() *framing.Frame {
 	return c.frame
 }
 
 type clearVars struct {
-	frame *Frame
+	frame *framing.Frame
 }
 
 func (c *clearVars) Name() string {
@@ -47,7 +48,7 @@ func (c *clearVars) Run(ctx Context) error {
 	return nil
 }
 
-func (c *clearVars) Frame() *Frame {
+func (c *clearVars) Frame() *framing.Frame {
 	return c.frame
 }
 
@@ -56,7 +57,7 @@ var _ Capture = (*clearVars)(nil)
 type dbInsert struct {
 	tableName string
 	row       Columns
-	frame     *Frame
+	frame     *framing.Frame
 }
 
 var _ Capture = (*dbInsert)(nil)
@@ -69,14 +70,14 @@ func (c *dbInsert) Run(ctx Context) error {
 	return wrapCaptureError(ctx.DbInsert(c.tableName, c.row), "", c)
 }
 
-func (c *dbInsert) Frame() *Frame {
+func (c *dbInsert) Frame() *framing.Frame {
 	return c.frame
 }
 
 type dbExec struct {
 	query string
 	args  []any
-	frame *Frame
+	frame *framing.Frame
 }
 
 var _ Capture = (*dbExec)(nil)
@@ -89,13 +90,13 @@ func (c *dbExec) Run(ctx Context) error {
 	return wrapCaptureError(ctx.DbExec(c.query, c.args...), "", c)
 }
 
-func (c *dbExec) Frame() *Frame {
+func (c *dbExec) Frame() *framing.Frame {
 	return c.frame
 }
 
 type dbClearTable struct {
 	tableName string
-	frame     *Frame
+	frame     *framing.Frame
 }
 
 var _ Capture = (*dbClearTable)(nil)
@@ -108,14 +109,14 @@ func (c *dbClearTable) Run(ctx Context) error {
 	return wrapCaptureError(ctx.DbExec("DELETE FROM "+c.tableName), "", c)
 }
 
-func (c *dbClearTable) Frame() *Frame {
+func (c *dbClearTable) Frame() *framing.Frame {
 	return c.frame
 }
 
 type userDefinedCapture struct {
 	name  string
 	fn    func(ctx Context) error
-	frame *Frame
+	frame *framing.Frame
 }
 
 var _ Capture = (*userDefinedCapture)(nil)
@@ -131,13 +132,13 @@ func (c *userDefinedCapture) Run(ctx Context) error {
 	return wrapCaptureError(c.fn(ctx), "", c)
 }
 
-func (c *userDefinedCapture) Frame() *Frame {
+func (c *userDefinedCapture) Frame() *framing.Frame {
 	return c.frame
 }
 
 type setCookie struct {
 	cookie *http.Cookie
-	frame  *Frame
+	frame  *framing.Frame
 }
 
 var _ Capture = (*setCookie)(nil)
@@ -151,13 +152,13 @@ func (c *setCookie) Run(ctx Context) error {
 	return nil
 }
 
-func (c *setCookie) Frame() *Frame {
+func (c *setCookie) Frame() *framing.Frame {
 	return c.frame
 }
 
 type storeCookie struct {
 	name  string
-	frame *Frame
+	frame *framing.Frame
 }
 
 var _ Capture = (*storeCookie)(nil)
@@ -180,6 +181,6 @@ func (c *storeCookie) Run(ctx Context) error {
 	return newCaptureError(fmt.Sprintf("no such cookie %q", c.name), nil, c)
 }
 
-func (c *storeCookie) Frame() *Frame {
+func (c *storeCookie) Frame() *framing.Frame {
 	return c.frame
 }
