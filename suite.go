@@ -112,12 +112,16 @@ func (s *suite) InitFunc(fn func(init SuiteInit)) Suite_ {
 	return s
 }
 
-func (s *suite) Run() error {
+func (s *suite) runInits() {
 	for _, w := range s.withs {
 		if w != nil {
 			w.Init(s)
 		}
 	}
+}
+
+func (s *suite) Run() error {
+	s.runInits()
 	do := s.httpDo
 	if do == nil {
 		do = http.DefaultClient

@@ -25,7 +25,6 @@ type SuiteInit interface {
 	SetCoverageCollector(collector coverage.Collector)
 	SetOAS(r io.Reader)
 	SetRepeats(n int, stopOnFailure bool, resets ...func(si SuiteInit))
-	// todo etc. more things that can be set/initialised prior to run
 }
 
 func WithDatabase(db *sql.DB) With {
@@ -81,6 +80,13 @@ func WithReportCoverage(fn func(coverage *coverage.Coverage)) With {
 	return &with{
 		fn: func(init SuiteInit) {
 			init.SetReportCoverage(fn)
+		}}
+}
+
+func WithCoverageCollector(collector coverage.Collector) With {
+	return &with{
+		fn: func(init SuiteInit) {
+			init.SetCoverageCollector(collector)
 		}}
 }
 
