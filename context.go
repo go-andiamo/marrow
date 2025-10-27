@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/go-andiamo/marrow/coverage"
+	"github.com/go-andiamo/marrow/testing"
 	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
-	"testing"
 	"time"
 )
 
@@ -56,8 +56,8 @@ type context struct {
 	host         string
 	vars         map[Var]any
 	db           *sql.DB
-	testing      *testing.T
-	currTesting  []*testing.T
+	testing      testing.Helper
+	currTesting  []testing.Helper
 	dbArgMarkers DatabaseArgMarkers
 	currEndpoint Endpoint_
 	currMethod   Method_
@@ -236,8 +236,7 @@ func (c *context) doRequest(request *http.Request) (*http.Response, bool) {
 func (c *context) reportFailure(err error) {
 	c.failed = true
 	c.coverage.ReportFailure(c.currEndpoint, c.currMethod, c.currRequest, err)
-	if len(c.currTesting) > 0 {
-		currT := c.currTesting[len(c.currTesting)-1]
+	if currT := c.currentTest(); currT != nil {
 		if eerr, ok := err.(Error); ok {
 			currT.Log(eerr.TestFormat())
 			currT.FailNow()
@@ -249,8 +248,7 @@ func (c *context) reportFailure(err error) {
 
 func (c *context) reportUnmet(exp Expectation, err error) {
 	c.coverage.ReportUnmet(c.currEndpoint, c.currMethod, c.currRequest, exp, err)
-	if len(c.currTesting) > 0 {
-		currT := c.currTesting[len(c.currTesting)-1]
+	if currT := c.currentTest(); currT != nil {
 		if exp.IsRequired() {
 			if umerr, ok := err.(UnmetError); ok {
 				currT.Log(umerr.TestFormat())
@@ -277,18 +275,24 @@ func (c *context) reportSkipped(exp Expectation) {
 	c.coverage.ReportSkipped(c.currEndpoint, c.currMethod, c.currRequest, exp)
 }
 
+func (c *context) currentTest() testing.Helper {
+	if c.testing == nil {
+		return nil
+	}
+	result := c.testing
+	if len(c.currTesting) > 0 {
+		result = c.currTesting[len(c.currTesting)-1]
+	}
+	return result
+}
+
 func (c *context) run(name string, r Runnable) bool {
 	c.failed = false
-	if c.testing != nil {
-		currT := c.testing
-		if len(c.currTesting) > 0 {
-			currT = c.currTesting[len(c.currTesting)-1]
-		}
-		currT.Run(name, func(t *testing.T) {
+	if currT := c.currentTest(); currT != nil {
+		currT.Run(name, func(t testing.Helper) {
 			defer func() {
 				c.currTesting = c.currTesting[:len(c.currTesting)-1]
 			}()
-			t.Helper()
 			c.currTesting = append(c.currTesting, t)
 			if err := r.Run(c); err != nil {
 				c.reportFailure(err)

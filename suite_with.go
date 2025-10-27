@@ -25,6 +25,7 @@ type SuiteInit interface {
 	SetCoverageCollector(collector coverage.Collector)
 	SetOAS(r io.Reader)
 	SetRepeats(n int, stopOnFailure bool, resets ...func(si SuiteInit))
+	SetLogging(stdout io.Writer, stderr io.Writer)
 }
 
 func WithDatabase(db *sql.DB) With {
@@ -101,6 +102,13 @@ func WithRepeats(n int, stopOnFailure bool, resets ...func(si SuiteInit)) With {
 	return &with{
 		fn: func(init SuiteInit) {
 			init.SetRepeats(n, stopOnFailure, resets...)
+		}}
+}
+
+func WithLogging(stdout io.Writer, stderr io.Writer) With {
+	return &with{
+		fn: func(init SuiteInit) {
+			init.SetLogging(stdout, stderr)
 		}}
 }
 
