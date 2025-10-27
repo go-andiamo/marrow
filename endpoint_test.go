@@ -174,6 +174,7 @@ func TestEndpoint_Run_WithFailures(t *testing.T) {
 		err := e.Run(ctx)
 		require.NoError(t, err)
 		assert.Len(t, cov.Failures, 1)
+		assert.True(t, ctx.failed)
 	})
 	t.Run("method fails", func(t *testing.T) {
 		e := Endpoint("/api", "",
@@ -188,6 +189,7 @@ func TestEndpoint_Run_WithFailures(t *testing.T) {
 		err := e.Run(ctx)
 		require.NoError(t, err)
 		assert.Len(t, cov.Failures, 1)
+		assert.True(t, ctx.failed)
 	})
 	t.Run("sub-endpoint fails", func(t *testing.T) {
 		e := Endpoint("/api", "",
@@ -201,6 +203,7 @@ func TestEndpoint_Run_WithFailures(t *testing.T) {
 		err := e.Run(ctx)
 		require.NoError(t, err)
 		assert.Len(t, cov.Failures, 1)
+		assert.True(t, ctx.failed)
 	})
 	t.Run("after fails", func(t *testing.T) {
 		e := Endpoint("/api", "",
@@ -213,5 +216,6 @@ func TestEndpoint_Run_WithFailures(t *testing.T) {
 		err := e.Run(ctx)
 		require.NoError(t, err)
 		assert.Len(t, cov.Failures, 1)
+		assert.True(t, ctx.failed)
 	})
 }
