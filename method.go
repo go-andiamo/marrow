@@ -850,53 +850,68 @@ func (m *method) ResponseUnmarshal(fn func(response *http.Response) (any, error)
 
 func (m *method) Run(ctx Context) error {
 	ctx.setCurrentMethod(m)
-	for _, c := range m.preCaptures {
-		if c != nil {
-			if err := c.Run(ctx); err != nil {
-				ctx.reportFailure(err)
-				return nil
-			}
-		}
-	}
-	request, err := m.buildRequest(ctx)
-	if err != nil {
-		ctx.reportFailure(err)
-		return nil
-	}
-	if res, ok := ctx.doRequest(request); ok {
-		if m.unmarshalResponseBody(ctx, res) {
-			for _, po := range m.postOps {
-				if po.isExpectation {
-					exp := m.expectations[po.index]
-					if exp != nil {
-						if unmetErr, xErr := exp.Met(ctx); xErr != nil {
-							ctx.reportFailure(xErr)
-							return nil
-						} else if unmetErr != nil {
-							ctx.reportUnmet(exp, unmetErr)
-							if m.failFast || exp.IsRequired() {
-								for s := po.index + 1; s < len(m.expectations); s++ {
-									ctx.reportSkipped(m.expectations[s])
-								}
-								return nil
-							}
-						} else {
-							ctx.reportMet(exp)
-						}
-					}
-				} else {
-					c := m.postCaptures[po.index]
-					if c != nil {
-						if rErr := c.Run(ctx); rErr != nil {
-							ctx.reportFailure(rErr)
-							return nil
-						}
-					}
+	if m.runPre(ctx) {
+		if request, ok := m.buildRequest(ctx); ok {
+			if response, ok := ctx.doRequest(request); ok {
+				if m.unmarshalResponseBody(ctx, response) {
+					m.runPost(ctx)
 				}
 			}
 		}
 	}
 	return nil
+}
+
+func (m *method) runPre(ctx Context) bool {
+	for _, c := range m.preCaptures {
+		if c != nil {
+			if err := c.Run(ctx); err != nil {
+				ctx.reportFailure(err)
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (m *method) runPost(ctx Context) {
+	ok := true
+	lastExp := 0
+	for _, po := range m.postOps {
+		if po.isExpectation {
+			lastExp = po.index
+			exp := m.expectations[lastExp]
+			if exp != nil {
+				if unmet, err := exp.Met(ctx); err != nil {
+					ctx.reportFailure(err)
+					ok = false
+					break
+				} else if unmet != nil {
+					ctx.reportUnmet(exp, unmet)
+					if m.failFast || exp.IsRequired() {
+						ok = false
+						break
+					}
+				} else {
+					ctx.reportMet(exp)
+				}
+			}
+		} else {
+			c := m.postCaptures[po.index]
+			if c != nil {
+				if rErr := c.Run(ctx); rErr != nil {
+					ctx.reportFailure(rErr)
+					ok = false
+					break
+				}
+			}
+		}
+	}
+	if !ok {
+		for s := lastExp + 1; s < len(m.expectations); s++ {
+			ctx.reportSkipped(m.expectations[s])
+		}
+	}
 }
 
 func (m *method) unmarshalResponseBody(ctx Context, res *http.Response) bool {
@@ -1005,9 +1020,15 @@ func normalizeBodySlice(sl []any) error {
 	return nil
 }
 
-func (m *method) buildRequest(ctx Context) (request *http.Request, err error) {
+func (m *method) buildRequest(ctx Context) (request *http.Request, ok bool) {
 	const contentType = "Content-Type"
 	var url string
+	var err error
+	defer func() {
+		if ok = err == nil; !ok {
+			ctx.reportFailure(err)
+		}
+	}()
 	if url, err = m.buildRequestUrl(ctx); err == nil {
 		var body io.Reader
 		if body, err = m.buildRequestBody(ctx); err == nil {
@@ -1018,11 +1039,12 @@ func (m *method) buildRequest(ctx Context) (request *http.Request, err error) {
 			if request, err = http.NewRequestWithContext(ctx.Ctx(), meth, url, body); err == nil {
 				seenContentType := false
 				for h, v := range m.headers {
-					if av, err := ResolveValue(v, ctx); err == nil {
+					var av any
+					if av, err = ResolveValue(v, ctx); err == nil {
 						request.Header.Set(h, fmt.Sprintf("%v", av))
 						seenContentType = (h == contentType) || seenContentType
 					} else {
-						return nil, err
+						return
 					}
 				}
 				if !seenContentType {

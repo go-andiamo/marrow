@@ -1,6 +1,7 @@
 package marrow
 
 import (
+	"github.com/go-andiamo/marrow/coverage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -68,20 +69,41 @@ func TestNewEndpoint(t *testing.T) {
 		assert.Len(t, raw.befores, 1)
 		assert.Len(t, raw.afters, 1)
 	})
+	t.Run("with endpoint", func(t *testing.T) {
+		e := Endpoint("/api/foos", "Foos", Endpoint("/{id}", ""))
+		require.NotNil(t, e)
+		raw, ok := e.(*endpoint)
+		require.True(t, ok)
+		assert.Len(t, raw.subs, 1)
+	})
+	t.Run("with endpoints", func(t *testing.T) {
+		subs := []Endpoint_{
+			Endpoint("/{id}", ""),
+			nil,
+			Endpoint("/{id}", ""),
+		}
+		e := Endpoint("/api/foos", "Foos", subs)
+		require.NotNil(t, e)
+		raw, ok := e.(*endpoint)
+		require.True(t, ok)
+		assert.Len(t, raw.subs, 2)
+	})
 	t.Run("with mixed", func(t *testing.T) {
 		ops := []any{
 			SetVar(Before, "foo", nil),
 			SetVar(After, "foo", nil),
 			nil,
 			Method(GET, ""),
+			Endpoint("/{id}", ""),
 		}
-		e := Endpoint("/api/foos/{id}", "Foos", ops)
+		e := Endpoint("/api/foos", "Foos", ops)
 		require.NotNil(t, e)
 		raw, ok := e.(*endpoint)
 		require.True(t, ok)
 		assert.Len(t, raw.methods, 1)
 		assert.Len(t, raw.befores, 1)
 		assert.Len(t, raw.afters, 1)
+		assert.Len(t, raw.subs, 1)
 	})
 	t.Run("panics with unsupported op type", func(t *testing.T) {
 		require.Panics(t, func() {
@@ -91,18 +113,47 @@ func TestNewEndpoint(t *testing.T) {
 			_ = Endpoint("/api/foos/{id}", "Foos", []any{"not a valid option"})
 		})
 	})
-	/*
-		e := Endpoint("/api/foos/{id}", "Foos",
-			DbClearTable(Before, "foo_table"),
-			DbClearTable(After, "foo_table"),
-			SetVar(Before, "foo_id", "id"),
-			Method(GET, "GET foos"),
-		)
-		require.NotNil(t, e)
-		raw, ok := e.(*endpoint)
-		require.True(t, ok)
-		assert.Len(t, raw.methods, 1)
-		assert.Len(t, raw.befores, 2)
-		assert.Len(t, raw.afters, 1)
-	*/
+}
+
+func TestEndpoint_Url_WithAncestors(t *testing.T) {
+	t.Run("with ancestors list", func(t *testing.T) {
+		e := Endpoint("/{id}", "")
+		assert.Equal(t, "/{id}", e.Url())
+		e.setAncestry([]Endpoint_{
+			Endpoint("/api", ""),
+			Endpoint("/foos", ""),
+		})
+		assert.Equal(t, "/api/foos/{id}", e.Url())
+	})
+	t.Run("with ancestors nested", func(t *testing.T) {
+		e := Endpoint("/{id}", "")
+		assert.Equal(t, "/{id}", e.Url())
+		e.setAncestry([]Endpoint_{
+			&endpoint{
+				url:       "/foos",
+				ancestors: []Endpoint_{Endpoint("/api", "")},
+			},
+		})
+		assert.Equal(t, "/api/foos/{id}", e.Url())
+	})
+}
+
+func TestEndpoint_Run(t *testing.T) {
+	e := Endpoint("/api", "",
+		SetVar(Before, "foo", nil),
+		SetVar(After, "foo", nil),
+		Method(GET, ""),
+		Endpoint("/foos", "",
+			Method(GET, ""),
+			Endpoint("/{id}", "",
+				Method(GET, ""),
+			),
+		),
+	)
+	ctx := newContext(nil)
+	cov := coverage.NewCoverage()
+	ctx.coverage = cov
+	ctx.httpDo = &dummyDo{status: 200}
+	err := e.Run(ctx)
+	require.NoError(t, err)
 }

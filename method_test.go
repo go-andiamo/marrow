@@ -12,14 +12,39 @@ import (
 
 func TestMethod(t *testing.T) {
 	m := Method(GET, "foo")
+	assert.NotNil(t, m.Frame())
+	assert.Equal(t, "GET \"foo\"", m.String())
+	assert.Equal(t, "GET", m.MethodName())
+	assert.Equal(t, "foo", m.Description())
+
 	m.AssertOK()
 	raw := m.(*method)
 	assert.Len(t, raw.expectations, 1)
 	exp := raw.expectations[0]
 	assert.Equal(t, "Expect OK", exp.Name())
-	f := exp.Frame()
-	assert.NotNil(t, f)
-	assert.Equal(t, t.Name(), f.Name)
+	assert.False(t, raw.failFast)
+	m.FailFast()
+	assert.True(t, raw.failFast)
+}
+
+func TestMethod_WithBeforesAndAfters(t *testing.T) {
+	m := Method(GET, "foo",
+		SetVar(Before, "foo", "bar"),
+		ClearVars(After),
+	).AssertOK().SetVar(After, "bar", 42).ClearVars(Before).AssertEqual("foo", "bar")
+	raw := m.(*method)
+	assert.Len(t, raw.preCaptures, 2)
+	assert.Len(t, raw.expectations, 2)
+	assert.Len(t, raw.postCaptures, 2)
+	assert.Len(t, raw.postOps, 4)
+	assert.False(t, raw.postOps[0].isExpectation)
+	assert.Equal(t, 0, raw.postOps[0].index)
+	assert.True(t, raw.postOps[1].isExpectation)
+	assert.Equal(t, 0, raw.postOps[1].index)
+	assert.False(t, raw.postOps[2].isExpectation)
+	assert.Equal(t, 1, raw.postOps[2].index)
+	assert.True(t, raw.postOps[3].isExpectation)
+	assert.Equal(t, 1, raw.postOps[3].index)
 }
 
 func TestMethod_BuildRequest(t *testing.T) {
@@ -43,8 +68,8 @@ func TestMethod_BuildRequest(t *testing.T) {
 		ctx.currEndpoint = Endpoint("/foos/{id}/bars/{id}", "").(*endpoint)
 
 		raw := m.(*method)
-		req, err := raw.buildRequest(ctx)
-		require.NoError(t, err)
+		req, ok := raw.buildRequest(ctx)
+		require.True(t, ok)
 		assert.NotNil(t, req)
 		assert.Equal(t, "http://localhost:8080/foos/aaa/bars/42?q1&q2=true&q3=foo%3F%3F", req.URL.String())
 		assert.Equal(t, "aaa", req.Header.Get("X-Foo"))
@@ -62,8 +87,8 @@ func TestMethod_BuildRequest(t *testing.T) {
 		ctx := newContext(nil)
 		ctx.currEndpoint = Endpoint("/foos", "").(*endpoint)
 		raw := m.(*method)
-		_, err := raw.buildRequest(ctx)
-		require.Error(t, err)
+		_, ok := raw.buildRequest(ctx)
+		require.False(t, ok)
 	})
 }
 
@@ -118,39 +143,132 @@ func TestMethod_BuildRequestBody(t *testing.T) {
 	})
 }
 
-/*
-func TestFoo(t *testing.T) {
-	Endpoint("/foos", "Test Foos",
-		DbClearTable(Before, "foo_table"),
-		Method(POST, "Add foo").
-			RequestBody(JSON{"foo": "bar"}).AssertOK().
-			AssertEqual(1, Query("SELECT COUNT(*) FROM foo_table")),
-	)
-
-	Endpoint("/foos", "Test Foos",
-		Method(POST, "Add foo").
-			SetVar(Before, "count", Query("SELECT COUNT(*) FROM foo_table")).
-			RequestBody(JSON{"foo": "bar"}).AssertOK().
-			AssertGreaterThan(Query("SELECT COUNT(*) FROM foo_table"), Var("count")),
-	)
-
-	Endpoint("/foos", "Test Foos",
-		Method(POST, "Add foo").
-			SetVar(Before, "foo_id", "123").
-			RequestBody(JSON{"foo": Var("foo_id")}).AssertOK())
-}
-*/
-
 func Test_normalizeBody(t *testing.T) {
-	var body any
-	data := []byte(`[{"foo":42},{"bar":2.2}]`)
-	d := json.NewDecoder(bytes.NewReader(data))
-	d.UseNumber()
-	err := d.Decode(&body)
-	require.NoError(t, err)
-	normalizedBody, err := normalizeBody(body)
-	require.NoError(t, err)
-	assert.NotNil(t, normalizedBody)
-	assert.Equal(t, int64(42), normalizedBody.([]any)[0].(map[string]any)["foo"])
-	assert.Equal(t, 2.2, normalizedBody.([]any)[1].(map[string]any)["bar"])
+	t.Run("nil", func(t *testing.T) {
+		var body any
+		normalizedBody, err := normalizeBody(body)
+		require.NoError(t, err)
+		assert.Nil(t, normalizedBody)
+	})
+	t.Run("string", func(t *testing.T) {
+		var body any
+		data := []byte(`"some string"`)
+		d := json.NewDecoder(bytes.NewReader(data))
+		d.UseNumber()
+		err := d.Decode(&body)
+		require.NoError(t, err)
+		normalizedBody, err := normalizeBody(body)
+		require.NoError(t, err)
+		assert.NotNil(t, normalizedBody)
+		assert.Equal(t, "some string", normalizedBody)
+	})
+	t.Run("number", func(t *testing.T) {
+		var body any
+		data := []byte(`42`)
+		d := json.NewDecoder(bytes.NewReader(data))
+		d.UseNumber()
+		err := d.Decode(&body)
+		require.NoError(t, err)
+		normalizedBody, err := normalizeBody(body)
+		require.NoError(t, err)
+		assert.NotNil(t, normalizedBody)
+		assert.Equal(t, int64(42), normalizedBody)
+	})
+	t.Run("map", func(t *testing.T) {
+		var body any
+		data := []byte(`{"foo":42,"bar":2.2}`)
+		d := json.NewDecoder(bytes.NewReader(data))
+		d.UseNumber()
+		err := d.Decode(&body)
+		require.NoError(t, err)
+		normalizedBody, err := normalizeBody(body)
+		require.NoError(t, err)
+		assert.NotNil(t, normalizedBody)
+		assert.Equal(t, int64(42), normalizedBody.(map[string]any)["foo"])
+		assert.Equal(t, 2.2, normalizedBody.(map[string]any)["bar"])
+	})
+	t.Run("map mixed", func(t *testing.T) {
+		body := map[string]any{
+			"foo": json.Number("42"),
+			"bar": map[string]any{"foo": json.Number("42")},
+			"baz": []any{"buzz", json.Number("42")},
+		}
+		normalizedBody, err := normalizeBody(body)
+		require.NoError(t, err)
+		m, ok := normalizedBody.(map[string]any)
+		require.True(t, ok)
+		assert.Equal(t, int64(42), m["foo"])
+		assert.Equal(t, map[string]any{"foo": int64(42)}, m["bar"])
+		assert.Equal(t, []any{"buzz", int64(42)}, m["baz"])
+	})
+	t.Run("map,map errors", func(t *testing.T) {
+		body := map[string]any{
+			"foo": map[string]any{"foo": json.Number("invalid number")},
+		}
+		_, err := normalizeBody(body)
+		require.Error(t, err)
+	})
+	t.Run("map,slice errors", func(t *testing.T) {
+		body := map[string]any{
+			"foo": []any{json.Number("invalid number")},
+		}
+		_, err := normalizeBody(body)
+		require.Error(t, err)
+	})
+	t.Run("slice", func(t *testing.T) {
+		var body any
+		data := []byte(`[42,2.2]`)
+		d := json.NewDecoder(bytes.NewReader(data))
+		d.UseNumber()
+		err := d.Decode(&body)
+		require.NoError(t, err)
+		normalizedBody, err := normalizeBody(body)
+		require.NoError(t, err)
+		assert.NotNil(t, normalizedBody)
+		assert.Equal(t, int64(42), normalizedBody.([]any)[0])
+		assert.Equal(t, 2.2, normalizedBody.([]any)[1])
+	})
+	t.Run("slice mixed", func(t *testing.T) {
+		body := []any{
+			json.Number("42"),
+			map[string]any{"foo": json.Number("42")},
+			[]any{"buzz", json.Number("42")},
+		}
+		normalizedBody, err := normalizeBody(body)
+		require.NoError(t, err)
+		sl, ok := normalizedBody.([]any)
+		require.True(t, ok)
+		assert.Equal(t, int64(42), sl[0])
+		assert.Equal(t, map[string]any{"foo": int64(42)}, sl[1])
+		assert.Equal(t, []any{"buzz", int64(42)}, sl[2])
+	})
+	t.Run("slice,map errors", func(t *testing.T) {
+		body := []any{
+			map[string]any{"foo": json.Number("invalid number")},
+		}
+		_, err := normalizeBody(body)
+		require.Error(t, err)
+	})
+	t.Run("slice,slice errors", func(t *testing.T) {
+		body := []any{
+			[]any{json.Number("invalid number")},
+		}
+		_, err := normalizeBody(body)
+		require.Error(t, err)
+	})
+	t.Run("number error", func(t *testing.T) {
+		body := json.Number("invalid number")
+		_, err := normalizeBody(body)
+		require.Error(t, err)
+	})
+	t.Run("map error", func(t *testing.T) {
+		body := map[string]any{"foo": json.Number("invalid number")}
+		_, err := normalizeBody(body)
+		require.Error(t, err)
+	})
+	t.Run("slice error", func(t *testing.T) {
+		body := []any{json.Number("invalid number")}
+		_, err := normalizeBody(body)
+		require.Error(t, err)
+	})
 }
