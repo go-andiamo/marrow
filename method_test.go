@@ -3,6 +3,7 @@ package marrow
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -270,5 +271,66 @@ func Test_normalizeBody(t *testing.T) {
 		body := []any{json.Number("invalid number")}
 		_, err := normalizeBody(body)
 		require.Error(t, err)
+	})
+}
+
+func TestMethod_unmarshalResponseBody(t *testing.T) {
+	t.Run("nil response body", func(t *testing.T) {
+		response := &http.Response{}
+		ctx := newContext(nil)
+		m := &method{}
+		ok := m.unmarshalResponseBody(ctx, response)
+		require.True(t, ok)
+		assert.Nil(t, ctx.currBody)
+	})
+	t.Run("default unmarshal", func(t *testing.T) {
+		response := &http.Response{
+			Body: io.NopCloser(bytes.NewReader([]byte(`{"foo":42}`))),
+		}
+		ctx := newContext(nil)
+		m := &method{}
+		ok := m.unmarshalResponseBody(ctx, response)
+		require.True(t, ok)
+		assert.NotNil(t, ctx.currBody)
+		assert.Equal(t, map[string]any{"foo": int64(42)}, ctx.currBody)
+	})
+	t.Run("default unmarshal errors", func(t *testing.T) {
+		response := &http.Response{
+			Body: io.NopCloser(bytes.NewReader([]byte(`{invalid json`))),
+		}
+		ctx := newContext(nil)
+		m := &method{}
+		ok := m.unmarshalResponseBody(ctx, response)
+		require.False(t, ok)
+		require.True(t, ctx.failed)
+	})
+	t.Run("custom unmarshal", func(t *testing.T) {
+		response := &http.Response{
+			Body: io.NopCloser(bytes.NewReader([]byte(`{"foo":42}`))),
+		}
+		ctx := newContext(nil)
+		m := &method{}
+		m.ResponseUnmarshal(func(response *http.Response) (any, error) {
+			var body any
+			err := json.NewDecoder(response.Body).Decode(&body)
+			return body, err
+		})
+		ok := m.unmarshalResponseBody(ctx, response)
+		require.True(t, ok)
+		assert.NotNil(t, ctx.currBody)
+		assert.Equal(t, map[string]any{"foo": float64(42)}, ctx.currBody)
+	})
+	t.Run("custom unmarshal errors", func(t *testing.T) {
+		response := &http.Response{
+			Body: io.NopCloser(bytes.NewReader([]byte(`{"foo":42}`))),
+		}
+		ctx := newContext(nil)
+		m := &method{}
+		m.ResponseUnmarshal(func(response *http.Response) (any, error) {
+			return nil, errors.New("fooey")
+		})
+		ok := m.unmarshalResponseBody(ctx, response)
+		require.False(t, ok)
+		require.True(t, ctx.failed)
 	})
 }

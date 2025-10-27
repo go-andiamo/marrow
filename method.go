@@ -916,28 +916,22 @@ func (m *method) postRun(ctx Context) {
 
 func (m *method) unmarshalResponseBody(ctx Context, res *http.Response) bool {
 	if res.Body != nil {
+		var body any
+		var err error
 		if m.responseUnmarshal != nil {
-			if body, err := m.responseUnmarshal(res); err == nil {
-				ctx.setCurrentBody(body)
-			} else {
-				ctx.reportFailure(err)
-				return false
-			}
+			body, err = m.responseUnmarshal(res)
 		} else {
-			var body any
-			var err error
 			decoder := json.NewDecoder(res.Body)
 			decoder.UseNumber()
-			if err = decoder.Decode(&body); err != nil {
-				ctx.reportFailure(err)
-				return false
+			if err = decoder.Decode(&body); err == nil {
+				body, err = normalizeBody(body)
 			}
-			if body, err = normalizeBody(body); err != nil {
-				ctx.reportFailure(err)
-				return false
-			}
-			ctx.setCurrentBody(body)
 		}
+		if err != nil {
+			ctx.reportFailure(err)
+			return false
+		}
+		ctx.setCurrentBody(body)
 	} else {
 		ctx.setCurrentBody(nil)
 	}
