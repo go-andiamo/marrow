@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/go-andiamo/marrow/coverage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -332,5 +333,176 @@ func TestMethod_unmarshalResponseBody(t *testing.T) {
 		ok := m.unmarshalResponseBody(ctx, response)
 		require.False(t, ok)
 		require.True(t, ctx.failed)
+	})
+}
+
+func TestMethod_Run(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctx := newContext(nil)
+		ctx.httpDo = &dummyDo{
+			status: http.StatusOK,
+			body:   []byte(`{"foo":42}`),
+		}
+		ctx.currEndpoint = Endpoint("/foos/{id}", "")
+		cov := coverage.NewCoverage()
+		ctx.coverage = cov
+		m := Method(GET, "",
+			SetVar(Before, "id", 123),
+		).PathParam(Var("id")).
+			AssertOK().
+			SetVar(After, "foo", JsonPath(Body, "foo")).
+			AssertEqual(Var("foo"), 42)
+
+		err := m.Run(ctx)
+		require.NoError(t, err)
+		require.False(t, ctx.failed)
+		assert.Len(t, cov.Timings, 1)
+		assert.Len(t, cov.Met, 2)
+		require.Len(t, cov.Endpoints, 1)
+		ec, ok := cov.Endpoints["/foos/{id}"]
+		require.True(t, ok)
+		assert.Len(t, ec.Timings, 1)
+		assert.Len(t, ec.Met, 2)
+		require.Len(t, ec.Methods, 1)
+		mc, ok := ec.Methods["GET"]
+		require.True(t, ok)
+		assert.Len(t, mc.Timings, 1)
+		assert.Len(t, mc.Met, 2)
+	})
+	t.Run("pre-capture fails", func(t *testing.T) {
+		ctx := newContext(nil)
+		ctx.currEndpoint = Endpoint("/foos", "")
+		cov := coverage.NewCoverage()
+		ctx.coverage = cov
+		m := Method(GET, "", SetVar(Before, "id", Var("missing")))
+		err := m.Run(ctx)
+		require.NoError(t, err)
+		require.True(t, ctx.failed)
+		assert.Len(t, cov.Failures, 1)
+		require.Len(t, cov.Endpoints, 1)
+		ec, ok := cov.Endpoints["/foos"]
+		require.True(t, ok)
+		assert.Len(t, ec.Failures, 1)
+		require.Len(t, ec.Methods, 1)
+		mc, ok := ec.Methods["GET"]
+		require.True(t, ok)
+		assert.Len(t, mc.Failures, 1)
+	})
+	t.Run("post-capture fails", func(t *testing.T) {
+		ctx := newContext(nil)
+		ctx.httpDo = &dummyDo{
+			status: http.StatusOK,
+			body:   []byte(`{"foo":42}`),
+		}
+		ctx.currEndpoint = Endpoint("/foos", "")
+		cov := coverage.NewCoverage()
+		ctx.coverage = cov
+		m := Method(GET, "").FailFast().AssertOK().
+			SetVar(After, "foo", Var("missing")).
+			AssertNotFound()
+		err := m.Run(ctx)
+		require.NoError(t, err)
+		require.True(t, ctx.failed)
+		assert.Len(t, cov.Timings, 1)
+		assert.Len(t, cov.Failures, 1)
+		assert.Len(t, cov.Met, 1)
+		assert.Len(t, cov.Skipped, 1)
+		require.Len(t, cov.Endpoints, 1)
+		ec, ok := cov.Endpoints["/foos"]
+		require.True(t, ok)
+		assert.Len(t, ec.Timings, 1)
+		assert.Len(t, ec.Failures, 1)
+		assert.Len(t, ec.Met, 1)
+		assert.Len(t, ec.Skipped, 1)
+		require.Len(t, ec.Methods, 1)
+		mc, ok := ec.Methods["GET"]
+		require.True(t, ok)
+		assert.Len(t, ec.Timings, 1)
+		assert.Len(t, mc.Failures, 1)
+		assert.Len(t, ec.Met, 1)
+		assert.Len(t, ec.Skipped, 1)
+	})
+	t.Run("expectation met & unmet", func(t *testing.T) {
+		ctx := newContext(nil)
+		ctx.httpDo = &dummyDo{
+			status: http.StatusOK,
+			body:   []byte(`{"foo":42}`),
+		}
+		ctx.currEndpoint = Endpoint("/foos", "")
+		cov := coverage.NewCoverage()
+		ctx.coverage = cov
+		m := Method(GET, "").AssertOK().AssertNotFound()
+		err := m.Run(ctx)
+		require.NoError(t, err)
+		require.False(t, ctx.failed)
+		assert.Len(t, cov.Timings, 1)
+		assert.Len(t, cov.Unmet, 1)
+		assert.Len(t, cov.Met, 1)
+		require.Len(t, cov.Endpoints, 1)
+		ec, ok := cov.Endpoints["/foos"]
+		require.True(t, ok)
+		assert.Len(t, ec.Timings, 1)
+		assert.Len(t, ec.Unmet, 1)
+		assert.Len(t, ec.Met, 1)
+		require.Len(t, ec.Methods, 1)
+		mc, ok := ec.Methods["GET"]
+		require.True(t, ok)
+		assert.Len(t, ec.Timings, 1)
+		assert.Len(t, mc.Unmet, 1)
+		assert.Len(t, ec.Met, 1)
+	})
+	t.Run("expectation unmet - fail fast", func(t *testing.T) {
+		ctx := newContext(nil)
+		ctx.httpDo = &dummyDo{
+			status: http.StatusOK,
+			body:   []byte(`{"foo":42}`),
+		}
+		ctx.currEndpoint = Endpoint("/foos", "")
+		cov := coverage.NewCoverage()
+		ctx.coverage = cov
+		m := Method(GET, "").FailFast().AssertNotFound().AssertOK()
+		err := m.Run(ctx)
+		require.NoError(t, err)
+		require.False(t, ctx.failed)
+		assert.Len(t, cov.Timings, 1)
+		assert.Len(t, cov.Unmet, 1)
+		assert.Len(t, cov.Skipped, 1)
+		require.Len(t, cov.Endpoints, 1)
+		ec, ok := cov.Endpoints["/foos"]
+		require.True(t, ok)
+		assert.Len(t, ec.Timings, 1)
+		assert.Len(t, ec.Unmet, 1)
+		assert.Len(t, ec.Skipped, 1)
+		require.Len(t, ec.Methods, 1)
+		mc, ok := ec.Methods["GET"]
+		require.True(t, ok)
+		assert.Len(t, ec.Timings, 1)
+		assert.Len(t, mc.Unmet, 1)
+		assert.Len(t, ec.Skipped, 1)
+	})
+	t.Run("expectation failure", func(t *testing.T) {
+		ctx := newContext(nil)
+		ctx.httpDo = &dummyDo{
+			status: http.StatusOK,
+			body:   []byte(`{"foo":42}`),
+		}
+		ctx.currEndpoint = Endpoint("/foos", "")
+		cov := coverage.NewCoverage()
+		ctx.coverage = cov
+		m := Method(GET, "").AssertGreaterThan(1, Var("missing"))
+		err := m.Run(ctx)
+		require.NoError(t, err)
+		require.True(t, ctx.failed)
+		assert.Len(t, cov.Timings, 1)
+		assert.Len(t, cov.Failures, 1)
+		require.Len(t, cov.Endpoints, 1)
+		ec, ok := cov.Endpoints["/foos"]
+		require.True(t, ok)
+		assert.Len(t, ec.Timings, 1)
+		assert.Len(t, ec.Failures, 1)
+		mc, ok := ec.Methods["GET"]
+		require.True(t, ok)
+		assert.Len(t, ec.Timings, 1)
+		assert.Len(t, mc.Failures, 1)
 	})
 }
