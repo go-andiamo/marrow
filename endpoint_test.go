@@ -145,7 +145,7 @@ func TestEndpoint_Run(t *testing.T) {
 		Method(GET, ""),
 		Endpoint("/foos", "",
 			Method(GET, ""),
-			Endpoint("/{id}", "",
+			Endpoint("/bars", "",
 				Method(GET, ""),
 			),
 		),
@@ -153,7 +153,65 @@ func TestEndpoint_Run(t *testing.T) {
 	ctx := newContext(nil)
 	cov := coverage.NewCoverage()
 	ctx.coverage = cov
-	ctx.httpDo = &dummyDo{status: 200}
+	ctx.httpDo = &dummyDo{status: 200, body: []byte(`{}`)}
 	err := e.Run(ctx)
 	require.NoError(t, err)
+	assert.Len(t, cov.Failures, 0)
+}
+
+func TestEndpoint_Run_WithFailures(t *testing.T) {
+	t.Run("before fails", func(t *testing.T) {
+		e := Endpoint("/api", "",
+			SetVar(Before, "foo", Var("bar")),
+			Method(GET, "").SetVar(Before, "foo", Var("bar")),
+			Endpoint("/foos", "", SetVar(Before, "foo", Var("bar"))),
+			SetVar(After, "foo", Var("bar")),
+		)
+		ctx := newContext(nil)
+		cov := coverage.NewCoverage()
+		ctx.coverage = cov
+		ctx.httpDo = &dummyDo{status: 200, body: []byte(`{}`)}
+		err := e.Run(ctx)
+		require.NoError(t, err)
+		assert.Len(t, cov.Failures, 1)
+	})
+	t.Run("method fails", func(t *testing.T) {
+		e := Endpoint("/api", "",
+			Method(GET, "").SetVar(Before, "foo", Var("bar")),
+			Endpoint("/foos", "", SetVar(Before, "foo", Var("bar"))),
+			SetVar(After, "foo", Var("bar")),
+		)
+		ctx := newContext(nil)
+		cov := coverage.NewCoverage()
+		ctx.coverage = cov
+		ctx.httpDo = &dummyDo{status: 200}
+		err := e.Run(ctx)
+		require.NoError(t, err)
+		assert.Len(t, cov.Failures, 1)
+	})
+	t.Run("sub-endpoint fails", func(t *testing.T) {
+		e := Endpoint("/api", "",
+			Endpoint("/foos", "", SetVar(Before, "foo", Var("bar"))),
+			SetVar(After, "foo", Var("bar")),
+		)
+		ctx := newContext(nil)
+		cov := coverage.NewCoverage()
+		ctx.coverage = cov
+		ctx.httpDo = &dummyDo{status: 200}
+		err := e.Run(ctx)
+		require.NoError(t, err)
+		assert.Len(t, cov.Failures, 1)
+	})
+	t.Run("after fails", func(t *testing.T) {
+		e := Endpoint("/api", "",
+			SetVar(After, "foo", Var("bar")),
+		)
+		ctx := newContext(nil)
+		cov := coverage.NewCoverage()
+		ctx.coverage = cov
+		ctx.httpDo = &dummyDo{status: 200, body: []byte(`{}`)}
+		err := e.Run(ctx)
+		require.NoError(t, err)
+		assert.Len(t, cov.Failures, 1)
+	})
 }

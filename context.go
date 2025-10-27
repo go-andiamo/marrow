@@ -65,6 +65,7 @@ type context struct {
 	currResponse *http.Response
 	currBody     any
 	cookieJar    map[string]*http.Cookie
+	failed       bool
 }
 
 var _ Context = (*context)(nil)
@@ -233,6 +234,7 @@ func (c *context) doRequest(request *http.Request) (*http.Response, bool) {
 }
 
 func (c *context) reportFailure(err error) {
+	c.failed = true
 	c.coverage.ReportFailure(c.currEndpoint, c.currMethod, c.currRequest, err)
 	if len(c.currTesting) > 0 {
 		currT := c.currTesting[len(c.currTesting)-1]
@@ -275,8 +277,8 @@ func (c *context) reportSkipped(exp Expectation) {
 	c.coverage.ReportSkipped(c.currEndpoint, c.currMethod, c.currRequest, exp)
 }
 
-func (c *context) run(name string, r Runnable) (ok bool) {
-	ok = true
+func (c *context) run(name string, r Runnable) bool {
+	c.failed = false
 	if c.testing != nil {
 		currT := c.testing
 		if len(c.currTesting) > 0 {
@@ -289,15 +291,13 @@ func (c *context) run(name string, r Runnable) (ok bool) {
 			t.Helper()
 			c.currTesting = append(c.currTesting, t)
 			if err := r.Run(c); err != nil {
-				ok = false
 				c.reportFailure(err)
 			}
 		})
 	} else {
 		if err := r.Run(c); err != nil {
-			ok = false
 			c.reportFailure(err)
 		}
 	}
-	return ok
+	return !c.failed
 }

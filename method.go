@@ -850,11 +850,11 @@ func (m *method) ResponseUnmarshal(fn func(response *http.Response) (any, error)
 
 func (m *method) Run(ctx Context) error {
 	ctx.setCurrentMethod(m)
-	if m.runPre(ctx) {
+	if m.preRun(ctx) {
 		if request, ok := m.buildRequest(ctx); ok {
 			if response, ok := ctx.doRequest(request); ok {
 				if m.unmarshalResponseBody(ctx, response) {
-					m.runPost(ctx)
+					m.postRun(ctx)
 				}
 			}
 		}
@@ -862,7 +862,7 @@ func (m *method) Run(ctx Context) error {
 	return nil
 }
 
-func (m *method) runPre(ctx Context) bool {
+func (m *method) preRun(ctx Context) bool {
 	for _, c := range m.preCaptures {
 		if c != nil {
 			if err := c.Run(ctx); err != nil {
@@ -874,7 +874,7 @@ func (m *method) runPre(ctx Context) bool {
 	return true
 }
 
-func (m *method) runPost(ctx Context) {
+func (m *method) postRun(ctx Context) {
 	ok := true
 	lastExp := 0
 	for _, po := range m.postOps {
