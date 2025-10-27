@@ -5,6 +5,7 @@ import (
 	"github.com/go-andiamo/marrow/coverage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -104,4 +105,24 @@ func TestWithRepeats(t *testing.T) {
 	assert.Equal(t, 10, raw.repeats)
 	assert.True(t, raw.stopOnFailure)
 	assert.Len(t, raw.repeatResets, 1)
+}
+
+func TestWithLogging(t *testing.T) {
+	nw := &nullWriter{}
+	s := Suite().Init(WithLogging(nw, nw))
+	raw, ok := s.(*suite)
+	require.True(t, ok)
+	raw.runInits()
+	assert.NotNil(t, raw.stdout)
+	assert.Equal(t, nw, raw.stdout)
+	assert.NotNil(t, raw.stderr)
+	assert.Equal(t, nw, raw.stderr)
+}
+
+type nullWriter struct{}
+
+var _ io.Writer = (*nullWriter)(nil)
+
+func (nw *nullWriter) Write(p []byte) (n int, err error) {
+	return len(p), nil
 }

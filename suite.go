@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-andiamo/marrow/coverage"
+	htesting "github.com/go-andiamo/marrow/testing"
 	"io"
 	"maps"
 	"net/http"
+	"os"
 	"testing"
+	"time"
 )
 
 type Suite_ interface {
@@ -42,6 +45,8 @@ type suite struct {
 	repeats       int
 	repeatResets  []func(si SuiteInit)
 	stopOnFailure bool
+	stdout        io.Writer
+	stderr        io.Writer
 }
 
 func (s *suite) SetDb(db *sql.DB) {
@@ -100,6 +105,11 @@ func (s *suite) SetRepeats(n int, stopOnFailure bool, resets ...func(si SuiteIni
 	s.stopOnFailure = stopOnFailure
 }
 
+func (s *suite) SetLogging(stdout io.Writer, stderr io.Writer) {
+	s.stdout = stdout
+	s.stderr = stderr
+}
+
 func (s *suite) Init(withs ...With) Suite_ {
 	s.withs = append(s.withs, withs...)
 	return s
@@ -147,13 +157,20 @@ func (s *suite) Run() error {
 			return err
 		}
 	}
+	if s.stdout == nil {
+		s.stdout = os.Stdout
+	}
+	if s.stderr == nil {
+		s.stderr = os.Stderr
+	}
+	t := htesting.NewHelper(s.testing, s.stdout, s.stderr)
 	ctx := &context{
 		coverage:     cov,
 		httpDo:       do,
 		host:         fmt.Sprintf("http://%s:%d", host, s.port),
 		db:           s.db,
 		dbArgMarkers: s.dbArgMarkers,
-		testing:      s.testing,
+		testing:      t,
 		vars:         maps.Clone(s.vars),
 		cookieJar:    maps.Clone(s.cookies),
 	}
@@ -162,24 +179,31 @@ func (s *suite) Run() error {
 			break
 		}
 	}
+	t.End()
 	if s.repeats > 0 && (!s.stopOnFailure || !cov.HasFailures()) {
+		_, _ = fmt.Fprintln(s.stdout, "")
 		ctx.vars = maps.Clone(s.vars)
 		ctx.cookieJar = maps.Clone(s.cookies)
 		ctx.testing = nil
 		ctx.currTesting = nil
 		for r := 0; r < s.repeats; r++ {
+			_, _ = fmt.Fprintf(s.stdout, ">>> REPEAT %d/%d\n", r+1, s.repeats)
 			for _, reset := range s.repeatResets {
 				reset(s)
 			}
+			start := time.Now()
 			for _, e := range s.endpoints {
 				if !ctx.run(e.Url(), e) {
 					break
 				}
 			}
 			if s.stopOnFailure && cov.HasFailures() {
+				_, _ = fmt.Fprintf(s.stderr, "    FAILED (%s)\n", time.Since(start))
 				break
 			}
+			_, _ = fmt.Fprintf(s.stderr, "    FINISHED (%s)\n", time.Since(start))
 		}
+		_, _ = fmt.Fprintln(s.stdout, "")
 	}
 	if s.reportCov != nil {
 		s.reportCov(actualCov)

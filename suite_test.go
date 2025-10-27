@@ -92,6 +92,7 @@ func TestSuite(t *testing.T) {
 		}),
 		WithVar("OK", 201)).
 		Run()
+	_ = cov
 	require.NotNil(t, cov)
 	//fmt.Printf("coverage: %+v\n", coverage)
 	stats, ok := cov.Timings.Stats(false)
