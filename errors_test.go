@@ -175,6 +175,14 @@ func TestOperandValue_TestFormat(t *testing.T) {
 		s := ov.TestFormat()
 		assert.Contains(t, s, "\"bar\" << Var(foo)")
 	})
+	t.Run("resolvable", func(t *testing.T) {
+		ov := OperandValue{
+			Original: &testValueResolvable{},
+			Resolved: "bar",
+		}
+		s := ov.TestFormat()
+		assert.Contains(t, s, "\"bar\" << testValueResolvable(&{<nil> <nil>})")
+	})
 	t.Run("resolved, stringify", func(t *testing.T) {
 		ov := OperandValue{
 			Original: Var("foo"),
@@ -209,4 +217,13 @@ func TestOperandValue_TestFormat(t *testing.T) {
 		assert.Contains(t, s, "\"bar\" << Var(foo)")
 		assert.Contains(t, s, "\tCoercion error: fooey")
 	})
+}
+
+type testValueResolvable struct {
+	value any
+	err   error
+}
+
+func (t testValueResolvable) ResolveValue(ctx Context) (av any, err error) {
+	return t.value, t.err
 }

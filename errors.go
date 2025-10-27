@@ -220,7 +220,7 @@ func (e *captureError) TestFormat() string {
 			}
 		}
 		if !out {
-			t := strings.TrimPrefix(fmt.Sprintf("%T", ov.Original), "marrow.")
+			t := trimPackagePrefix(fmt.Sprintf("%T", ov.Original))
 			b.WriteString(fmt.Sprintf("\n\tValue:    \t%s(%v)", t, ov.Original))
 		}
 	}
@@ -251,10 +251,14 @@ func (v OperandValue) TestFormat() string {
 		b.WriteString(fmt.Sprintf(" << %s", ot.String()))
 	case Resolvable:
 		to := reflect.TypeOf(v.Original)
-		b.WriteString(fmt.Sprintf(" << %s(%v)", strings.TrimPrefix(to.String(), "marrow."), ot))
+		b.WriteString(fmt.Sprintf(" << %s(%v)", trimPackagePrefix(to.String()), ot))
 	}
 	if v.CoercionError != nil {
 		b.WriteString(fmt.Sprintf("\n\t          \tCoercion error: %s", v.CoercionError.Error()))
 	}
 	return b.String()
+}
+
+func trimPackagePrefix(s string) string {
+	return strings.TrimPrefix(strings.TrimPrefix(s, "marrow."), "*marrow.")
 }
