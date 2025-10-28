@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/go-andiamo/marrow/framing"
 	"io"
-	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -190,7 +189,7 @@ func (h *helper) log(s string) {
 	_, _ = fmt.Fprintf(h.stdout, "    %s:%d: %s\n", h.frame.File[lastSlash+1:], h.frame.Line, lines[0])
 	for l := 1; l < len(lines); l++ {
 		if line := lines[l]; line != "" {
-			_, _ = fmt.Fprintf(os.Stdout, "        %s\n", line)
+			_, _ = fmt.Fprintf(h.stdout, "        %s\n", line)
 		}
 	}
 }
