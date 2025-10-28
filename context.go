@@ -7,6 +7,7 @@ import (
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
 	"github.com/go-andiamo/marrow/testing"
+	"maps"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -62,6 +63,14 @@ type context struct {
 	failed       bool
 }
 
+func newContext() *context {
+	return &context{
+		coverage:  coverage.NewNullCoverage(),
+		vars:      make(map[Var]any),
+		cookieJar: make(map[string]*http.Cookie),
+	}
+}
+
 var _ Context = (*context)(nil)
 
 func (c *context) Host() string {
@@ -69,7 +78,7 @@ func (c *context) Host() string {
 }
 
 func (c *context) Vars() map[Var]any {
-	return c.vars
+	return maps.Clone(c.vars)
 }
 
 func (c *context) Db() *sql.DB {

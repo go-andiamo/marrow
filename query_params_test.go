@@ -40,14 +40,14 @@ func TestQueryParams_encode(t *testing.T) {
 	t.Run("var", func(t *testing.T) {
 		qps := make(queryParams, 0)
 		qps.add("foo", Var("bar"))
-		enc, err := qps.encode(newContext(map[Var]any{"bar": 42}))
+		enc, err := qps.encode(newTestContext(map[Var]any{"bar": 42}))
 		require.NoError(t, err)
 		assert.Equal(t, `?foo=42`, enc)
 	})
 	t.Run("missing var", func(t *testing.T) {
 		qps := make(queryParams, 0)
 		qps.add("foo", Var("bar"))
-		_, err := qps.encode(newContext(nil))
+		_, err := qps.encode(newTestContext(nil))
 		require.Error(t, err)
 	})
 	t.Run("no value", func(t *testing.T) {

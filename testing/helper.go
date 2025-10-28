@@ -119,6 +119,9 @@ func (h *helper) Failed() bool {
 
 func (h *helper) FailNow() {
 	if h.wrapped == nil {
+		if h.parent != nil {
+			h.parent.FailNow()
+		}
 		h.mu.Lock()
 		defer h.mu.Unlock()
 		h.failed = true
@@ -184,7 +187,7 @@ func (h *helper) logEnd() {
 func (h *helper) log(s string) {
 	lines := strings.Split(s, "\n")
 	lastSlash := strings.LastIndex(h.frame.File, "/")
-	_, _ = fmt.Fprintf(os.Stdout, "    %s:%d: %s\n", h.frame.File[lastSlash+1:], h.frame.Line, lines[0])
+	_, _ = fmt.Fprintf(h.stdout, "    %s:%d: %s\n", h.frame.File[lastSlash+1:], h.frame.Line, lines[0])
 	for l := 1; l < len(lines); l++ {
 		if line := lines[l]; line != "" {
 			_, _ = fmt.Fprintf(os.Stdout, "        %s\n", line)
