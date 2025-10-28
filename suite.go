@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
 	htesting "github.com/go-andiamo/marrow/testing"
+	"github.com/go-andiamo/marrow/with"
 	"io"
 	"maps"
 	"net/http"
@@ -15,8 +17,7 @@ import (
 )
 
 type Suite_ interface {
-	Init(withs ...With) Suite_
-	InitFunc(func(init SuiteInit)) Suite_
+	Init(withs ...with.With) Suite_
 	Run() error
 }
 
@@ -30,12 +31,12 @@ func Suite(endpoints ...Endpoint_) Suite_ {
 
 type suite struct {
 	endpoints     []Endpoint_
-	withs         []With
+	withs         []with.With
 	db            *sql.DB
-	dbArgMarkers  DatabaseArgMarkers
+	dbArgMarkers  common.DatabaseArgMarkers
 	host          string
 	port          int
-	httpDo        HttpDo
+	httpDo        common.HttpDo
 	testing       *testing.T
 	vars          map[Var]any
 	cookies       map[string]*http.Cookie
@@ -43,7 +44,7 @@ type suite struct {
 	covCollector  coverage.Collector
 	oasReader     io.Reader
 	repeats       int
-	repeatResets  []func(si SuiteInit)
+	repeatResets  []func()
 	stopOnFailure bool
 	stdout        io.Writer
 	stderr        io.Writer
@@ -53,11 +54,11 @@ func (s *suite) SetDb(db *sql.DB) {
 	s.db = db
 }
 
-func (s *suite) SetDbArgMarkers(dbArgMarkers DatabaseArgMarkers) {
+func (s *suite) SetDbArgMarkers(dbArgMarkers common.DatabaseArgMarkers) {
 	s.dbArgMarkers = dbArgMarkers
 }
 
-func (s *suite) SetHttpDo(do HttpDo) {
+func (s *suite) SetHttpDo(do common.HttpDo) {
 	s.httpDo = do
 }
 
@@ -99,7 +100,7 @@ func (s *suite) SetOAS(r io.Reader) {
 	s.oasReader = r
 }
 
-func (s *suite) SetRepeats(n int, stopOnFailure bool, resets ...func(si SuiteInit)) {
+func (s *suite) SetRepeats(n int, stopOnFailure bool, resets ...func()) {
 	s.repeats = n
 	s.repeatResets = resets
 	s.stopOnFailure = stopOnFailure
@@ -110,15 +111,8 @@ func (s *suite) SetLogging(stdout io.Writer, stderr io.Writer) {
 	s.stderr = stderr
 }
 
-func (s *suite) Init(withs ...With) Suite_ {
+func (s *suite) Init(withs ...with.With) Suite_ {
 	s.withs = append(s.withs, withs...)
-	return s
-}
-
-func (s *suite) InitFunc(fn func(init SuiteInit)) Suite_ {
-	if fn != nil {
-		s.withs = append(s.withs, &with{fn: fn})
-	}
 	return s
 }
 
@@ -189,7 +183,7 @@ func (s *suite) Run() error {
 		for r := 0; r < s.repeats; r++ {
 			_, _ = fmt.Fprintf(s.stdout, ">>> REPEAT %d/%d\n", r+1, s.repeats)
 			for _, reset := range s.repeatResets {
-				reset(s)
+				reset()
 			}
 			start := time.Now()
 			for _, e := range s.endpoints {

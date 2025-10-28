@@ -2,7 +2,9 @@ package marrow
 
 import (
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
+	"github.com/go-andiamo/marrow/with"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -16,7 +18,7 @@ func TestWithDatabase(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	s := Suite().Init(WithDatabase(db))
+	s := Suite().Init(with.Database(db))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
 	raw.runInits()
@@ -24,15 +26,15 @@ func TestWithDatabase(t *testing.T) {
 }
 
 func TestWithDatabaseArgMarkers(t *testing.T) {
-	s := Suite().Init(WithDatabaseArgMarkers(NumberedDbArgs))
+	s := Suite().Init(with.DatabaseArgMarkers(common.NumberedDbArgs))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
 	raw.runInits()
-	assert.Equal(t, NumberedDbArgs, raw.dbArgMarkers)
+	assert.Equal(t, common.NumberedDbArgs, raw.dbArgMarkers)
 }
 
 func TestWithHttpDo(t *testing.T) {
-	s := Suite().Init(WithHttpDo(&dummyDo{}))
+	s := Suite().Init(with.HttpDo(&dummyDo{}))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
 	raw.runInits()
@@ -40,7 +42,7 @@ func TestWithHttpDo(t *testing.T) {
 }
 
 func TestWithApiHost(t *testing.T) {
-	s := Suite().Init(WithApiHost("localhost", 8080))
+	s := Suite().Init(with.ApiHost("localhost", 8080))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
 	raw.runInits()
@@ -49,7 +51,7 @@ func TestWithApiHost(t *testing.T) {
 }
 
 func TestWithTesting(t *testing.T) {
-	s := Suite().Init(WithTesting(t))
+	s := Suite().Init(with.Testing(t))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
 	raw.runInits()
@@ -57,7 +59,7 @@ func TestWithTesting(t *testing.T) {
 }
 
 func TestWithVar(t *testing.T) {
-	s := Suite().Init(WithVar("foo", "bar"))
+	s := Suite().Init(with.Var("foo", "bar"))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
 	raw.runInits()
@@ -65,7 +67,7 @@ func TestWithVar(t *testing.T) {
 }
 
 func TestWithCookie(t *testing.T) {
-	s := Suite().Init(WithCookie(&http.Cookie{Name: "foo", Value: "bar"}))
+	s := Suite().Init(with.Cookie(&http.Cookie{Name: "foo", Value: "bar"}))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
 	raw.runInits()
@@ -74,7 +76,7 @@ func TestWithCookie(t *testing.T) {
 }
 
 func TestWithReportCoverage(t *testing.T) {
-	s := Suite().Init(WithReportCoverage(func(coverage *coverage.Coverage) {}))
+	s := Suite().Init(with.ReportCoverage(func(coverage *coverage.Coverage) {}))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
 	raw.runInits()
@@ -82,7 +84,7 @@ func TestWithReportCoverage(t *testing.T) {
 }
 
 func TestWithCoverageCollector(t *testing.T) {
-	s := Suite().Init(WithCoverageCollector(coverage.NewNullCoverage()))
+	s := Suite().Init(with.CoverageCollector(coverage.NewNullCoverage()))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
 	raw.runInits()
@@ -90,7 +92,7 @@ func TestWithCoverageCollector(t *testing.T) {
 }
 
 func TestWithOAS(t *testing.T) {
-	s := Suite().Init(WithOAS(strings.NewReader("")))
+	s := Suite().Init(with.OAS(strings.NewReader("")))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
 	raw.runInits()
@@ -98,7 +100,7 @@ func TestWithOAS(t *testing.T) {
 }
 
 func TestWithRepeats(t *testing.T) {
-	s := Suite().Init(WithRepeats(10, true, func(si SuiteInit) {}))
+	s := Suite().Init(with.Repeats(10, true, func() {}))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
 	raw.runInits()
@@ -109,7 +111,7 @@ func TestWithRepeats(t *testing.T) {
 
 func TestWithLogging(t *testing.T) {
 	nw := &nullWriter{}
-	s := Suite().Init(WithLogging(nw, nw))
+	s := Suite().Init(with.Logging(nw, nw))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
 	raw.runInits()
