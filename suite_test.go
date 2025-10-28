@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-andiamo/marrow/coverage"
+	"github.com/go-andiamo/marrow/with"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -74,27 +75,27 @@ func TestSuite(t *testing.T) {
 		AddRow("foo3", 3, true))
 	var cov *coverage.Coverage
 	s.Init(
-		WithOAS(specF),
-		WithDatabase(db),
-		WithReportCoverage(func(c *coverage.Coverage) {
+		with.OAS(specF),
+		with.Database(db),
+		with.ReportCoverage(func(c *coverage.Coverage) {
 			cov = c
 		}),
-		WithTesting(t),
-		WithRepeats(10, false, func(si SuiteInit) {
+		with.Testing(t),
+		with.Repeats(10, false, func() {
+			// reset the mock db...
 			mock.ExpectQuery("").WillReturnRows(sqlmock.NewRows([]string{"foo_col", "bar_col", "baz_col"}).
 				AddRow("foo1", 1, true).
 				AddRow("foo2", 2, false).
 				AddRow("foo3", 3, true))
 		}),
-		WithHttpDo(&dummyDo{
+		with.HttpDo(&dummyDo{
 			status: http.StatusOK,
 			body:   []byte(`{"foo": "bar"}`),
 		}),
-		WithVar("OK", 201)).
+		with.Var("OK", 201)).
 		Run()
-	_ = cov
+
 	require.NotNil(t, cov)
-	//fmt.Printf("coverage: %+v\n", coverage)
 	stats, ok := cov.Timings.Stats(false)
 	require.True(t, ok)
 	assert.Equal(t, 14, stats.Count)

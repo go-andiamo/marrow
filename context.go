@@ -4,6 +4,7 @@ import (
 	gctx "context"
 	"database/sql"
 	"encoding/json"
+	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
 	"github.com/go-andiamo/marrow/testing"
 	"net/http"
@@ -43,22 +44,15 @@ type Context interface {
 	run(name string, r Runnable) bool
 }
 
-type DatabaseArgMarkers int
-
-const (
-	PositionalDbArgs DatabaseArgMarkers = iota
-	NumberedDbArgs
-)
-
 type context struct {
 	coverage     coverage.Collector
-	httpDo       HttpDo
+	httpDo       common.HttpDo
 	host         string
 	vars         map[Var]any
 	db           *sql.DB
 	testing      testing.Helper
 	currTesting  []testing.Helper
-	dbArgMarkers DatabaseArgMarkers
+	dbArgMarkers common.DatabaseArgMarkers
 	currEndpoint Endpoint_
 	currMethod   Method_
 	currRequest  *http.Request
@@ -130,7 +124,7 @@ func (c *context) DbInsert(tableName string, row Columns) (err error) {
 	cols := make([]string, 0, len(row))
 	i := 0
 	addMarker := func() {
-		if c.dbArgMarkers == PositionalDbArgs {
+		if c.dbArgMarkers == common.PositionalDbArgs {
 			markers = append(markers, "?")
 		} else {
 			i++
