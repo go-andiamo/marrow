@@ -112,8 +112,12 @@ func (s *suite) SetLogging(stdout io.Writer, stderr io.Writer) {
 }
 
 func (s *suite) Init(withs ...with.With) Suite_ {
-	s.withs = append(s.withs, withs...)
-	return s
+	return &suite{
+		endpoints: s.endpoints,
+		withs:     append(s.withs, withs...),
+		vars:      make(map[Var]any),
+		cookies:   make(map[string]*http.Cookie),
+	}
 }
 
 func (s *suite) runInits() {
@@ -130,11 +134,7 @@ func (s *suite) Run() error {
 	if do == nil {
 		do = http.DefaultClient
 	}
-	host := s.host
-	if host == "" {
-		host = "localhost"
-	}
-	var cov coverage.Collector = coverage.NewNullCoverage()
+	cov := coverage.NewNullCoverage()
 	if s.covCollector != nil {
 		cov = s.covCollector
 	}
@@ -158,7 +158,7 @@ func (s *suite) Run() error {
 		s.stderr = os.Stderr
 	}
 	t := htesting.NewHelper(s.testing, s.stdout, s.stderr)
-	ctx := s.initContext(cov, do, t, host)
+	ctx := s.initContext(cov, do, t)
 	for _, e := range s.endpoints {
 		if !ctx.run(e.Url(), e) {
 			break
@@ -196,10 +196,14 @@ func (s *suite) Run() error {
 	return nil
 }
 
-func (s *suite) initContext(cov coverage.Collector, do common.HttpDo, t htesting.Helper, host string) *context {
+func (s *suite) initContext(cov coverage.Collector, do common.HttpDo, t htesting.Helper) *context {
 	result := newContext()
 	result.coverage = cov
 	result.httpDo = do
+	host := s.host
+	if host == "" {
+		host = "localhost"
+	}
 	result.host = fmt.Sprintf("http://%s:%d", host, s.port)
 	result.db = s.db
 	result.dbArgMarkers = s.dbArgMarkers
