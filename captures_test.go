@@ -18,7 +18,7 @@ func Test_setVar(t *testing.T) {
 	assert.Equal(t, "foo", c.Name())
 	assert.NotNil(t, c.Frame())
 
-	ctx := newContext(nil)
+	ctx := newTestContext(nil)
 	err := c.Run(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, "bar", ctx.vars["foo"])
@@ -31,7 +31,7 @@ func Test_clearVars(t *testing.T) {
 	assert.Equal(t, "CLEAR VARS", c.Name())
 	assert.NotNil(t, c.Frame())
 
-	ctx := newContext(map[Var]any{"foo": "bar"})
+	ctx := newTestContext(map[Var]any{"foo": "bar"})
 	err := c.Run(ctx)
 	require.NoError(t, err)
 	assert.Empty(t, ctx.vars)
@@ -50,7 +50,7 @@ func Test_dbInsert(t *testing.T) {
 	require.NoError(t, err)
 	mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 	defer db.Close()
-	ctx := newContext(nil)
+	ctx := newTestContext(nil)
 	ctx.db = db
 	err = c.Run(ctx)
 	require.NoError(t, err)
@@ -68,7 +68,7 @@ func Test_dbExec(t *testing.T) {
 	require.NoError(t, err)
 	mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 	defer db.Close()
-	ctx := newContext(nil)
+	ctx := newTestContext(nil)
 	ctx.db = db
 	err = c.Run(ctx)
 	require.NoError(t, err)
@@ -86,7 +86,7 @@ func Test_dbClearTable(t *testing.T) {
 	require.NoError(t, err)
 	mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 	defer db.Close()
-	ctx := newContext(nil)
+	ctx := newTestContext(nil)
 	ctx.db = db
 	err = c.Run(ctx)
 	require.NoError(t, err)
@@ -103,7 +103,7 @@ func Test_userDefinedCapture(t *testing.T) {
 	assert.Equal(t, "(User Defined PreCapture)", c.Name())
 	assert.NotNil(t, c.Frame())
 
-	ctx := newContext(nil)
+	ctx := newTestContext(nil)
 	err := c.Run(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, "bar", ctx.vars["foo"])
@@ -120,7 +120,7 @@ func Test_setCookie(t *testing.T) {
 	assert.Equal(t, "SET COOKIE foo", c.Name())
 	assert.NotNil(t, c.Frame())
 
-	ctx := newContext(nil)
+	ctx := newTestContext(nil)
 	err := c.Run(ctx)
 	require.NoError(t, err)
 	assert.Len(t, ctx.cookieJar, 1)
@@ -134,7 +134,7 @@ func Test_storeCookie(t *testing.T) {
 	assert.Equal(t, "STORE COOKIE foo", c.Name())
 	assert.NotNil(t, c.Frame())
 
-	ctx := newContext(nil)
+	ctx := newTestContext(nil)
 	err := c.Run(ctx)
 	require.Error(t, err)
 

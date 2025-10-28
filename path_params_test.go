@@ -14,7 +14,7 @@ func Test_pathParams_resolve(t *testing.T) {
 			Var("bar"),
 		}
 		assert.Equal(t, urit.Positions, pp.VarsType())
-		ctx := newContext(map[Var]any{
+		ctx := newTestContext(map[Var]any{
 			"bar": 42,
 		})
 		ppr, err := pp.resolve(ctx)
@@ -26,7 +26,7 @@ func Test_pathParams_resolve(t *testing.T) {
 			"foo",
 			Var("bar"),
 		}
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		_, err := pp.resolve(ctx)
 		require.Error(t, err)
 	})
@@ -38,7 +38,7 @@ func Test_pathParams_GetPositional(t *testing.T) {
 		Var("bar"),
 	}
 	assert.Equal(t, 2, pp.Len())
-	ctx := newContext(map[Var]any{
+	ctx := newTestContext(map[Var]any{
 		"bar": 42,
 	})
 	ppr, err := pp.resolve(ctx)

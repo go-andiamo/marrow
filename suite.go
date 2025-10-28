@@ -158,16 +158,7 @@ func (s *suite) Run() error {
 		s.stderr = os.Stderr
 	}
 	t := htesting.NewHelper(s.testing, s.stdout, s.stderr)
-	ctx := &context{
-		coverage:     cov,
-		httpDo:       do,
-		host:         fmt.Sprintf("http://%s:%d", host, s.port),
-		db:           s.db,
-		dbArgMarkers: s.dbArgMarkers,
-		testing:      t,
-		vars:         maps.Clone(s.vars),
-		cookieJar:    maps.Clone(s.cookies),
-	}
+	ctx := s.initContext(cov, do, t, host)
 	for _, e := range s.endpoints {
 		if !ctx.run(e.Url(), e) {
 			break
@@ -203,4 +194,21 @@ func (s *suite) Run() error {
 		s.reportCov(actualCov)
 	}
 	return nil
+}
+
+func (s *suite) initContext(cov coverage.Collector, do common.HttpDo, t htesting.Helper, host string) *context {
+	result := newContext()
+	result.coverage = cov
+	result.httpDo = do
+	result.host = fmt.Sprintf("http://%s:%d", host, s.port)
+	result.db = s.db
+	result.dbArgMarkers = s.dbArgMarkers
+	result.testing = t
+	for k, v := range s.vars {
+		result.vars[k] = v
+	}
+	for k, v := range s.cookies {
+		result.cookieJar[k] = v
+	}
+	return result
 }

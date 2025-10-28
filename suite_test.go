@@ -114,9 +114,13 @@ func TestSuite(t *testing.T) {
 type dummyDo struct {
 	status int
 	body   []byte
+	err    error
 }
 
 func (d *dummyDo) Do(req *http.Request) (*http.Response, error) {
+	if d.err != nil {
+		return nil, d.err
+	}
 	return &http.Response{
 		StatusCode: d.status,
 		Body:       io.NopCloser(bytes.NewReader(d.body)),

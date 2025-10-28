@@ -12,7 +12,7 @@ func TestSetVar(t *testing.T) {
 	assert.Equal(t, After, w.When())
 	assert.NotNil(t, w.Frame())
 
-	ctx := newContext(nil)
+	ctx := newTestContext(nil)
 	err := w.Run(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, "bar", ctx.vars["foo"])
@@ -23,7 +23,7 @@ func TestClearVars(t *testing.T) {
 	assert.Equal(t, After, w.When())
 	assert.NotNil(t, w.Frame())
 
-	ctx := newContext(map[Var]any{"foo": "bar"})
+	ctx := newTestContext(map[Var]any{"foo": "bar"})
 	err := w.Run(ctx)
 	require.NoError(t, err)
 	assert.Empty(t, ctx.vars)
@@ -38,7 +38,7 @@ func TestDbInsert(t *testing.T) {
 	require.NoError(t, err)
 	mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 	defer db.Close()
-	ctx := newContext(nil)
+	ctx := newTestContext(nil)
 	ctx.db = db
 	err = w.Run(ctx)
 	require.NoError(t, err)
@@ -53,7 +53,7 @@ func TestDbExec(t *testing.T) {
 	require.NoError(t, err)
 	mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 	defer db.Close()
-	ctx := newContext(nil)
+	ctx := newTestContext(nil)
 	ctx.db = db
 	err = w.Run(ctx)
 	require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestDbClearTable(t *testing.T) {
 	require.NoError(t, err)
 	mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 	defer db.Close()
-	ctx := newContext(nil)
+	ctx := newTestContext(nil)
 	ctx.db = db
 	err = w.Run(ctx)
 	require.NoError(t, err)

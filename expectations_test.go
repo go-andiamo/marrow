@@ -48,14 +48,14 @@ func Test_expectStatusCode(t *testing.T) {
 	assert.NotNil(t, exp.Frame())
 	assert.False(t, exp.IsRequired())
 	t.Run("met", func(t *testing.T) {
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		ctx.currResponse = &http.Response{StatusCode: http.StatusConflict}
 		unmet, err := exp.Met(ctx)
 		assert.NoError(t, unmet)
 		assert.NoError(t, err)
 	})
 	t.Run("unmet", func(t *testing.T) {
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		ctx.currResponse = &http.Response{StatusCode: http.StatusNotFound}
 		unmet, err := exp.Met(ctx)
 		assert.Error(t, unmet)
@@ -67,7 +67,7 @@ func Test_expectStatusCode(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, umerr.Actual().Original)
 	})
 	t.Run("missing var", func(t *testing.T) {
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		ctx.currResponse = &http.Response{StatusCode: http.StatusNotFound}
 		exp := &expectStatusCode{
 			name:   "Expect Status Code",
@@ -78,7 +78,7 @@ func Test_expectStatusCode(t *testing.T) {
 		assert.Error(t, err)
 	})
 	t.Run("expect string", func(t *testing.T) {
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		ctx.currResponse = &http.Response{StatusCode: http.StatusNotFound}
 		exp := &expectStatusCode{
 			name:   "Expect Status Code",
@@ -90,7 +90,7 @@ func Test_expectStatusCode(t *testing.T) {
 		assert.NoError(t, err)
 	})
 	t.Run("expect int64", func(t *testing.T) {
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		ctx.currResponse = &http.Response{StatusCode: http.StatusNotFound}
 		exp := &expectStatusCode{
 			name:   "Expect Status Code",
@@ -102,7 +102,7 @@ func Test_expectStatusCode(t *testing.T) {
 		assert.NoError(t, err)
 	})
 	t.Run("invalid type", func(t *testing.T) {
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		ctx.currResponse = &http.Response{StatusCode: http.StatusNotFound}
 		exp := &expectStatusCode{
 			name:   "Expect Status Code",
@@ -166,7 +166,7 @@ func Test_match(t *testing.T) {
 			regex: "[a-z]{3}",
 			frame: framing.NewFrame(0),
 		}
-		_, err := exp.Met(newContext(nil))
+		_, err := exp.Met(newTestContext(nil))
 		assert.Error(t, err)
 	})
 	t.Run("unmet (int var)", func(t *testing.T) {
@@ -175,7 +175,7 @@ func Test_match(t *testing.T) {
 			regex: "[a-z]{3}",
 			frame: framing.NewFrame(0),
 		}
-		unmet, err := exp.Met(newContext(map[Var]any{
+		unmet, err := exp.Met(newTestContext(map[Var]any{
 			"foo": 42,
 		}))
 		assert.Error(t, unmet)
@@ -219,7 +219,7 @@ func Test_lenCheck(t *testing.T) {
 			length: 3,
 			frame:  framing.NewFrame(0),
 		}
-		unmet, err := exp.Met(newContext(nil))
+		unmet, err := exp.Met(newTestContext(nil))
 		assert.NoError(t, unmet)
 		assert.NoError(t, err)
 	})
@@ -229,7 +229,7 @@ func Test_lenCheck(t *testing.T) {
 			length: 3,
 			frame:  framing.NewFrame(0),
 		}
-		unmet, err := exp.Met(newContext(nil))
+		unmet, err := exp.Met(newTestContext(nil))
 		assert.NoError(t, unmet)
 		assert.NoError(t, err)
 	})
@@ -239,7 +239,7 @@ func Test_lenCheck(t *testing.T) {
 			length: 3,
 			frame:  framing.NewFrame(0),
 		}
-		unmet, err := exp.Met(newContext(nil))
+		unmet, err := exp.Met(newTestContext(nil))
 		assert.NoError(t, unmet)
 		assert.NoError(t, err)
 	})
@@ -249,7 +249,7 @@ func Test_lenCheck(t *testing.T) {
 			length: 3,
 			frame:  framing.NewFrame(0),
 		}
-		unmet, err := exp.Met(newContext(nil))
+		unmet, err := exp.Met(newTestContext(nil))
 		assert.NoError(t, unmet)
 		assert.NoError(t, err)
 	})
@@ -259,7 +259,7 @@ func Test_lenCheck(t *testing.T) {
 			length: 3,
 			frame:  framing.NewFrame(0),
 		}
-		unmet, err := exp.Met(newContext(nil))
+		unmet, err := exp.Met(newTestContext(nil))
 		assert.NoError(t, unmet)
 		assert.NoError(t, err)
 	})
@@ -269,7 +269,7 @@ func Test_lenCheck(t *testing.T) {
 			length: 4,
 			frame:  framing.NewFrame(0),
 		}
-		unmet, err := exp.Met(newContext(nil))
+		unmet, err := exp.Met(newTestContext(nil))
 		assert.Error(t, unmet)
 		assert.NoError(t, err)
 	})
@@ -279,7 +279,7 @@ func Test_lenCheck(t *testing.T) {
 			length: 4,
 			frame:  framing.NewFrame(0),
 		}
-		unmet, err := exp.Met(newContext(nil))
+		unmet, err := exp.Met(newTestContext(nil))
 		assert.Error(t, unmet)
 		assert.NoError(t, err)
 	})
@@ -289,7 +289,7 @@ func Test_lenCheck(t *testing.T) {
 			length: 3,
 			frame:  framing.NewFrame(0),
 		}
-		_, err := exp.Met(newContext(nil))
+		_, err := exp.Met(newTestContext(nil))
 		assert.Error(t, err)
 	})
 }
@@ -359,7 +359,7 @@ func Test_matchType(t *testing.T) {
 			typ:   Type[string](),
 			frame: framing.NewFrame(0),
 		}
-		_, err := exp.Met(newContext(nil))
+		_, err := exp.Met(newTestContext(nil))
 		assert.Error(t, err)
 	})
 }
@@ -402,7 +402,7 @@ func Test_nilCheck(t *testing.T) {
 			value: Var("foo"),
 			frame: framing.NewFrame(0),
 		}
-		_, err := exp.Met(newContext(nil))
+		_, err := exp.Met(newTestContext(nil))
 		assert.Error(t, err)
 	})
 }
@@ -445,7 +445,7 @@ func Test_notNilCheck(t *testing.T) {
 			value: Var("foo"),
 			frame: framing.NewFrame(0),
 		}
-		_, err := exp.Met(newContext(nil))
+		_, err := exp.Met(newTestContext(nil))
 		assert.Error(t, err)
 	})
 }

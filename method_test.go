@@ -59,7 +59,7 @@ func TestMethod_BuildRequest(t *testing.T) {
 			"foo": Var("bar"),
 		})
 		m.UseCookie("session")
-		ctx := newContext(map[Var]any{
+		ctx := newTestContext(map[Var]any{
 			"foo":  "aaa",
 			"bar":  Var("bar2"),
 			"bar2": 42,
@@ -86,7 +86,7 @@ func TestMethod_BuildRequest(t *testing.T) {
 	t.Run("header fail", func(t *testing.T) {
 		m := Method("", "")
 		m.RequestHeader("X-Foo", Var("foo"))
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		ctx.currEndpoint = Endpoint("/foos", "").(*endpoint)
 		raw := m.(*method)
 		_, ok := raw.buildRequest(ctx)
@@ -98,7 +98,7 @@ func TestMethod_BuildRequestUrl(t *testing.T) {
 	m := Method(GET, "")
 	m.PathParam(Var("foo")).PathParam(Var("bar"))
 	m.QueryParam("q1", nil).QueryParam("q2", true).QueryParam("q3", Var("q3"))
-	ctx := newContext(map[Var]any{
+	ctx := newTestContext(map[Var]any{
 		"foo":  "aaa",
 		"bar":  Var("bar2"),
 		"bar2": 42,
@@ -119,7 +119,7 @@ func TestMethod_BuildRequestBody(t *testing.T) {
 		m.RequestBody(map[string]any{
 			"foo": Var("foo"),
 		})
-		ctx := newContext(map[Var]any{
+		ctx := newTestContext(map[Var]any{
 			"foo": 42,
 		})
 		raw := m.(*method)
@@ -135,7 +135,7 @@ func TestMethod_BuildRequestBody(t *testing.T) {
 		m.RequestMarshal(func(ctx Context, body any) ([]byte, error) {
 			return []byte("custom"), nil
 		})
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		raw := m.(*method)
 		body, err := raw.buildRequestBody(ctx)
 		require.NoError(t, err)
@@ -278,7 +278,7 @@ func Test_normalizeBody(t *testing.T) {
 func TestMethod_unmarshalResponseBody(t *testing.T) {
 	t.Run("nil response body", func(t *testing.T) {
 		response := &http.Response{}
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		m := &method{}
 		ok := m.unmarshalResponseBody(ctx, response)
 		require.True(t, ok)
@@ -288,7 +288,7 @@ func TestMethod_unmarshalResponseBody(t *testing.T) {
 		response := &http.Response{
 			Body: io.NopCloser(bytes.NewReader([]byte(`{"foo":42}`))),
 		}
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		m := &method{}
 		ok := m.unmarshalResponseBody(ctx, response)
 		require.True(t, ok)
@@ -299,7 +299,7 @@ func TestMethod_unmarshalResponseBody(t *testing.T) {
 		response := &http.Response{
 			Body: io.NopCloser(bytes.NewReader([]byte(`{invalid json`))),
 		}
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		m := &method{}
 		ok := m.unmarshalResponseBody(ctx, response)
 		require.False(t, ok)
@@ -309,7 +309,7 @@ func TestMethod_unmarshalResponseBody(t *testing.T) {
 		response := &http.Response{
 			Body: io.NopCloser(bytes.NewReader([]byte(`{"foo":42}`))),
 		}
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		m := &method{}
 		m.ResponseUnmarshal(func(response *http.Response) (any, error) {
 			var body any
@@ -325,7 +325,7 @@ func TestMethod_unmarshalResponseBody(t *testing.T) {
 		response := &http.Response{
 			Body: io.NopCloser(bytes.NewReader([]byte(`{"foo":42}`))),
 		}
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		m := &method{}
 		m.ResponseUnmarshal(func(response *http.Response) (any, error) {
 			return nil, errors.New("fooey")
@@ -338,7 +338,7 @@ func TestMethod_unmarshalResponseBody(t *testing.T) {
 
 func TestMethod_Run(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		ctx.httpDo = &dummyDo{
 			status: http.StatusOK,
 			body:   []byte(`{"foo":42}`),
@@ -370,7 +370,7 @@ func TestMethod_Run(t *testing.T) {
 		assert.Len(t, mc.Met, 2)
 	})
 	t.Run("pre-capture fails", func(t *testing.T) {
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		ctx.currEndpoint = Endpoint("/foos", "")
 		cov := coverage.NewCoverage()
 		ctx.coverage = cov
@@ -389,7 +389,7 @@ func TestMethod_Run(t *testing.T) {
 		assert.Len(t, mc.Failures, 1)
 	})
 	t.Run("post-capture fails", func(t *testing.T) {
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		ctx.httpDo = &dummyDo{
 			status: http.StatusOK,
 			body:   []byte(`{"foo":42}`),
@@ -423,7 +423,7 @@ func TestMethod_Run(t *testing.T) {
 		assert.Len(t, ec.Skipped, 1)
 	})
 	t.Run("expectation met & unmet", func(t *testing.T) {
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		ctx.httpDo = &dummyDo{
 			status: http.StatusOK,
 			body:   []byte(`{"foo":42}`),
@@ -452,7 +452,7 @@ func TestMethod_Run(t *testing.T) {
 		assert.Len(t, ec.Met, 1)
 	})
 	t.Run("expectation unmet - fail fast", func(t *testing.T) {
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		ctx.httpDo = &dummyDo{
 			status: http.StatusOK,
 			body:   []byte(`{"foo":42}`),
@@ -481,7 +481,7 @@ func TestMethod_Run(t *testing.T) {
 		assert.Len(t, ec.Skipped, 1)
 	})
 	t.Run("expectation failure", func(t *testing.T) {
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		ctx.httpDo = &dummyDo{
 			status: http.StatusOK,
 			body:   []byte(`{"foo":42}`),

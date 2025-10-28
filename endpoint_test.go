@@ -150,7 +150,7 @@ func TestEndpoint_Run(t *testing.T) {
 			),
 		),
 	)
-	ctx := newContext(nil)
+	ctx := newTestContext(nil)
 	cov := coverage.NewCoverage()
 	ctx.coverage = cov
 	ctx.httpDo = &dummyDo{status: 200, body: []byte(`{}`)}
@@ -167,7 +167,7 @@ func TestEndpoint_Run_WithFailures(t *testing.T) {
 			Endpoint("/foos", "", SetVar(Before, "foo", Var("bar"))),
 			SetVar(After, "foo", Var("bar")),
 		)
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		cov := coverage.NewCoverage()
 		ctx.coverage = cov
 		ctx.httpDo = &dummyDo{status: 200, body: []byte(`{}`)}
@@ -182,7 +182,7 @@ func TestEndpoint_Run_WithFailures(t *testing.T) {
 			Endpoint("/foos", "", SetVar(Before, "foo", Var("bar"))),
 			SetVar(After, "foo", Var("bar")),
 		)
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		cov := coverage.NewCoverage()
 		ctx.coverage = cov
 		ctx.httpDo = &dummyDo{status: 200}
@@ -196,7 +196,7 @@ func TestEndpoint_Run_WithFailures(t *testing.T) {
 			Endpoint("/foos", "", SetVar(Before, "foo", Var("bar"))),
 			SetVar(After, "foo", Var("bar")),
 		)
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		cov := coverage.NewCoverage()
 		ctx.coverage = cov
 		ctx.httpDo = &dummyDo{status: 200}
@@ -209,7 +209,7 @@ func TestEndpoint_Run_WithFailures(t *testing.T) {
 		e := Endpoint("/api", "",
 			SetVar(After, "foo", Var("bar")),
 		)
-		ctx := newContext(nil)
+		ctx := newTestContext(nil)
 		cov := coverage.NewCoverage()
 		ctx.coverage = cov
 		ctx.httpDo = &dummyDo{status: 200, body: []byte(`{}`)}

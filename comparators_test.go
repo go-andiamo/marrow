@@ -62,14 +62,14 @@ func Test_comparator_Met_WithNils(t *testing.T) {
 func Test_comparator_Met_WithResolveFailures(t *testing.T) {
 	t.Run("left side", func(t *testing.T) {
 		c := newComparator(0, "", Var("missing"), "foo", compEqual, false, false)
-		unmet, err := c.Met(newContext(nil))
+		unmet, err := c.Met(newTestContext(nil))
 		assert.NoError(t, unmet)
 		assert.Error(t, err)
 		assert.Equal(t, "comparator failed to resolve value v1 (left): unknown variable \"missing\"", err.Error())
 	})
 	t.Run("right side", func(t *testing.T) {
 		c := newComparator(0, "", "foo", Var("missing"), compEqual, false, false)
-		unmet, err := c.Met(newContext(nil))
+		unmet, err := c.Met(newTestContext(nil))
 		assert.NoError(t, unmet)
 		assert.Error(t, err)
 		assert.Equal(t, "comparator failed to resolve value v2 (right): unknown variable \"missing\"", err.Error())

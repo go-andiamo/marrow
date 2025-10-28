@@ -57,14 +57,14 @@ func TestResolveValue(t *testing.T) {
 		},
 		{
 			value: TemplateString("{$foo}..."),
-			ctx: newContext(map[Var]any{
+			ctx: newTestContext(map[Var]any{
 				"foo": 1,
 			}),
 			expect: "1...",
 		},
 		{
 			value: TemplateString("{$foo}-{$bar}"),
-			ctx: newContext(map[Var]any{
+			ctx: newTestContext(map[Var]any{
 				"foo": 1,
 				"bar": 2,
 			}),
@@ -72,14 +72,14 @@ func TestResolveValue(t *testing.T) {
 		},
 		{
 			value: TemplateString("\\{$foo}-{$bar}"),
-			ctx: newContext(map[Var]any{
+			ctx: newTestContext(map[Var]any{
 				"bar": 2,
 			}),
 			expect: "{$foo}-2",
 		},
 		{
 			value: TemplateString("\\\\\\{$foo}-{$bar}"),
-			ctx: newContext(map[Var]any{
+			ctx: newTestContext(map[Var]any{
 				"foo": 1,
 				"bar": 2,
 			}),
@@ -87,28 +87,28 @@ func TestResolveValue(t *testing.T) {
 		},
 		{
 			value: TemplateString("{$foo}-{$bar"),
-			ctx: newContext(map[Var]any{
+			ctx: newTestContext(map[Var]any{
 				"foo": 1,
 			}),
 			expect: "1-{$bar",
 		},
 		{
 			value: TemplateString("{$foo}"),
-			ctx: newContext(map[Var]any{
+			ctx: newTestContext(map[Var]any{
 				"foo": Var("bar"),
 			}),
 			expectErr: "unknown variable \"bar\"",
 		},
 		{
 			value: Var("foo"),
-			ctx: newContext(map[Var]any{
+			ctx: newTestContext(map[Var]any{
 				"foo": 42,
 			}),
 			expect: 42,
 		},
 		{
 			value: Var("foo"),
-			ctx: newContext(map[Var]any{
+			ctx: newTestContext(map[Var]any{
 				"foo": Var("bar"),
 				"bar": 42,
 			}),
@@ -169,12 +169,12 @@ func TestResolveValue(t *testing.T) {
 		},
 		{
 			value:     JsonPath(Var("test_var"), "."),
-			ctx:       newContext(nil),
+			ctx:       newTestContext(nil),
 			expectErr: "unknown variable",
 		},
 		{
 			value:  JsonPath(Var("test_var"), "foo"),
-			ctx:    newContext(map[Var]any{"test_var": map[string]any{"foo": "bar"}}),
+			ctx:    newTestContext(map[Var]any{"test_var": map[string]any{"foo": "bar"}}),
 			expect: "bar",
 		},
 		{
@@ -201,7 +201,7 @@ func TestResolveValue(t *testing.T) {
 		},
 		{
 			value: Query("SELECT * FROM table WHERE foo = ?", Var("test_var")),
-			ctx:   newContext(map[Var]any{"test_var": "bar"}),
+			ctx:   newTestContext(map[Var]any{"test_var": "bar"}),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, mock, err := sqlmock.New()
 				require.NoError(t, err)
@@ -263,7 +263,7 @@ func TestResolveValue(t *testing.T) {
 		},
 		{
 			value: QueryRows("SELECT * FROM table WHERE foo = ?", Var("test_var")),
-			ctx:   newContext(map[Var]any{"test_var": "bar"}),
+			ctx:   newTestContext(map[Var]any{"test_var": "bar"}),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, mock, err := sqlmock.New()
 				require.NoError(t, err)
@@ -359,7 +359,7 @@ func TestResolveValue(t *testing.T) {
 		},
 		{
 			value: JsonPath(JsonPath(JsonPath(Var("test_var"), LAST), "foo"), "-2"),
-			ctx: newContext(map[Var]any{
+			ctx: newTestContext(map[Var]any{
 				"test_var": []any{
 					map[string]any{"foo": []any{1, 2, 3}},
 					map[string]any{"foo": []any{4, 5, 6}},
@@ -369,7 +369,7 @@ func TestResolveValue(t *testing.T) {
 		},
 		{
 			value: JsonTraverse(Var("test_var"), LAST, "foo", -2),
-			ctx: newContext(map[Var]any{
+			ctx: newTestContext(map[Var]any{
 				"test_var": []any{
 					map[string]any{"foo": []any{1, 2, 3}},
 					map[string]any{"foo": []any{4, 5, 6}},
@@ -379,7 +379,7 @@ func TestResolveValue(t *testing.T) {
 		},
 		{
 			value: JsonTraverse(Var("test_var")),
-			ctx: newContext(map[Var]any{
+			ctx: newTestContext(map[Var]any{
 				"test_var": []any{
 					map[string]any{"foo": []any{1, 2, 3}},
 					map[string]any{"foo": []any{4, 5, 6}},
@@ -392,7 +392,7 @@ func TestResolveValue(t *testing.T) {
 		},
 		{
 			value: JsonTraverse(Var("test_var"), ".", LAST, ".", "foo", "", -2, ".", true),
-			ctx: newContext(map[Var]any{
+			ctx: newTestContext(map[Var]any{
 				"test_var": []any{
 					map[string]any{"foo": []any{1, 2, 3}},
 					map[string]any{"foo": []any{4, 5, 6}},
@@ -417,7 +417,7 @@ func TestResolveValue(t *testing.T) {
 			value: map[string]any{
 				"foo": Var("foo"),
 			},
-			ctx: newContext(map[Var]any{
+			ctx: newTestContext(map[Var]any{
 				"foo": Var("bar"),
 				"bar": 42,
 			}),
@@ -431,7 +431,7 @@ func TestResolveValue(t *testing.T) {
 		},
 		{
 			value: []any{Var("foo")},
-			ctx: newContext(map[Var]any{
+			ctx: newTestContext(map[Var]any{
 				"foo": Var("bar"),
 				"bar": 42,
 			}),
@@ -445,7 +445,7 @@ func TestResolveValue(t *testing.T) {
 			value: map[string]any{
 				"foo": []any{Var("foo")},
 			},
-			ctx: newContext(map[Var]any{
+			ctx: newTestContext(map[Var]any{
 				"foo": Var("bar"),
 				"bar": 42,
 			}),
@@ -473,7 +473,7 @@ func TestResolveValue(t *testing.T) {
 		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
 			ctx := tc.ctx
 			if ctx == nil {
-				ctx = newContext(nil)
+				ctx = newTestContext(nil)
 			}
 			ctx.currResponse = tc.response
 			ctx.currBody = tc.body
