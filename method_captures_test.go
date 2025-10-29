@@ -131,3 +131,37 @@ func TestMethod_StoreCookie(t *testing.T) {
 	assert.False(t, raw.postOps[0].isExpectation)
 	assert.Equal(t, 0, raw.postOps[0].index)
 }
+
+func TestMethod_MockServicesClearAll(t *testing.T) {
+	m := Method(GET, "").
+		MockServicesClearAll(Before).
+		MockServicesClearAll(After)
+	raw, ok := m.(*method)
+	require.True(t, ok)
+	assert.Len(t, raw.preCaptures, 1)
+	assert.Len(t, raw.postCaptures, 1)
+	assert.Len(t, raw.postOps, 1)
+	assert.False(t, raw.postOps[0].isExpectation)
+	assert.Equal(t, 0, raw.postOps[0].index)
+}
+
+func TestMethod_MockServiceClear(t *testing.T) {
+	m := Method(GET, "").
+		MockServiceClear(Before, "mock").
+		MockServiceClear(After, "mock")
+	raw, ok := m.(*method)
+	require.True(t, ok)
+	assert.Len(t, raw.preCaptures, 1)
+	assert.Len(t, raw.postCaptures, 1)
+	assert.Len(t, raw.postOps, 1)
+	assert.False(t, raw.postOps[0].isExpectation)
+	assert.Equal(t, 0, raw.postOps[0].index)
+}
+
+func TestMethod_MockServiceCall(t *testing.T) {
+	m := Method(GET, "").
+		MockServiceCall("mock", "/foos", GET, 200, nil)
+	raw, ok := m.(*method)
+	require.True(t, ok)
+	assert.Len(t, raw.preCaptures, 1)
+}

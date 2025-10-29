@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
+	"github.com/go-andiamo/marrow/mocks/service"
 	"github.com/go-andiamo/marrow/testing"
 	"maps"
 	"net/http"
@@ -32,6 +33,8 @@ type Context interface {
 	DbExec(query string, args ...any) error
 	StoreCookie(cookie *http.Cookie)
 	GetCookie(name string) *http.Cookie
+	GetMockService(name string) service.MockedService
+	ClearMockServices()
 
 	setCurrentEndpoint(Endpoint_)
 	setCurrentMethod(Method_)
@@ -60,15 +63,17 @@ type context struct {
 	currResponse *http.Response
 	currBody     any
 	cookieJar    map[string]*http.Cookie
+	mockServices map[string]service.MockedService
 	failed       bool
 }
 
 func newContext() *context {
 	return &context{
-		coverage:  coverage.NewNullCoverage(),
-		vars:      make(map[Var]any),
-		cookieJar: make(map[string]*http.Cookie),
-		httpDo:    http.DefaultClient,
+		coverage:     coverage.NewNullCoverage(),
+		vars:         make(map[Var]any),
+		cookieJar:    make(map[string]*http.Cookie),
+		httpDo:       http.DefaultClient,
+		mockServices: make(map[string]service.MockedService),
 	}
 }
 
@@ -200,6 +205,16 @@ func (c *context) StoreCookie(cookie *http.Cookie) {
 
 func (c *context) GetCookie(name string) *http.Cookie {
 	return c.cookieJar[name]
+}
+
+func (c *context) GetMockService(name string) service.MockedService {
+	return c.mockServices[name]
+}
+
+func (c *context) ClearMockServices() {
+	for _, ms := range c.mockServices {
+		ms.Clear()
+	}
 }
 
 func (c *context) setCurrentEndpoint(e Endpoint_) {

@@ -184,3 +184,90 @@ func (c *storeCookie) Run(ctx Context) error {
 func (c *storeCookie) Frame() *framing.Frame {
 	return c.frame
 }
+
+type mockServicesClearAll struct {
+	frame *framing.Frame
+}
+
+var _ Capture = (*mockServicesClearAll)(nil)
+
+func (m *mockServicesClearAll) Name() string {
+	return "CLEAR ALL MOCK SERVICES"
+}
+
+func (m *mockServicesClearAll) Run(ctx Context) error {
+	ctx.ClearMockServices()
+	return nil
+}
+
+func (m *mockServicesClearAll) Frame() *framing.Frame {
+	return m.frame
+}
+
+type mockServiceClear struct {
+	name  string
+	frame *framing.Frame
+}
+
+var _ Capture = (*mockServiceClear)(nil)
+
+func (m *mockServiceClear) Name() string {
+	return "CLEAR MOCK SERVICE [" + m.name + "]"
+}
+
+func (m *mockServiceClear) Run(ctx Context) error {
+	if ms := ctx.GetMockService(m.name); ms != nil {
+		ms.Clear()
+		return nil
+	}
+	return newCaptureError(fmt.Sprintf("unknown mock service %q", m.name), nil, m)
+}
+
+func (m *mockServiceClear) Frame() *framing.Frame {
+	return m.frame
+}
+
+type mockServiceCall struct {
+	name           string
+	path           string
+	method         string
+	responseStatus int
+	responseBody   any
+	headers        []any
+	frame          *framing.Frame
+}
+
+var _ Capture = (*mockServiceCall)(nil)
+
+func (m *mockServiceCall) Name() string {
+	return "MOCK SERVICE CALL [" + m.name + "]: " + m.method + " " + m.path
+}
+
+func (m *mockServiceCall) Run(ctx Context) (err error) {
+	if ms := ctx.GetMockService(m.name); ms != nil {
+		var actualPath string
+		if actualPath, err = resolveValueString(m.path, ctx); err == nil {
+			var actualBody any
+			if actualBody, err = ResolveValue(m.responseBody, ctx); err == nil {
+				actualHdrs := make([]string, 0, len(m.headers))
+				for h := 0; h < len(m.headers) && err == nil; h += 2 {
+					actualHdrs = append(actualHdrs, fmt.Sprintf("%v", m.headers[h]))
+					var hv any
+					if hv, err = ResolveValue(m.headers[h+1], ctx); err == nil {
+						actualHdrs = append(actualHdrs, fmt.Sprintf("%v", hv))
+					}
+				}
+				if err == nil {
+					ms.MockCall(actualPath, m.method, m.responseStatus, actualBody, actualHdrs...)
+				}
+			}
+		}
+		err = wrapCaptureError(err, "", m)
+		return err
+	}
+	return newCaptureError(fmt.Sprintf("unknown mock service %q", m.name), nil, m)
+}
+
+func (m *mockServiceCall) Frame() *framing.Frame {
+	return m.frame
+}

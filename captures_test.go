@@ -152,3 +152,151 @@ func Test_storeCookie(t *testing.T) {
 	err = c.Run(ctx)
 	require.Error(t, err)
 }
+
+func Test_mockServicesClearAll(t *testing.T) {
+	c := &mockServicesClearAll{
+		frame: framing.NewFrame(0),
+	}
+	assert.Equal(t, "CLEAR ALL MOCK SERVICES", c.Name())
+	assert.NotNil(t, c.Frame())
+
+	ctx := newTestContext(nil)
+	ms := &mockMockedService{}
+	ctx.mockServices["mock"] = ms
+	err := c.Run(ctx)
+	require.NoError(t, err)
+	assert.True(t, ms.cleared)
+}
+
+func Test_mockServiceClear(t *testing.T) {
+	c := &mockServiceClear{
+		name:  "mock",
+		frame: framing.NewFrame(0),
+	}
+	assert.Equal(t, "CLEAR MOCK SERVICE [mock]", c.Name())
+	assert.NotNil(t, c.Frame())
+
+	ctx := newTestContext(nil)
+	ms := &mockMockedService{}
+	ctx.mockServices["mock"] = ms
+	err := c.Run(ctx)
+	require.NoError(t, err)
+	assert.True(t, ms.cleared)
+
+	c = &mockServiceClear{
+		name:  "unknown",
+		frame: framing.NewFrame(0),
+	}
+	err = c.Run(ctx)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown mock service ")
+}
+
+func Test_mockServiceCall(t *testing.T) {
+	t.Run("ok", func(t *testing.T) {
+		c := &mockServiceCall{
+			name:           "mock",
+			path:           "/foos/{$id}",
+			method:         http.MethodGet,
+			responseStatus: 200,
+			responseBody: map[string]any{
+				"foo": Var("foo"),
+			},
+			headers: []any{"X-Hdr-Bar", Var("bar")},
+			frame:   framing.NewFrame(0),
+		}
+
+		ctx := newTestContext(map[Var]any{
+			"id":  "123",
+			"foo": "foo-value",
+			"bar": "bar-value",
+		})
+		ms := &mockMockedService{}
+		ctx.mockServices["mock"] = ms
+		err := c.Run(ctx)
+		require.NoError(t, err)
+	})
+	t.Run("missing var in path", func(t *testing.T) {
+		c := &mockServiceCall{
+			name:           "mock",
+			path:           "/foos/{$id}",
+			method:         http.MethodGet,
+			responseStatus: 200,
+			responseBody: map[string]any{
+				"foo": Var("foo"),
+			},
+			headers: []any{"X-Hdr-Bar", Var("bar")},
+			frame:   framing.NewFrame(0),
+		}
+
+		ctx := newTestContext(map[Var]any{
+			"foo": "foo-value",
+			"bar": "bar-value",
+		})
+		ms := &mockMockedService{}
+		ctx.mockServices["mock"] = ms
+		err := c.Run(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unresolved variables in string ")
+	})
+	t.Run("missing var in body", func(t *testing.T) {
+		c := &mockServiceCall{
+			name:           "mock",
+			path:           "/foos/{$id}",
+			method:         http.MethodGet,
+			responseStatus: 200,
+			responseBody: map[string]any{
+				"foo": Var("foo"),
+			},
+			headers: []any{"X-Hdr-Bar", Var("bar")},
+			frame:   framing.NewFrame(0),
+		}
+
+		ctx := newTestContext(map[Var]any{
+			"id":  "123",
+			"bar": "bar-value",
+		})
+		ms := &mockMockedService{}
+		ctx.mockServices["mock"] = ms
+		err := c.Run(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unknown variable")
+	})
+	t.Run("missing var in headers", func(t *testing.T) {
+		c := &mockServiceCall{
+			name:           "mock",
+			path:           "/foos/{$id}",
+			method:         http.MethodGet,
+			responseStatus: 200,
+			responseBody: map[string]any{
+				"foo": Var("foo"),
+			},
+			headers: []any{"X-Hdr-Bar", Var("bar")},
+			frame:   framing.NewFrame(0),
+		}
+
+		ctx := newTestContext(map[Var]any{
+			"id":  "123",
+			"foo": "foo-value",
+		})
+		ms := &mockMockedService{}
+		ctx.mockServices["mock"] = ms
+		err := c.Run(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unknown variable")
+	})
+	t.Run("unknown mock", func(t *testing.T) {
+		c := &mockServiceCall{
+			name:           "mock",
+			path:           "/foos",
+			method:         http.MethodGet,
+			responseStatus: 200,
+			frame:          framing.NewFrame(0),
+		}
+
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unknown mock service ")
+	})
+}

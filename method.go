@@ -76,6 +76,14 @@ type methodExpectations interface {
 	FailFast() Method_
 }
 
+type methodMockService interface {
+	MockServicesClearAll(when When) Method_
+	MockServiceClear(when When, svcName string) Method_
+	MockServiceCall(svcName string, path string, method MethodName, responseStatus int, responseBody any, headers ...any) Method_
+	AssertMockServiceCalled(svcName string, path string, method MethodName) Method_
+	RequireMockServiceCalled(svcName string, path string, method MethodName) Method_
+}
+
 type Method_ interface {
 	common.Method
 
@@ -89,6 +97,7 @@ type Method_ interface {
 	StoreCookie(name string) Method_
 
 	methodExpectations
+	methodMockService
 
 	Capture(op BeforeAfter_) Method_
 	CaptureFunc(when When, fn func(Context) error) Method_
@@ -845,6 +854,73 @@ func (m *method) RequestMarshal(fn func(ctx Context, body any) ([]byte, error)) 
 
 func (m *method) ResponseUnmarshal(fn func(response *http.Response) (any, error)) Method_ {
 	m.responseUnmarshal = fn
+	return m
+}
+
+//go:noinline
+func (m *method) MockServicesClearAll(when When) Method_ {
+	if when == Before {
+		m.preCaptures = append(m.preCaptures, &mockServicesClearAll{
+			frame: framing.NewFrame(0),
+		})
+	} else {
+		m.addPostCapture(&mockServicesClearAll{
+			frame: framing.NewFrame(0),
+		})
+	}
+	return m
+}
+
+//go:noinline
+func (m *method) MockServiceClear(when When, svcName string) Method_ {
+	if when == Before {
+		m.preCaptures = append(m.preCaptures, &mockServiceClear{
+			name:  svcName,
+			frame: framing.NewFrame(0),
+		})
+	} else {
+		m.addPostCapture(&mockServiceClear{
+			name:  svcName,
+			frame: framing.NewFrame(0),
+		})
+	}
+	return m
+}
+
+//go:noinline
+func (m *method) MockServiceCall(svcName string, path string, method MethodName, responseStatus int, responseBody any, headers ...any) Method_ {
+	m.preCaptures = append(m.preCaptures, &mockServiceCall{
+		name:           svcName,
+		path:           path,
+		method:         strings.ToUpper(string(method)),
+		responseStatus: responseStatus,
+		responseBody:   responseBody,
+		headers:        headers,
+		frame:          framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertMockServiceCalled(svcName string, path string, method MethodName) Method_ {
+	m.addPostExpectation(&expectMockCall{
+		name:   svcName,
+		path:   path,
+		method: strings.ToUpper(string(method)),
+		frame:  framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireMockServiceCalled(svcName string, path string, method MethodName) Method_ {
+	m.addPostExpectation(&expectMockCall{
+		name:              svcName,
+		path:              path,
+		method:            strings.ToUpper(string(method)),
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
 	return m
 }
 
