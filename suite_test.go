@@ -159,18 +159,18 @@ func TestSuite_Run(t *testing.T) {
 		assert.Equal(t, 2, strings.Count(buf.String(), "\n    FINISHED ("))
 	})
 	t.Run("with repeats - stop on fail", func(t *testing.T) {
-		do := &dummyDo{
+		useDo := &dummyDo{
 			status: http.StatusOK,
 			body:   []byte(`{"foo":"bar"}`),
 		}
 		var buf bytes.Buffer
 		s := Suite(
 			Endpoint("/foos", "",
-				Method(GET, "").AssertOK(),
+				Method(GET, "").RequireOK(),
 			),
-		).Init(with.HttpDo(do), with.Logging(&buf, &buf), with.Repeats(2, true, func() {
-			do.status = http.StatusNotFound
-			do.body = []byte(`{}`)
+		).Init(with.HttpDo(useDo), with.Logging(&buf, &buf), with.Repeats(2, true, func() {
+			useDo.status = http.StatusNotFound
+			useDo.body = []byte(`{}`)
 		}))
 		err := s.Run()
 		require.NoError(t, err)
@@ -182,6 +182,15 @@ func TestSuite_Run(t *testing.T) {
 		assert.Contains(t, buf.String(), "//foos/GET (")
 		assert.Contains(t, buf.String(), "\n>>> REPEAT 1/2")
 		assert.Contains(t, buf.String(), "\n    FAILED (")
+	})
+	t.Run("endpoint fails", func(t *testing.T) {
+		s := Suite(
+			Endpoint("/foos", "",
+				Method(GET, "").RequireNotFound(),
+			),
+		).Init(with.HttpDo(do))
+		err := s.Run()
+		require.NoError(t, err)
 	})
 }
 

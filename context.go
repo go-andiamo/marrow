@@ -253,6 +253,7 @@ func (c *context) reportUnmet(exp Expectation, err error) {
 	c.coverage.ReportUnmet(c.currEndpoint, c.currMethod, c.currRequest, exp, err)
 	if currT := c.currentTest(); currT != nil {
 		if exp.IsRequired() {
+			c.failed = true
 			if umerr, ok := err.(UnmetError); ok {
 				currT.Log(umerr.TestFormat())
 				currT.FailNow()
@@ -267,6 +268,8 @@ func (c *context) reportUnmet(exp Expectation, err error) {
 				currT.Error(err)
 			}
 		}
+	} else if exp.IsRequired() {
+		c.failed = true
 	}
 }
 

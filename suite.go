@@ -67,11 +67,6 @@ func (s *suite) SetApiHost(host string, port int) {
 	s.port = port
 }
 
-func (s *suite) SetApiImage(image string, more ...any) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (s *suite) SetTesting(t *testing.T) {
 	s.testing = t
 }
@@ -171,6 +166,7 @@ func (s *suite) Run() error {
 		ctx.cookieJar = maps.Clone(s.cookies)
 		ctx.testing = nil
 		ctx.currTesting = nil
+		ctx.failed = false
 		for r := 0; r < s.repeats; r++ {
 			_, _ = fmt.Fprintf(s.stdout, ">>> REPEAT %d/%d\n", r+1, s.repeats)
 			for _, reset := range s.repeatResets {
