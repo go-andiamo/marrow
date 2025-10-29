@@ -449,3 +449,76 @@ func Test_notNilCheck(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func Test_expectMockCall(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		exp := &expectMockCall{
+			name:   "mock",
+			path:   "/foos",
+			method: http.MethodGet,
+			frame:  framing.NewFrame(0),
+		}
+		assert.Equal(t, "EXPECT MOCK SERVICE CALL [mock]: GET /foos", exp.Name())
+		assert.NotNil(t, exp.Frame())
+	})
+	t.Run("met", func(t *testing.T) {
+		exp := &expectMockCall{
+			name:   "mock",
+			path:   "/foos",
+			method: http.MethodGet,
+			frame:  framing.NewFrame(0),
+		}
+		ctx := newTestContext(nil)
+		ms := &mockMockedService{called: true}
+		ctx.mockServices["mock"] = ms
+
+		unmet, err := exp.Met(ctx)
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("unmet", func(t *testing.T) {
+		exp := &expectMockCall{
+			name:   "mock",
+			path:   "/foos",
+			method: http.MethodGet,
+			frame:  framing.NewFrame(0),
+		}
+		ctx := newTestContext(nil)
+		ms := &mockMockedService{called: false}
+		ctx.mockServices["mock"] = ms
+
+		unmet, err := exp.Met(ctx)
+		assert.Error(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("missing var in path", func(t *testing.T) {
+		exp := &expectMockCall{
+			name:   "mock",
+			path:   "/foos/{$id}",
+			method: http.MethodGet,
+			frame:  framing.NewFrame(0),
+		}
+		ctx := newTestContext(nil)
+		ms := &mockMockedService{called: false}
+		ctx.mockServices["mock"] = ms
+
+		unmet, err := exp.Met(ctx)
+		assert.NoError(t, unmet)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unresolved variables in string ")
+	})
+	t.Run("unknown mock service", func(t *testing.T) {
+		exp := &expectMockCall{
+			name:   "mock",
+			path:   "/foos",
+			method: http.MethodGet,
+			frame:  framing.NewFrame(0),
+		}
+		ctx := newTestContext(nil)
+
+		unmet, err := exp.Met(ctx)
+		assert.NoError(t, unmet)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unknown mock service ")
+	})
+}

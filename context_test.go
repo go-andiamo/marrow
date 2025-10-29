@@ -8,6 +8,7 @@ import (
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
 	"github.com/go-andiamo/marrow/framing"
+	"github.com/go-andiamo/marrow/mocks/service"
 	htesting "github.com/go-andiamo/marrow/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -564,9 +565,10 @@ func (m *mockRunnable) Frame() *framing.Frame {
 
 func newTestContext(vars map[Var]any) *context {
 	result := &context{
-		coverage:  coverage.NewNullCoverage(),
-		vars:      make(map[Var]any),
-		cookieJar: make(map[string]*http.Cookie),
+		coverage:     coverage.NewNullCoverage(),
+		vars:         make(map[Var]any),
+		cookieJar:    make(map[string]*http.Cookie),
+		mockServices: make(map[string]service.MockedService),
 	}
 	for k, v := range vars {
 		result.vars[k] = v

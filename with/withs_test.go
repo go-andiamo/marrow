@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
+	"github.com/go-andiamo/marrow/mocks/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -27,12 +28,13 @@ func TestWith_Initials(t *testing.T) {
 		Repeats(0, false),
 		Logging(nil, nil),
 	}
-	mock := &mockInit{called: make(map[string]struct{})}
+	mock := newMockInit()
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
 			w, ok := tc.(With)
 			require.True(t, ok)
-			require.Equal(t, w.Stage(), Initial)
+			require.Equal(t, Initial, w.Stage())
+			assert.Nil(t, w.Shutdown())
 			err := w.Init(mock)
 			require.NoError(t, err)
 		})
@@ -41,8 +43,16 @@ func TestWith_Initials(t *testing.T) {
 	assert.Len(t, mock.called, 12)
 }
 
+func newMockInit() *mockInit {
+	return &mockInit{
+		called:   make(map[string]struct{}),
+		services: make(map[string]service.MockedService),
+	}
+}
+
 type mockInit struct {
-	called map[string]struct{}
+	called   map[string]struct{}
+	services map[string]service.MockedService
 }
 
 var _ SuiteInit = (*mockInit)(nil)
@@ -93,4 +103,9 @@ func (d *mockInit) SetRepeats(n int, stopOnFailure bool, resets ...func()) {
 
 func (d *mockInit) SetLogging(stdout io.Writer, stderr io.Writer) {
 	d.called["SetLogging"] = struct{}{}
+}
+
+func (d *mockInit) AddMockService(mock service.MockedService) {
+	d.called["AddMockService:"+mock.Name()] = struct{}{}
+	d.services[mock.Name()] = mock
 }

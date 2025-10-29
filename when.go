@@ -1,6 +1,9 @@
 package marrow
 
-import "github.com/go-andiamo/marrow/framing"
+import (
+	"github.com/go-andiamo/marrow/framing"
+	"strings"
+)
 
 type BeforeAfter_ interface {
 	When() When
@@ -86,6 +89,43 @@ func DbClearTable(when When, tableName string) BeforeAfter_ {
 		do: &dbClearTable{
 			tableName: tableName,
 			frame:     framing.NewFrame(0),
+		},
+	}
+}
+
+//go:noinline
+func MockServicesClearAll(when When) BeforeAfter_ {
+	return &beforeAfter{
+		when: when,
+		do: &mockServicesClearAll{
+			frame: framing.NewFrame(0),
+		},
+	}
+}
+
+//go:noinline
+func MockServiceClear(when When, svcName string) BeforeAfter_ {
+	return &beforeAfter{
+		when: when,
+		do: &mockServiceClear{
+			name:  svcName,
+			frame: framing.NewFrame(0),
+		},
+	}
+}
+
+//go:noinline
+func MockServiceCall(when When, svcName string, path string, method MethodName, responseStatus int, responseBody any, headers ...any) BeforeAfter_ {
+	return &beforeAfter{
+		when: when,
+		do: &mockServiceCall{
+			name:           svcName,
+			path:           path,
+			method:         strings.ToUpper(string(method)),
+			responseStatus: responseStatus,
+			responseBody:   responseBody,
+			headers:        headers,
+			frame:          framing.NewFrame(0),
 		},
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
+	"github.com/go-andiamo/marrow/mocks/service"
 	"io"
 	"net/http"
 	"testing"
@@ -20,6 +21,7 @@ const (
 type With interface {
 	Init(init SuiteInit) error
 	Stage() Stage
+	Shutdown() func()
 }
 
 type SuiteInit interface {
@@ -35,6 +37,7 @@ type SuiteInit interface {
 	SetOAS(r io.Reader)
 	SetRepeats(n int, stopOnFailure bool, resets ...func())
 	SetLogging(stdout io.Writer, stderr io.Writer)
+	AddMockService(mock service.MockedService)
 }
 
 func Database(db *sql.DB) With {
@@ -118,4 +121,8 @@ func (w withFn) Init(init SuiteInit) error {
 
 func (w withFn) Stage() Stage {
 	return Initial
+}
+
+func (w withFn) Shutdown() func() {
+	return nil
 }

@@ -362,3 +362,40 @@ func (l *lenCheck) Met(ctx Context) (unmet error, err error) {
 func (l *lenCheck) Frame() *framing.Frame {
 	return l.frame
 }
+
+type expectMockCall struct {
+	name   string
+	path   string
+	method string
+	frame  *framing.Frame
+	commonExpectation
+}
+
+var _ Expectation = (*expectMockCall)(nil)
+
+func (e *expectMockCall) Name() string {
+	return "EXPECT MOCK SERVICE CALL [" + e.name + "]: " + e.method + " " + e.path
+}
+
+func (e *expectMockCall) Frame() *framing.Frame {
+	return e.frame
+}
+
+func (e *expectMockCall) Met(ctx Context) (unmet error, err error) {
+	if ms := ctx.GetMockService(e.name); ms != nil {
+		var actualPath string
+		if actualPath, err = resolveValueString(e.path, ctx); err == nil {
+			if !ms.AssertCalled(actualPath, e.method) {
+				unmet = &unmetError{
+					msg:      fmt.Sprintf("expected mock service call [%s]: %s %s", e.name, e.method, actualPath),
+					name:     e.Name(),
+					expected: OperandValue{Original: true, Resolved: true},
+					actual:   OperandValue{Original: false, Resolved: false},
+					frame:    e.frame,
+				}
+			}
+		}
+		return
+	}
+	return nil, fmt.Errorf("unknown mock service %q", e.name)
+}

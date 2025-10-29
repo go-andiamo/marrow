@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
+	"github.com/go-andiamo/marrow/mocks/service"
 	htesting "github.com/go-andiamo/marrow/testing"
 	"github.com/go-andiamo/marrow/with"
 	"io"
@@ -22,9 +23,10 @@ type Suite_ interface {
 
 func Suite(endpoints ...Endpoint_) Suite_ {
 	return &suite{
-		endpoints: endpoints,
-		vars:      make(map[Var]any),
-		cookies:   make(map[string]*http.Cookie),
+		endpoints:    endpoints,
+		vars:         make(map[Var]any),
+		cookies:      make(map[string]*http.Cookie),
+		mockServices: make(map[string]service.MockedService),
 	}
 }
 
@@ -47,6 +49,8 @@ type suite struct {
 	stopOnFailure bool
 	stdout        io.Writer
 	stderr        io.Writer
+	shutdowns     []func()
+	mockServices  map[string]service.MockedService
 }
 
 func (s *suite) SetDb(db *sql.DB) {
@@ -105,16 +109,24 @@ func (s *suite) SetLogging(stdout io.Writer, stderr io.Writer) {
 	s.stderr = stderr
 }
 
+func (s *suite) AddMockService(mock service.MockedService) {
+	if mock != nil {
+		s.mockServices[mock.Name()] = mock
+	}
+}
+
 func (s *suite) Init(withs ...with.With) Suite_ {
 	return &suite{
-		endpoints: s.endpoints,
-		withs:     append(s.withs, withs...),
-		vars:      make(map[Var]any),
-		cookies:   make(map[string]*http.Cookie),
+		endpoints:    s.endpoints,
+		withs:        append(s.withs, withs...),
+		vars:         make(map[Var]any),
+		cookies:      make(map[string]*http.Cookie),
+		mockServices: make(map[string]service.MockedService),
 	}
 }
 
 func (s *suite) runInits() error {
+	s.shutdowns = make([]func(), 0)
 	supporting := make([]with.With, 0, len(s.withs))
 	finals := make([]with.With, 0, len(s.withs))
 	for _, w := range s.withs {
@@ -127,6 +139,8 @@ func (s *suite) runInits() error {
 			default:
 				if err := w.Init(s); err != nil {
 					return err
+				} else if sdfn := w.Shutdown(); sdfn != nil {
+					s.shutdowns = append(s.shutdowns, sdfn)
 				}
 			}
 		}
@@ -134,11 +148,15 @@ func (s *suite) runInits() error {
 	for _, w := range supporting {
 		if err := w.Init(s); err != nil {
 			return err
+		} else if sdfn := w.Shutdown(); sdfn != nil {
+			s.shutdowns = append(s.shutdowns, sdfn)
 		}
 	}
 	for _, w := range finals {
 		if err := w.Init(s); err != nil {
 			return err
+		} else if sdfn := w.Shutdown(); sdfn != nil {
+			s.shutdowns = append(s.shutdowns, sdfn)
 		}
 	}
 	return nil
@@ -202,6 +220,9 @@ func (s *suite) Run() error {
 	if s.reportCov != nil {
 		s.reportCov(actualCov)
 	}
+	for _, sdfn := range s.shutdowns {
+		sdfn()
+	}
 	return nil
 }
 
@@ -219,6 +240,7 @@ func (s *suite) initContext(cov coverage.Collector, t htesting.Helper) *context 
 	result.db = s.db
 	result.dbArgMarkers = s.dbArgMarkers
 	result.testing = t
+	result.mockServices = maps.Clone(s.mockServices)
 	for k, v := range s.vars {
 		result.vars[k] = v
 	}

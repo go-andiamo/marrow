@@ -192,11 +192,25 @@ func TestSuite_Run(t *testing.T) {
 		err := s.Run()
 		require.NoError(t, err)
 	})
+	t.Run("initial with shutdown", func(t *testing.T) {
+		s := Suite()
+		err := s.Init(&mockWith{stage: with.Initial, shutdown: func() {}}).Run()
+		require.NoError(t, err)
+		err = s.Run()
+		require.NoError(t, err)
+	})
 	t.Run("initial with errors", func(t *testing.T) {
 		s := Suite()
 		err := s.Init(&mockWith{stage: with.Initial, err: errors.New("fooey")}).Run()
 		require.Error(t, err)
 		assert.Equal(t, "fooey", err.Error())
+	})
+	t.Run("supporting with shutdown", func(t *testing.T) {
+		s := Suite()
+		err := s.Init(&mockWith{stage: with.Supporting, shutdown: func() {}}).Run()
+		require.NoError(t, err)
+		err = s.Run()
+		require.NoError(t, err)
 	})
 	t.Run("supporting with errors", func(t *testing.T) {
 		s := Suite()
@@ -204,18 +218,33 @@ func TestSuite_Run(t *testing.T) {
 		require.Error(t, err)
 		assert.Equal(t, "fooey", err.Error())
 	})
+	t.Run("final with shutdown", func(t *testing.T) {
+		s := Suite()
+		err := s.Init(&mockWith{stage: with.Final, shutdown: func() {}}).Run()
+		require.NoError(t, err)
+		err = s.Run()
+		require.NoError(t, err)
+	})
 	t.Run("final with errors", func(t *testing.T) {
 		s := Suite()
 		err := s.Init(&mockWith{stage: with.Final, err: errors.New("fooey")}).Run()
 		require.Error(t, err)
 		assert.Equal(t, "fooey", err.Error())
 	})
+	t.Run("with mock services", func(t *testing.T) {
+		s := Suite()
+		err := s.Init(with.MockService("foo"), with.MockService("bar")).Run()
+		require.NoError(t, err)
+	})
 }
 
 type mockWith struct {
-	stage with.Stage
-	err   error
+	stage    with.Stage
+	err      error
+	shutdown func()
 }
+
+var _ with.With = (*mockWith)(nil)
 
 func (m mockWith) Init(init with.SuiteInit) error {
 	return m.err
@@ -225,7 +254,9 @@ func (m mockWith) Stage() with.Stage {
 	return m.stage
 }
 
-var _ with.With = (*mockWith)(nil)
+func (m mockWith) Shutdown() func() {
+	return m.shutdown
+}
 
 type errorReader struct{}
 
