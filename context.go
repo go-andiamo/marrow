@@ -68,6 +68,7 @@ func newContext() *context {
 		coverage:  coverage.NewNullCoverage(),
 		vars:      make(map[Var]any),
 		cookieJar: make(map[string]*http.Cookie),
+		httpDo:    http.DefaultClient,
 	}
 }
 

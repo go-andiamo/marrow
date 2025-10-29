@@ -125,10 +125,6 @@ func (s *suite) runInits() {
 
 func (s *suite) Run() error {
 	s.runInits()
-	do := s.httpDo
-	if do == nil {
-		do = http.DefaultClient
-	}
 	cov := coverage.NewNullCoverage()
 	if s.covCollector != nil {
 		cov = s.covCollector
@@ -153,7 +149,7 @@ func (s *suite) Run() error {
 		s.stderr = os.Stderr
 	}
 	t := htesting.NewHelper(s.testing, s.stdout, s.stderr)
-	ctx := s.initContext(cov, do, t)
+	ctx := s.initContext(cov, t)
 	for _, e := range s.endpoints {
 		if !ctx.run(e.Url(), e) {
 			break
@@ -192,10 +188,12 @@ func (s *suite) Run() error {
 	return nil
 }
 
-func (s *suite) initContext(cov coverage.Collector, do common.HttpDo, t htesting.Helper) *context {
+func (s *suite) initContext(cov coverage.Collector, t htesting.Helper) *context {
 	result := newContext()
 	result.coverage = cov
-	result.httpDo = do
+	if s.httpDo != nil {
+		result.httpDo = s.httpDo
+	}
 	host := s.host
 	if host == "" {
 		host = "localhost"
