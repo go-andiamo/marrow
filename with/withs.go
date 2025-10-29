@@ -18,7 +18,7 @@ type SuiteInit interface {
 	SetDbArgMarkers(dbArgMarkers common.DatabaseArgMarkers)
 	SetHttpDo(do common.HttpDo)
 	SetApiHost(host string, port int)
-	SetApiImage(image string, more ...any) // how to set env etc.???
+	//SetApiImage(image string, more ...any) // how to set env etc.???
 	SetTesting(t *testing.T)
 	SetVar(name string, value any)
 	SetCookie(cookie *http.Cookie)

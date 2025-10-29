@@ -61,9 +61,11 @@ func (d *mockInit) SetApiHost(host string, port int) {
 	d.called["SetApiHost"] = struct{}{}
 }
 
+/*
 func (d *mockInit) SetApiImage(image string, more ...any) {
 	d.called["SetApiImage"] = struct{}{}
 }
+*/
 
 func (d *mockInit) SetTesting(t *testing.T) {
 	d.called["SetTesting"] = struct{}{}

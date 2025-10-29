@@ -131,4 +131,12 @@ func TestHelper_Run(t *testing.T) {
 		})
 		assert.False(t, h.Failed())
 	})
+	t.Run("wrapped, log", func(t *testing.T) {
+		h := NewHelper(t, nil, nil)
+		h.Run("subtest", func(ts Helper) {
+			assert.True(t, true)
+			ts.Log("test something")
+		})
+		assert.False(t, h.Failed())
+	})
 }
