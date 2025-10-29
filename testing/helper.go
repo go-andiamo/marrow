@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-andiamo/marrow/framing"
 	"io"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -35,6 +36,12 @@ func NewHelper(t *testing.T, stdout io.Writer, stderr io.Writer) Helper {
 		stderr:  stderr,
 	}
 	if t == nil {
+		if result.stdout == nil {
+			result.stdout = os.Stdout
+		}
+		if result.stderr == nil {
+			result.stderr = os.Stderr
+		}
 		result.logStart()
 	}
 	return result

@@ -11,7 +11,6 @@ import (
 	"io"
 	"maps"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 )
@@ -141,12 +140,6 @@ func (s *suite) Run() error {
 		if err := cov.LoadSpec(s.oasReader); err != nil {
 			return err
 		}
-	}
-	if s.stdout == nil {
-		s.stdout = os.Stdout
-	}
-	if s.stderr == nil {
-		s.stderr = os.Stderr
 	}
 	t := htesting.NewHelper(s.testing, s.stdout, s.stderr)
 	ctx := s.initContext(cov, t)

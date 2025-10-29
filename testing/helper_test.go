@@ -6,26 +6,39 @@ import (
 	"errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"os"
 	"testing"
 )
 
 func TestNewHelper(t *testing.T) {
-	var buf bytes.Buffer
-	h := NewHelper(nil, &buf, &buf)
-	require.NotNil(t, h)
-	assert.False(t, h.Failed())
-	assert.Equal(t, context.Background(), h.Context())
-	raw, ok := h.(*helper)
-	require.True(t, ok)
-	assert.Nil(t, raw.wrapped)
-	assert.Nil(t, raw.parent)
-	assert.NotNil(t, raw.frame)
-	assert.Equal(t, "tRunner", raw.name)
-	assert.False(t, raw.failed)
-	assert.False(t, raw.stopped)
-	h.End()
-	assert.Contains(t, buf.String(), "=== RUN   tRunner")
-	assert.Contains(t, buf.String(), "\n--- PASS: tRunner")
+	t.Run("with stdout & stderr", func(t *testing.T) {
+		var buf bytes.Buffer
+		h := NewHelper(nil, &buf, &buf)
+		require.NotNil(t, h)
+		assert.False(t, h.Failed())
+		assert.Equal(t, context.Background(), h.Context())
+		raw, ok := h.(*helper)
+		require.True(t, ok)
+		assert.Nil(t, raw.wrapped)
+		assert.Nil(t, raw.parent)
+		assert.NotNil(t, raw.frame)
+		assert.Equal(t, "tRunner", raw.name)
+		assert.False(t, raw.failed)
+		assert.False(t, raw.stopped)
+		h.End()
+		assert.Contains(t, buf.String(), "=== RUN   tRunner")
+		assert.Contains(t, buf.String(), "\n--- PASS: tRunner")
+	})
+	t.Run("without stdout & stderr", func(t *testing.T) {
+		h := NewHelper(nil, nil, nil)
+		require.NotNil(t, h)
+		assert.False(t, h.Failed())
+		assert.Equal(t, context.Background(), h.Context())
+		raw, ok := h.(*helper)
+		require.True(t, ok)
+		assert.Equal(t, os.Stdout, raw.stdout)
+		assert.Equal(t, os.Stderr, raw.stderr)
+	})
 }
 
 func TestHelper_Run(t *testing.T) {
