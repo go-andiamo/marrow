@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-func TestWithInterface(t *testing.T) {
+func TestWith_Initials(t *testing.T) {
 	testCases := []any{
 		Database(nil),
 		DatabaseArgMarkers(0),
@@ -32,11 +32,13 @@ func TestWithInterface(t *testing.T) {
 		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
 			w, ok := tc.(With)
 			require.True(t, ok)
-			w.Init(mock)
+			require.Equal(t, w.Stage(), Initial)
+			err := w.Init(mock)
+			require.NoError(t, err)
 		})
 	}
 	assert.Len(t, mock.called, len(testCases))
-	assert.Len(t, mock.called, 12) // should be more eventually
+	assert.Len(t, mock.called, 12)
 }
 
 type mockInit struct {
@@ -60,12 +62,6 @@ func (d *mockInit) SetHttpDo(do common.HttpDo) {
 func (d *mockInit) SetApiHost(host string, port int) {
 	d.called["SetApiHost"] = struct{}{}
 }
-
-/*
-func (d *mockInit) SetApiImage(image string, more ...any) {
-	d.called["SetApiImage"] = struct{}{}
-}
-*/
 
 func (d *mockInit) SetTesting(t *testing.T) {
 	d.called["SetTesting"] = struct{}{}

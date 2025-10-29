@@ -9,8 +9,17 @@ import (
 	"testing"
 )
 
+type Stage int
+
+const (
+	Initial Stage = iota
+	Supporting
+	Final
+)
+
 type With interface {
-	Init(init SuiteInit)
+	Init(init SuiteInit) error
+	Stage() Stage
 }
 
 type SuiteInit interface {
@@ -18,7 +27,6 @@ type SuiteInit interface {
 	SetDbArgMarkers(dbArgMarkers common.DatabaseArgMarkers)
 	SetHttpDo(do common.HttpDo)
 	SetApiHost(host string, port int)
-	//SetApiImage(image string, more ...any) // how to set env etc.???
 	SetTesting(t *testing.T)
 	SetVar(name string, value any)
 	SetCookie(cookie *http.Cookie)
@@ -103,6 +111,11 @@ func Logging(stdout io.Writer, stderr io.Writer) With {
 
 type withFn func(init SuiteInit)
 
-func (w withFn) Init(init SuiteInit) {
+func (w withFn) Init(init SuiteInit) error {
 	w(init)
+	return nil
+}
+
+func (w withFn) Stage() Stage {
+	return Initial
 }

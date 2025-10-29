@@ -192,7 +192,40 @@ func TestSuite_Run(t *testing.T) {
 		err := s.Run()
 		require.NoError(t, err)
 	})
+	t.Run("initial with errors", func(t *testing.T) {
+		s := Suite()
+		err := s.Init(&mockWith{stage: with.Initial, err: errors.New("fooey")}).Run()
+		require.Error(t, err)
+		assert.Equal(t, "fooey", err.Error())
+	})
+	t.Run("supporting with errors", func(t *testing.T) {
+		s := Suite()
+		err := s.Init(&mockWith{stage: with.Supporting, err: errors.New("fooey")}).Run()
+		require.Error(t, err)
+		assert.Equal(t, "fooey", err.Error())
+	})
+	t.Run("final with errors", func(t *testing.T) {
+		s := Suite()
+		err := s.Init(&mockWith{stage: with.Final, err: errors.New("fooey")}).Run()
+		require.Error(t, err)
+		assert.Equal(t, "fooey", err.Error())
+	})
 }
+
+type mockWith struct {
+	stage with.Stage
+	err   error
+}
+
+func (m mockWith) Init(init with.SuiteInit) error {
+	return m.err
+}
+
+func (m mockWith) Stage() with.Stage {
+	return m.stage
+}
+
+var _ with.With = (*mockWith)(nil)
 
 type errorReader struct{}
 

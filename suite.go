@@ -114,16 +114,40 @@ func (s *suite) Init(withs ...with.With) Suite_ {
 	}
 }
 
-func (s *suite) runInits() {
+func (s *suite) runInits() error {
+	supporting := make([]with.With, 0, len(s.withs))
+	finals := make([]with.With, 0, len(s.withs))
 	for _, w := range s.withs {
 		if w != nil {
-			w.Init(s)
+			switch w.Stage() {
+			case with.Supporting:
+				supporting = append(supporting, w)
+			case with.Final:
+				finals = append(finals, w)
+			default:
+				if err := w.Init(s); err != nil {
+					return err
+				}
+			}
 		}
 	}
+	for _, w := range supporting {
+		if err := w.Init(s); err != nil {
+			return err
+		}
+	}
+	for _, w := range finals {
+		if err := w.Init(s); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *suite) Run() error {
-	s.runInits()
+	if err := s.runInits(); err != nil {
+		return err
+	}
 	cov := coverage.NewNullCoverage()
 	if s.covCollector != nil {
 		cov = s.covCollector
