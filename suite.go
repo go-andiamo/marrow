@@ -27,6 +27,7 @@ func Suite(endpoints ...Endpoint_) Suite_ {
 		vars:         make(map[Var]any),
 		cookies:      make(map[string]*http.Cookie),
 		mockServices: make(map[string]service.MockedService),
+		images:       make(map[string]with.ImageInfo),
 	}
 }
 
@@ -51,6 +52,7 @@ type suite struct {
 	stderr        io.Writer
 	shutdowns     []func()
 	mockServices  map[string]service.MockedService
+	images        map[string]with.ImageInfo
 }
 
 func (s *suite) SetDb(db *sql.DB) {
@@ -115,6 +117,10 @@ func (s *suite) AddMockService(mock service.MockedService) {
 	}
 }
 
+func (s *suite) AddSupportingImage(info with.ImageInfo) {
+	s.images[info.Name] = info
+}
+
 func (s *suite) Init(withs ...with.With) Suite_ {
 	return &suite{
 		endpoints:    s.endpoints,
@@ -122,6 +128,7 @@ func (s *suite) Init(withs ...with.With) Suite_ {
 		vars:         make(map[Var]any),
 		cookies:      make(map[string]*http.Cookie),
 		mockServices: make(map[string]service.MockedService),
+		images:       make(map[string]with.ImageInfo),
 	}
 }
 

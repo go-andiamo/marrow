@@ -1,11 +1,12 @@
-package with
+package mysql
 
 import (
 	"database/sql"
-	"fmt"
+	"github.com/go-andiamo/marrow"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
 	"github.com/go-andiamo/marrow/mocks/service"
+	"github.com/go-andiamo/marrow/with"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -13,51 +14,62 @@ import (
 	"testing"
 )
 
-func TestWith_Initials(t *testing.T) {
-	testCases := []any{
-		Database(nil),
-		DatabaseArgMarkers(0),
-		HttpDo(nil),
-		ApiHost("", 0),
-		Testing(nil),
-		Var("", nil),
-		Cookie(nil),
-		ReportCoverage(nil),
-		CoverageCollector(nil),
-		OAS(nil),
-		Repeats(0, false),
-		Logging(nil, nil),
-	}
-	mock := newMockInit()
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
-			w, ok := tc.(With)
-			require.True(t, ok)
-			require.Equal(t, Initial, w.Stage())
-			assert.Nil(t, w.Shutdown())
-			err := w.Init(mock)
-			require.NoError(t, err)
-		})
-	}
-	assert.Len(t, mock.called, len(testCases))
-	assert.Len(t, mock.called, 12)
+func TestWithDbImage(t *testing.T) {
+	w := WithDbImage(Options{})
+	assert.Equal(t, with.Supporting, w.Stage())
+}
+
+func TestWithInit_Mocked(t *testing.T) {
+	w := WithDbImage(Options{})
+	init := newMockInit()
+	err := w.Init(init)
+	require.NoError(t, err)
+
+	// check internals were set...
+	assert.NotNil(t, w.Database())
+	assert.NotNil(t, w.Container())
+	assert.NotEqual(t, "", w.MappedPort())
+	// check can't be started or init'd once already initialised...
+	assert.Error(t, w.Start())
+	assert.Error(t, w.Init(init))
+
+	// check suit init was called
+	assert.Len(t, init.called, 3)
+	_, ok := init.called["SetDb"]
+	assert.True(t, ok)
+	_, ok = init.called["SetDbArgMarkers"]
+	assert.True(t, ok)
+	_, ok = init.called["AddSupportingImage:mysql"]
+	assert.True(t, ok)
+	assert.Len(t, init.images, 1)
+	_, ok = init.images["mysql"]
+	assert.True(t, ok)
+
+	w.Shutdown()()
+}
+
+func TestWithInit_Suite(t *testing.T) {
+	w := WithDbImage(Options{})
+	s := marrow.Suite().Init(w)
+	err := s.Run()
+	require.NoError(t, err)
 }
 
 func newMockInit() *mockInit {
 	return &mockInit{
 		called:   make(map[string]struct{}),
 		services: make(map[string]service.MockedService),
-		images:   make(map[string]ImageInfo),
+		images:   make(map[string]with.ImageInfo),
 	}
 }
 
 type mockInit struct {
 	called   map[string]struct{}
 	services map[string]service.MockedService
-	images   map[string]ImageInfo
+	images   map[string]with.ImageInfo
 }
 
-var _ SuiteInit = (*mockInit)(nil)
+var _ with.SuiteInit = (*mockInit)(nil)
 
 func (d *mockInit) SetDb(db *sql.DB) {
 	d.called["SetDb"] = struct{}{}
@@ -112,7 +124,7 @@ func (d *mockInit) AddMockService(mock service.MockedService) {
 	d.services[mock.Name()] = mock
 }
 
-func (d *mockInit) AddSupportingImage(info ImageInfo) {
+func (d *mockInit) AddSupportingImage(info with.ImageInfo) {
 	d.called["AddSupportingImage:"+info.Name] = struct{}{}
 	d.images[info.Name] = info
 }

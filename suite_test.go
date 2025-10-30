@@ -474,6 +474,44 @@ func TestWithLogging(t *testing.T) {
 	assert.Equal(t, nw, raw.stderr)
 }
 
+func TestAddSupportingImage(t *testing.T) {
+	s := Suite().Init(&mockImage{
+		initCalls: []func(init with.SuiteInit){
+			func(init with.SuiteInit) {
+				init.AddSupportingImage(with.ImageInfo{Name: "foo"})
+			},
+		},
+	})
+	raw, ok := s.(*suite)
+	require.True(t, ok)
+	raw.runInits()
+	assert.Len(t, raw.shutdowns, 1)
+	assert.Len(t, raw.images, 1)
+	_, ok = raw.images["foo"]
+	assert.True(t, ok)
+}
+
+type mockImage struct {
+	initCalls []func(init with.SuiteInit)
+}
+
+func (m *mockImage) Init(init with.SuiteInit) error {
+	for _, fn := range m.initCalls {
+		fn(init)
+	}
+	return nil
+}
+
+func (m *mockImage) Stage() with.Stage {
+	return with.Supporting
+}
+
+func (m *mockImage) Shutdown() func() {
+	return func() {}
+}
+
+var _ with.With = (*mockImage)(nil)
+
 type nullWriter struct{}
 
 var _ io.Writer = (*nullWriter)(nil)
