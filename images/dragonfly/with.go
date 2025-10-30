@@ -1,9 +1,7 @@
-package mysql
+package dragonfly
 
 import (
-	"database/sql"
 	"fmt"
-	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/with"
 	"github.com/testcontainers/testcontainers-go"
 )
@@ -12,7 +10,6 @@ type Image interface {
 	with.With
 	Start() error
 	MappedPort() string
-	Database() *sql.DB
 	Container() testcontainers.Container
 }
 
@@ -25,18 +22,14 @@ var _ Image = (*image)(nil)
 
 func (i *image) Init(init with.SuiteInit) error {
 	if err := i.Start(); err != nil {
-		return fmt.Errorf("with mysql image init error: %w", err)
+		return fmt.Errorf("with dragonfly image init error: %w", err)
 	}
-	init.SetDb(i.db)
-	init.SetDbArgMarkers(common.PositionalDbArgs)
 	init.AddSupportingImage(with.ImageInfo{
-		Name:       "mysql",
+		Name:       "dragonfly",
 		Host:       "localhost",
 		Port:       i.options.defaultPort(),
 		MappedPort: i.mappedPort,
 		IsDocker:   true,
-		Username:   i.options.username(),
-		Password:   i.options.password(),
 	})
 	return nil
 }
