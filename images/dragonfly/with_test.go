@@ -1,4 +1,4 @@
-package mysql
+package dragonfly
 
 import (
 	"database/sql"
@@ -14,11 +14,6 @@ import (
 	"testing"
 )
 
-func TestWithDbImage(t *testing.T) {
-	w := With(Options{})
-	assert.Equal(t, with.Supporting, w.Stage())
-}
-
 func TestWithInit_Mocked(t *testing.T) {
 	w := With(Options{})
 	init := newMockInit()
@@ -26,7 +21,6 @@ func TestWithInit_Mocked(t *testing.T) {
 	require.NoError(t, err)
 
 	// check internals were set...
-	assert.NotNil(t, w.Database())
 	assert.NotNil(t, w.Container())
 	assert.NotEqual(t, "", w.MappedPort())
 	// check can't be started or init'd once already initialised...
@@ -34,15 +28,11 @@ func TestWithInit_Mocked(t *testing.T) {
 	assert.Error(t, w.Init(init))
 
 	// check suit init was called
-	assert.Len(t, init.called, 3)
-	_, ok := init.called["SetDb"]
-	assert.True(t, ok)
-	_, ok = init.called["SetDbArgMarkers"]
-	assert.True(t, ok)
-	_, ok = init.called["AddSupportingImage:mysql"]
+	assert.Len(t, init.called, 1)
+	_, ok := init.called["AddSupportingImage:dragonfly"]
 	assert.True(t, ok)
 	assert.Len(t, init.images, 1)
-	_, ok = init.images["mysql"]
+	_, ok = init.images["dragonfly"]
 	assert.True(t, ok)
 
 	w.Shutdown()()
