@@ -1,14 +1,14 @@
-package mysql
+package postgres
 
 import (
 	"errors"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database"
-	"github.com/golang-migrate/migrate/v4/database/mysql"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	_ "github.com/lib/pq"
 )
 
 func (i *image) migrateDatabase() (err error) {
@@ -25,7 +25,7 @@ func (i *image) migrateDatabase() (err error) {
 	for m := 0; m < len(i.options.Migrations) && err == nil; m++ {
 		if migration := i.options.Migrations[m]; migration.Filesystem != nil {
 			var driver database.Driver
-			if driver, err = mysql.WithInstance(i.db, &mysql.Config{MigrationsTable: migration.TableName}); err == nil {
+			if driver, err = postgres.WithInstance(i.db, &postgres.Config{DatabaseName: i.options.Database, MigrationsTable: migration.TableName}); err == nil {
 				var sourceDriver source.Driver
 				if sourceDriver, err = iofs.New(migration.Filesystem, migration.path()); err == nil {
 					err = migrateWithSource(sourceDriver, driver, i.options.Database)
