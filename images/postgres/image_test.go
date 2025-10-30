@@ -1,4 +1,4 @@
-package mysql
+package postgres
 
 import (
 	"embed"
@@ -10,7 +10,7 @@ import (
 //go:embed _testdata/*.sql
 var migrationFiles embed.FS
 
-func TestImage_start(t *testing.T) {
+func TestTestImage_start(t *testing.T) {
 	img := &image{
 		options: Options{
 			Database:            "foo",
@@ -29,7 +29,9 @@ func TestImage_start(t *testing.T) {
 	}()
 	require.NoError(t, err)
 
-	rows, err := img.db.Query("SHOW TABLES")
+	rows, err := img.db.Query(`SELECT tablename
+		FROM pg_tables
+		WHERE schemaname = 'public'`)
 	require.NoError(t, err)
 	defer rows.Close()
 	names := make(map[string]bool)
