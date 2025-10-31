@@ -7,6 +7,7 @@ type Options struct {
 	Image               string // defaults to "localstack/localstack"
 	DefaultPort         string // is the actual port for dynamodb, defaults to "4566"
 	DisableAutoShutdown bool   // if set, disables container auto (RYUK reaper) shutdown
+	Region              string // defaults to "us-east-1"
 	CreateTables        []dynamodb.CreateTableInput
 }
 
