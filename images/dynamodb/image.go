@@ -70,7 +70,10 @@ func (i *image) setupClient(ctx context.Context, mapped nat.PortBinding) (err er
 					}, nil
 				})
 			var cfg aws.Config
-			region := "us-east-1"
+			region := i.options.Region
+			if region == "" {
+				region = "us-east-1"
+			}
 			if cfg, err = awsConfig.LoadDefaultConfig(ctx, awsConfig.WithRegion(region),
 				awsConfig.WithEndpointResolverWithOptions(customResolver)); err == nil {
 				i.client = dynamodb.NewFromConfig(cfg)
