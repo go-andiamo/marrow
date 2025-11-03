@@ -17,6 +17,7 @@ func NewCoverage() *Coverage {
 	}
 }
 
+// Coverage is the default coverage information
 type Coverage struct {
 	Endpoints map[string]*Endpoint
 	OAS       *chioas.Definition

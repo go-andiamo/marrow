@@ -5,17 +5,20 @@ import (
 	"net/http"
 )
 
+// Endpoint provides coverage information about an endpoint
 type Endpoint struct {
 	Endpoint common.Endpoint
 	Methods  map[string]*Method
 	Common
 }
 
+// Method provides coverage information about a method
 type Method struct {
 	Method common.Method
 	Common
 }
 
+// Common provides common coverage information
 type Common struct {
 	Failures []Failure
 	Unmet    []Unmet
@@ -24,6 +27,7 @@ type Common struct {
 	Timings  Timings
 }
 
+// Failure provides coverage information about a failure
 type Failure struct {
 	Endpoint common.Endpoint
 	Method   common.Method
@@ -31,6 +35,7 @@ type Failure struct {
 	Error    error
 }
 
+// Unmet provides coverage information about an unmet expectation
 type Unmet struct {
 	Endpoint    common.Endpoint
 	Method      common.Method
@@ -39,6 +44,7 @@ type Unmet struct {
 	Error       error
 }
 
+// Met provides coverage information about a met expectation
 type Met struct {
 	Endpoint    common.Endpoint
 	Method      common.Method
@@ -46,6 +52,7 @@ type Met struct {
 	Expectation common.Expectation
 }
 
+// Skip provides coverage information about a skipped expectation
 type Skip struct {
 	Endpoint    common.Endpoint
 	Method      common.Method

@@ -10,6 +10,7 @@ import (
 	"io"
 )
 
+// Spec provides coverage information against a supplied OAS
 type Spec struct {
 	CoveredPaths    map[string]*SpecPath
 	NonCoveredPaths map[string]*SpecPath

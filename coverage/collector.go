@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// Collector is the interface for collecting coverage information
 type Collector interface {
 	LoadSpec(r io.Reader) (err error)
 	ReportFailure(endpoint common.Endpoint, method common.Method, req *http.Request, err error)

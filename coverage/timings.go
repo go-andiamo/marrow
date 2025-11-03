@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// Timing provides coverage information about an individual endpoint+method call
 type Timing struct {
 	Endpoint common.Endpoint
 	Method   common.Method
@@ -15,8 +16,10 @@ type Timing struct {
 	Duration time.Duration
 }
 
+// Timings is a slice of Timing
 type Timings []Timing
 
+// TimingStats is the timing statistics (as returned by Timings.Stats)
 type TimingStats struct {
 	// Mean is the mean average response time. Gives a sense of typical latency under the current test conditions
 	Mean time.Duration
