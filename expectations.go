@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
+	"strings"
 )
 
 type Expectation interface {
@@ -398,4 +400,89 @@ func (e *expectMockCall) Met(ctx Context) (unmet error, err error) {
 		return
 	}
 	return nil, fmt.Errorf("unknown mock service %q", e.name)
+}
+
+type propertiesCheck struct {
+	value      any
+	properties []string
+	only       bool
+	frame      *framing.Frame
+	commonExpectation
+}
+
+var _ Expectation = (*propertiesCheck)(nil)
+
+func (p *propertiesCheck) Name() string {
+	if p.only {
+		return "Expect Only Properties"
+	}
+	return "Expect Properties"
+}
+
+func (p *propertiesCheck) Frame() *framing.Frame {
+	return p.frame
+}
+
+func (p *propertiesCheck) Met(ctx Context) (unmet error, err error) {
+	var av any
+	if av, err = ResolveValue(p.value, ctx); err == nil {
+		checked := false
+		keys := make(map[string]struct{}, len(p.properties))
+		kNames := make([]string, 0, len(p.properties))
+		switch avt := av.(type) {
+		case map[string]any:
+			checked = true
+			for k := range avt {
+				keys[k] = struct{}{}
+				kNames = append(kNames, k)
+			}
+		default:
+			if av != nil {
+				to := reflect.ValueOf(av)
+				if to.Kind() == reflect.Map && to.Type().Key().Kind() == reflect.String {
+					checked = true
+					iter := to.MapRange()
+					for iter.Next() {
+						keys[iter.Key().Interface().(string)] = struct{}{}
+						kNames = append(kNames, iter.Key().Interface().(string))
+					}
+				}
+			}
+		}
+		if !checked {
+			sort.Strings(p.properties)
+			expectStr := `"` + strings.Join(p.properties, `", "`) + `"`
+			unmet = &unmetError{
+				msg:      fmt.Sprintf("cannot check properties on %T", av),
+				name:     p.Name(),
+				expected: OperandValue{Original: expectStr, Resolved: expectStr},
+				actual:   OperandValue{Original: p.value, Resolved: av},
+				frame:    p.frame,
+			}
+		} else {
+			ok := true
+			for _, prop := range p.properties {
+				if _, ok = keys[prop]; !ok {
+					ok = false
+					break
+				} else {
+					delete(keys, prop)
+				}
+			}
+			if !ok || (ok && p.only && len(keys) > 0) {
+				sort.Strings(p.properties)
+				expectStr := `"` + strings.Join(p.properties, `", "`) + `"`
+				sort.Strings(kNames)
+				actualStr := `"` + strings.Join(kNames, `", "`) + `"`
+				unmet = &unmetError{
+					msg:      "expected properties",
+					name:     p.Name(),
+					expected: OperandValue{Original: expectStr, Resolved: expectStr},
+					actual:   OperandValue{Original: actualStr, Resolved: actualStr},
+					frame:    p.frame,
+				}
+			}
+		}
+	}
+	return
 }

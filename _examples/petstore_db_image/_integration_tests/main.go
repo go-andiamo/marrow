@@ -50,12 +50,12 @@ var endpoints = []Endpoint_{
 			),
 		),
 		Endpoint("/categories", "Categories",
-			SetVar(Before, "categoryId", Query("", "SELECT id FROM categories")),
 			Method(GET, "Get categories").
 				AssertOK().
 				AssertGreaterThan(JsonPath(Body, LEN), 0),
 			Endpoint("/{categoryId}", "Category",
 				Method(GET, "Get category (not found)").
+					SetVar(Before, "categoryId", Query("", "SELECT id FROM categories")).
 					PathParam(Var("non-uuid")).
 					AssertNotFound(),
 				Method(GET, "Get category (found)").

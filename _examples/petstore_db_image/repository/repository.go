@@ -20,6 +20,12 @@ func NewRepository(cfg config.Database) (Repository, error) {
 	return result, result.open()
 }
 
+func NewRepositoryWithDB(db *sql.DB) (Repository, error) {
+	return &repository{
+		db: db,
+	}, nil
+}
+
 type repository struct {
 	cfg config.Database
 	db  *sql.DB

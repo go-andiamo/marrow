@@ -616,3 +616,47 @@ func TestRequireMockServiceCalled(t *testing.T) {
 	assert.True(t, raw.postOps[0].isExpectation)
 	assert.Equal(t, 0, raw.postOps[0].index)
 }
+
+func TestAssertHasProperties(t *testing.T) {
+	m := Method(GET, "").AssertHasProperties(nil)
+	raw, ok := m.(*method)
+	require.True(t, ok)
+	assert.Len(t, raw.expectations, 1)
+	assert.False(t, raw.expectations[0].IsRequired())
+	assert.Len(t, raw.postOps, 1)
+	assert.True(t, raw.postOps[0].isExpectation)
+	assert.Equal(t, 0, raw.postOps[0].index)
+}
+
+func TestRequireHasProperties(t *testing.T) {
+	m := Method(GET, "").RequireHasProperties(nil)
+	raw, ok := m.(*method)
+	require.True(t, ok)
+	assert.Len(t, raw.expectations, 1)
+	assert.True(t, raw.expectations[0].IsRequired())
+	assert.Len(t, raw.postOps, 1)
+	assert.True(t, raw.postOps[0].isExpectation)
+	assert.Equal(t, 0, raw.postOps[0].index)
+}
+
+func TestAssertOnlyHasProperties(t *testing.T) {
+	m := Method(GET, "").AssertOnlyHasProperties(nil)
+	raw, ok := m.(*method)
+	require.True(t, ok)
+	assert.Len(t, raw.expectations, 1)
+	assert.False(t, raw.expectations[0].IsRequired())
+	assert.Len(t, raw.postOps, 1)
+	assert.True(t, raw.postOps[0].isExpectation)
+	assert.Equal(t, 0, raw.postOps[0].index)
+}
+
+func TestRequireOnlyHasProperties(t *testing.T) {
+	m := Method(GET, "").RequireOnlyHasProperties(nil)
+	raw, ok := m.(*method)
+	require.True(t, ok)
+	assert.Len(t, raw.expectations, 1)
+	assert.True(t, raw.expectations[0].IsRequired())
+	assert.Len(t, raw.postOps, 1)
+	assert.True(t, raw.postOps[0].isExpectation)
+	assert.Equal(t, 0, raw.postOps[0].index)
+}

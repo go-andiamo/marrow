@@ -522,3 +522,78 @@ func Test_expectMockCall(t *testing.T) {
 		assert.Contains(t, err.Error(), "unknown mock service ")
 	})
 }
+
+func Test_propertiesCheck(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		exp := &propertiesCheck{
+			frame: framing.NewFrame(0),
+		}
+		assert.Equal(t, "Expect Properties", exp.Name())
+		assert.NotNil(t, exp.Frame())
+
+		exp.only = true
+		assert.Equal(t, "Expect Only Properties", exp.Name())
+	})
+	t.Run("met", func(t *testing.T) {
+		exp := &propertiesCheck{
+			value:      map[string]any{"foo": nil, "bar": nil},
+			properties: []string{"foo", "bar"},
+			frame:      framing.NewFrame(0),
+		}
+		ctx := newTestContext(nil)
+
+		unmet, err := exp.Met(ctx)
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("met - general map", func(t *testing.T) {
+		exp := &propertiesCheck{
+			value:      map[string]bool{"foo": true, "bar": true},
+			properties: []string{"foo", "bar"},
+			frame:      framing.NewFrame(0),
+		}
+		ctx := newTestContext(nil)
+
+		unmet, err := exp.Met(ctx)
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("unmet - missing property", func(t *testing.T) {
+		exp := &propertiesCheck{
+			value:      map[string]any{"foo": nil},
+			properties: []string{"foo", "bar"},
+			frame:      framing.NewFrame(0),
+		}
+		ctx := newTestContext(nil)
+
+		unmet, err := exp.Met(ctx)
+		assert.Error(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("unmet - only, extra property", func(t *testing.T) {
+		exp := &propertiesCheck{
+			value:      map[string]any{"foo": nil, "bar": nil, "baz": nil},
+			properties: []string{"foo", "bar"},
+			only:       true,
+			frame:      framing.NewFrame(0),
+		}
+		ctx := newTestContext(nil)
+
+		unmet, err := exp.Met(ctx)
+		assert.Error(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("unmet - invalid type", func(t *testing.T) {
+		exp := &propertiesCheck{
+			value:      "not a map",
+			properties: []string{"foo", "bar"},
+			frame:      framing.NewFrame(0),
+		}
+		ctx := newTestContext(nil)
+
+		unmet, err := exp.Met(ctx)
+		assert.Error(t, unmet)
+		assert.Contains(t, unmet.Error(), "cannot check properties on ")
+		assert.NoError(t, err)
+	})
+}

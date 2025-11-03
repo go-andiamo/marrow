@@ -2,6 +2,7 @@ package with
 
 import "os"
 
+// SetEnv initialises a marrow.Suite with an environment variable set
 func SetEnv(key, value string) With {
 	return &setEnv{
 		key:   key,

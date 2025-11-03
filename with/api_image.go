@@ -11,6 +11,9 @@ import (
 	"strconv"
 )
 
+// ApiImage initialises a marrow.Suite with a docker image to run and test against
+//
+// The image should be built either by the user (externally) or by using the Make
 func ApiImage(imageName string, tag string, port int, env map[string]any, leaveRunning bool) ImageApi {
 	return &apiImage{
 		imageName:    imageName,

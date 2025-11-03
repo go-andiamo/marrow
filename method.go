@@ -42,6 +42,8 @@ type methodExpectations interface {
 	AssertNil(value any) Method_
 	AssertNotNil(value any) Method_
 	AssertLen(value any, length int) Method_
+	AssertHasProperties(value any, propertyNames ...string) Method_
+	AssertOnlyHasProperties(value any, propertyNames ...string) Method_
 
 	RequireOK() Method_
 	RequireCreated() Method_
@@ -69,6 +71,8 @@ type methodExpectations interface {
 	RequireNil(value any) Method_
 	RequireNotNil(value any) Method_
 	RequireLen(value any, length int) Method_
+	RequireHasProperties(value any, propertyNames ...string) Method_
+	RequireOnlyHasProperties(value any, propertyNames ...string) Method_
 
 	// FailFast instructs the method to fail on unmet assertions
 	//
@@ -755,6 +759,50 @@ func (m *method) RequireLen(value any, length int) Method_ {
 		value:             value,
 		length:            length,
 		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertHasProperties(value any, propertyNames ...string) Method_ {
+	m.addPostExpectation(&propertiesCheck{
+		value:      value,
+		properties: propertyNames,
+		frame:      framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireHasProperties(value any, propertyNames ...string) Method_ {
+	m.addPostExpectation(&propertiesCheck{
+		value:             value,
+		properties:        propertyNames,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertOnlyHasProperties(value any, propertyNames ...string) Method_ {
+	m.addPostExpectation(&propertiesCheck{
+		value:      value,
+		properties: propertyNames,
+		only:       true,
+		frame:      framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireOnlyHasProperties(value any, propertyNames ...string) Method_ {
+	m.addPostExpectation(&propertiesCheck{
+		value:             value,
+		properties:        propertyNames,
+		frame:             framing.NewFrame(0),
+		only:              true,
 		commonExpectation: commonExpectation{required: true},
 	})
 	return m

@@ -2,6 +2,10 @@ package with
 
 import "github.com/go-andiamo/marrow/mocks/service"
 
+// MockService initialises a marrow.Suite with a mock http service
+//
+// Many apis may call other services - MockService can be used to mock the responses as well as
+// assert/require calls were made
 func MockService(name string) With {
 	return &mockService{
 		name: name,

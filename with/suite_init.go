@@ -11,7 +11,7 @@ import (
 )
 
 type SuiteInit interface {
-	AddDb(dnName string, db *sql.DB, dbArgMarkers common.DatabaseArgMarkers)
+	AddDb(dbName string, db *sql.DB, dbArgMarkers common.DatabaseArgMarkers)
 	SetHttpDo(do common.HttpDo)
 	SetApiHost(host string, port int)
 	SetTesting(t *testing.T)
