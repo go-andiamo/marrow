@@ -178,11 +178,11 @@ func TestResolveValue(t *testing.T) {
 			expect: "bar",
 		},
 		{
-			value:     Query("not a select"),
+			value:     Query("", "not a select"),
 			expectErr: "db is nil",
 		},
 		{
-			value: Query("not a select"),
+			value: Query("", "not a select"),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, _, err := sqlmock.New()
 				require.NoError(t, err)
@@ -191,7 +191,7 @@ func TestResolveValue(t *testing.T) {
 			expectErr: "query must start with \"SELECT\"",
 		},
 		{
-			value: Query("SELECT * FROM table", Var("test_var")),
+			value: Query("", "SELECT * FROM table", Var("test_var")),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, _, err := sqlmock.New()
 				require.NoError(t, err)
@@ -200,7 +200,7 @@ func TestResolveValue(t *testing.T) {
 			expectErr: "unknown variable \"test_var\"",
 		},
 		{
-			value: Query("SELECT * FROM table WHERE foo = ?", Var("test_var")),
+			value: Query("", "SELECT * FROM table WHERE foo = ?", Var("test_var")),
 			ctx:   newTestContext(map[Var]any{"test_var": "bar"}),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, mock, err := sqlmock.New()
@@ -211,7 +211,7 @@ func TestResolveValue(t *testing.T) {
 			expect: map[string]any{"foo": "foo1", "bar": int64(1)},
 		},
 		{
-			value: Query("SELECT * FROM {$unknown}"),
+			value: Query("", "SELECT * FROM {$unknown}"),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, _, err := sqlmock.New()
 				require.NoError(t, err)
@@ -220,7 +220,7 @@ func TestResolveValue(t *testing.T) {
 			expectErr: "unresolved variables in string",
 		},
 		{
-			value: Query("SELECT * FROM table"),
+			value: Query("", "SELECT * FROM table"),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, mock, err := sqlmock.New()
 				require.NoError(t, err)
@@ -230,7 +230,7 @@ func TestResolveValue(t *testing.T) {
 			expect: map[string]any{"foo": "foo1", "bar": int64(1)},
 		},
 		{
-			value: Query("SELECT * FROM table"),
+			value: Query("", "SELECT * FROM table"),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, mock, err := sqlmock.New()
 				require.NoError(t, err)
@@ -240,11 +240,11 @@ func TestResolveValue(t *testing.T) {
 			expect: "foo1",
 		},
 		{
-			value:     QueryRows("not a select"),
+			value:     QueryRows("", "not a select"),
 			expectErr: "db is nil",
 		},
 		{
-			value: QueryRows("not a select"),
+			value: QueryRows("", "not a select"),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, _, err := sqlmock.New()
 				require.NoError(t, err)
@@ -253,7 +253,7 @@ func TestResolveValue(t *testing.T) {
 			expectErr: "query must start with \"SELECT\"",
 		},
 		{
-			value: QueryRows("SELECT * FROM table", Var("test_var")),
+			value: QueryRows("", "SELECT * FROM table", Var("test_var")),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, _, err := sqlmock.New()
 				require.NoError(t, err)
@@ -262,7 +262,7 @@ func TestResolveValue(t *testing.T) {
 			expectErr: "unknown variable \"test_var\"",
 		},
 		{
-			value: QueryRows("SELECT * FROM table WHERE foo = ?", Var("test_var")),
+			value: QueryRows("", "SELECT * FROM table WHERE foo = ?", Var("test_var")),
 			ctx:   newTestContext(map[Var]any{"test_var": "bar"}),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, mock, err := sqlmock.New()
@@ -276,7 +276,7 @@ func TestResolveValue(t *testing.T) {
 			},
 		},
 		{
-			value: QueryRows("SELECT * FROM {$unknown}"),
+			value: QueryRows("", "SELECT * FROM {$unknown}"),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, _, err := sqlmock.New()
 				require.NoError(t, err)
@@ -285,7 +285,7 @@ func TestResolveValue(t *testing.T) {
 			expectErr: "unresolved variables in string",
 		},
 		{
-			value: QueryRows("SELECT * FROM table"),
+			value: QueryRows("", "SELECT * FROM table"),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, mock, err := sqlmock.New()
 				require.NoError(t, err)
@@ -298,7 +298,7 @@ func TestResolveValue(t *testing.T) {
 			},
 		},
 		{
-			value: JsonPath(QueryRows("SELECT * FROM table"), LAST),
+			value: JsonPath(QueryRows("", "SELECT * FROM table"), LAST),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, mock, err := sqlmock.New()
 				require.NoError(t, err)
@@ -308,7 +308,7 @@ func TestResolveValue(t *testing.T) {
 			expect: map[string]any{"foo": "foo2", "bar": int64(2)},
 		},
 		{
-			value: JsonPath(QueryRows("SELECT * FROM table"), FIRST),
+			value: JsonPath(QueryRows("", "SELECT * FROM table"), FIRST),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, mock, err := sqlmock.New()
 				require.NoError(t, err)
@@ -318,7 +318,7 @@ func TestResolveValue(t *testing.T) {
 			expect: map[string]any{"foo": "foo1", "bar": int64(1)},
 		},
 		{
-			value: JsonPath(QueryRows("SELECT * FROM table"), LEN),
+			value: JsonPath(QueryRows("", "SELECT * FROM table"), LEN),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, mock, err := sqlmock.New()
 				require.NoError(t, err)
@@ -328,7 +328,7 @@ func TestResolveValue(t *testing.T) {
 			expect: 2,
 		},
 		{
-			value: JsonPath(QueryRows("SELECT * FROM table"), "1"),
+			value: JsonPath(QueryRows("", "SELECT * FROM table"), "1"),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, mock, err := sqlmock.New()
 				require.NoError(t, err)
@@ -338,7 +338,7 @@ func TestResolveValue(t *testing.T) {
 			expect: map[string]any{"foo": "foo2", "bar": int64(2)},
 		},
 		{
-			value: JsonPath(QueryRows("SELECT * FROM table"), "-1"),
+			value: JsonPath(QueryRows("", "SELECT * FROM table"), "-1"),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, mock, err := sqlmock.New()
 				require.NoError(t, err)
@@ -348,7 +348,7 @@ func TestResolveValue(t *testing.T) {
 			expect: map[string]any{"foo": "foo3", "bar": int64(3)},
 		},
 		{
-			value: JsonPath(JsonPath(QueryRows("SELECT * FROM table"), "-1"), "bar"),
+			value: JsonPath(JsonPath(QueryRows("", "SELECT * FROM table"), "-1"), "bar"),
 			dbMock: func(t *testing.T) *sql.DB {
 				db, mock, err := sqlmock.New()
 				require.NoError(t, err)
@@ -460,8 +460,8 @@ func TestResolveValue(t *testing.T) {
 			expect: []any{"foo", 42},
 		},
 		{
-			value:     Body,
-			expectErr: "body is nil",
+			value:  Body,
+			expect: nil,
 		},
 		{
 			value:  Body,
@@ -478,8 +478,9 @@ func TestResolveValue(t *testing.T) {
 			ctx.currResponse = tc.response
 			ctx.currBody = tc.body
 			if tc.dbMock != nil {
-				ctx.db = tc.dbMock(t)
-				defer ctx.db.Close()
+				db := tc.dbMock(t)
+				ctx.dbs.register("", db, 0)
+				defer db.Close()
 			}
 			if tc.response != nil && tc.responseCookie != nil {
 				if tc.response.Header == nil {

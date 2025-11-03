@@ -1,0 +1,361 @@
+openapi: "3.0.3"
+info:
+  title: "Pet Store API"
+  version: "1.0.0"
+paths:
+  "/api":
+    get:
+      description: "Root discovery"
+      operationId: RootGet
+      tags:
+        - Root
+      responses:
+        200:
+          description: OK
+          content:
+            "application/json":
+              schema:
+                type: object
+  "/api/categories":
+    get:
+      description: "List categories"
+      tags:
+        - Categories
+      responses:
+        200:
+          description: OK
+          content:
+            "application/json":
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    "$uri":
+                      description: "URI of the category"
+                      type: string
+                      format: uri
+                    "id":
+                      description: "Unique identifier of the category"
+                      type: string
+                      format: uuid
+                    "name":
+                      description: "Name of the category"
+                      type: string
+  "/api/categories/{id}":
+    get:
+      description: "Get category"
+      x-handler: CategoryGet
+      tags:
+        - Categories
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        200:
+          description: OK
+          content:
+            "application/json":
+              schema:
+                type: object
+                properties:
+                  "$uri":
+                    description: "URI of the category"
+                    type: string
+                    format: uri
+                  "id":
+                    description: "Unique identifier of the category"
+                    type: string
+                    format: uuid
+                  "name":
+                    description: "Name of the category"
+                    type: string
+  "/api/pets":
+    get:
+      description: "List/search pets"
+      tags:
+        - Pets
+      parameters:
+        - name: category
+          description: "Filter by category"
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: name
+          description: "Search/filter by name"
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: dob
+          description: "Filter by dob (date of birth)"
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: order
+          description: "Order result by property"
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            "application/json":
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    "$uri":
+                      description: "URI of the pet"
+                      type: string
+                      format: uri
+                    "id":
+                      description: "Unique identifier of the pet"
+                      type: string
+                      format: uuid
+                    "name":
+                      description: "Name of the pet"
+                      type: string
+                    "dob":
+                      description: "Date of birth"
+                      type: string
+                      format: date
+                    "category":
+                      description: "Category of the pet"
+                      type: object
+                      properties:
+                        "$uri":
+                          description: "URI of the category"
+                          type: string
+                          format: uri
+                        "id":
+                          description: "Unique identifier of the category"
+                          type: string
+                          format: uuid
+                        "name":
+                          description: "Name of the category"
+                          type: string
+    post:
+      description: "Add pet"
+      tags:
+        - Pets
+      requestBody:
+        description: "Pet to add"
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: object
+              required:
+                - name
+                - dob
+                - category
+              properties:
+                "name":
+                  description: "Name of the pet"
+                  type: string
+                "dob":
+                  description: "Date of birth"
+                  type: string
+                  format: date
+                "category":
+                  description: "Category of the pet"
+                  type: object
+                  properties:
+                    "id":
+                      description: "ID of the category"
+                      type: string
+                      format: uuid
+                    "name":
+                      description: "Name of the category"
+                      type: string
+      responses:
+        201:
+          description: Created
+          content:
+            "application/json":
+              schema:
+                type: object
+                properties:
+                  "$uri":
+                    description: "URI of the pet"
+                    type: string
+                    format: uri
+                  "id":
+                    description: "Unique identifier of the pet"
+                    type: string
+                    format: uuid
+                  "name":
+                    description: "Name of the pet"
+                    type: string
+                  "dob":
+                    description: "Date of birth"
+                    type: string
+                    format: date
+                  "category":
+                    description: "Category of the pet"
+                    type: object
+                    properties:
+                      "$uri":
+                        description: "URI of the category"
+                        type: string
+                        format: uri
+                      "id":
+                        description: "Unique identifier of the category"
+                        type: string
+                        format: uuid
+                      "name":
+                        description: "Name of the category"
+                        type: string
+  "/api/pets/{id}":
+    get:
+      description: "Get pet"
+      tags:
+        - Pets
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        200:
+          description: OK
+          content:
+            "application/json":
+              schema:
+                type: object
+                properties:
+                  "$uri":
+                    description: "URI of the pet"
+                    type: string
+                    format: uri
+                  "id":
+                    description: "Unique identifier of the pet"
+                    type: string
+                    format: uuid
+                  "name":
+                    description: "Name of the pet"
+                    type: string
+                  "dob":
+                    description: "Date of birth"
+                    type: string
+                    format: date
+                  "category":
+                    description: "Category of the pet"
+                    type: object
+                    properties:
+                      "$uri":
+                        description: "URI of the category"
+                        type: string
+                        format: uri
+                      "id":
+                        description: "Unique identifier of the category"
+                        type: string
+                        format: uuid
+                      "name":
+                        description: "Name of the category"
+                        type: string
+    put:
+      description: "Update pet"
+      tags:
+        - Pets
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        description: "Pet update"
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: object
+              required:
+                - name
+                - dob
+              properties:
+                "name":
+                  description: "Name of the pet"
+                  type: string
+                "dob":
+                  description: "Date of birth"
+                  type: string
+                  format: date
+                "category":
+                  description: "Category of the pet"
+                  type: object
+                  properties:
+                    "id":
+                      description: "ID of the category"
+                      type: string
+                      format: uuid
+                    "name":
+                      description: "Name of the category"
+                      type: string
+      responses:
+        200:
+          description: OK
+          content:
+            "application/json":
+              schema:
+                type: object
+                properties:
+                  "$uri":
+                    description: "URI of the pet"
+                    type: string
+                    format: uri
+                  "id":
+                    description: "Unique identifier of the pet"
+                    type: string
+                    format: uuid
+                  "name":
+                    description: "Name of the pet"
+                    type: string
+                  "dob":
+                    description: "Date of birth"
+                    type: string
+                    format: date
+                  "category":
+                    description: "Category of the pet"
+                    type: object
+                    properties:
+                      "$uri":
+                        description: "URI of the category"
+                        type: string
+                        format: uri
+                      "id":
+                        description: "Unique identifier of the category"
+                        type: string
+                        format: uuid
+                      "name":
+                        description: "Name of the category"
+                        type: string
+    delete:
+      description: "Delete pet"
+      tags:
+        - Pets
+      parameters:
+        - name: id
+          description: "id path param"
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            "application/json":
+              schema:
+                type: object
+components:
+  parameters:
+    id:
+      name: id
+      description: common id param
+      in: path
+      required: true
+      example: example
+      schema:
+        type: string
+        format: uuid

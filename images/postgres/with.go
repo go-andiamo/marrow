@@ -16,28 +16,23 @@ type Image interface {
 	Container() testcontainers.Container
 }
 
-func With(options Options) Image {
-	return &image{options: options}
+func With(name string, options Options) Image {
+	return &image{
+		name:    name,
+		options: options,
+	}
 }
 
 var _ with.With = (*image)(nil)
+var _ with.Image = (*image)(nil)
 var _ Image = (*image)(nil)
 
 func (i *image) Init(init with.SuiteInit) error {
 	if err := i.Start(); err != nil {
 		return fmt.Errorf("with mysql image init error: %w", err)
 	}
-	init.SetDb(i.db)
-	init.SetDbArgMarkers(common.NumberedDbArgs)
-	init.AddSupportingImage(with.ImageInfo{
-		Name:       "postgres",
-		Host:       "localhost",
-		Port:       i.options.defaultPort(),
-		MappedPort: i.mappedPort,
-		IsDocker:   true,
-		Username:   i.options.username(),
-		Password:   i.options.password(),
-	})
+	init.AddDb(i.name, i.db, common.NumberedDbArgs)
+	init.AddSupportingImage(i)
 	return nil
 }
 

@@ -51,7 +51,7 @@ func Test_dbInsert(t *testing.T) {
 	mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 	defer db.Close()
 	ctx := newTestContext(nil)
-	ctx.db = db
+	ctx.dbs.register("", db, 0)
 	err = c.Run(ctx)
 	require.NoError(t, err)
 }
@@ -69,7 +69,7 @@ func Test_dbExec(t *testing.T) {
 	mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 	defer db.Close()
 	ctx := newTestContext(nil)
-	ctx.db = db
+	ctx.dbs.register("", db, 0)
 	err = c.Run(ctx)
 	require.NoError(t, err)
 }
@@ -87,7 +87,7 @@ func Test_dbClearTable(t *testing.T) {
 	mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 	defer db.Close()
 	ctx := newTestContext(nil)
-	ctx.db = db
+	ctx.dbs.register("", db, 0)
 	err = c.Run(ctx)
 	require.NoError(t, err)
 }
@@ -299,4 +299,13 @@ func Test_mockServiceCall(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unknown mock service ")
 	})
+}
+
+func Test_wait(t *testing.T) {
+	c := &wait{
+		ms:    10,
+		frame: framing.NewFrame(0),
+	}
+	assert.Equal(t, "WAIT 10ms", c.Name())
+	assert.NotNil(t, c.Frame())
 }

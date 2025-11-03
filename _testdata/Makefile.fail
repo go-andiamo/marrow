@@ -1,0 +1,4 @@
+$(error intentional failure for tests)
+.PHONY: all
+all:
+	@echo "should never print"

@@ -14,6 +14,7 @@ import (
 )
 
 type image struct {
+	name       string
 	options    Options
 	db         *sql.DB
 	mappedPort string
@@ -97,7 +98,7 @@ func (i *image) shutdown() {
 	if i.db != nil {
 		_ = i.db.Close()
 	}
-	if i.container != nil {
+	if i.container != nil && !i.options.LeaveRunning {
 		_ = i.container.Terminate(context.Background())
 	}
 }
@@ -112,4 +113,28 @@ func (i *image) Database() *sql.DB {
 
 func (i *image) Container() testcontainers.Container {
 	return i.container
+}
+
+func (i *image) Name() string {
+	return "postgres"
+}
+
+func (i *image) Host() string {
+	return "localhost"
+}
+
+func (i *image) Port() string {
+	return i.options.defaultPort()
+}
+
+func (i *image) IsDocker() bool {
+	return true
+}
+
+func (i *image) Username() string {
+	return i.options.username()
+}
+
+func (i *image) Password() string {
+	return i.options.password()
 }

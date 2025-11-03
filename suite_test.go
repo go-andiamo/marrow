@@ -3,9 +3,11 @@ package marrow
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
+	"github.com/go-andiamo/marrow/mocks/service"
 	"github.com/go-andiamo/marrow/with"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -80,7 +82,7 @@ func TestSuite_Run(t *testing.T) {
 		assert.Equal(t, "cannot report coverage with custom coverage collector", err.Error())
 	})
 	t.Run("with OAS & coverage", func(t *testing.T) {
-		specF, err := os.Open("./_examples/petstore.yaml")
+		specF, err := os.Open("./_testdata/spec.yaml")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -266,131 +268,28 @@ func (e *errorReader) Read(p []byte) (n int, err error) {
 	return 0, errors.New("error")
 }
 
-/*
-func TestSuite_Demo(t *testing.T) {
-	t.Skip()
-	specF, err := os.Open("./_examples/petstore.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer specF.Close()
-	sub := Endpoint("/bars/{id}", "Bars",
-		Method(GET, "Get bars").
-			PathParam(Var("bar_id")).
-			AssertStatus(Var("OK")),
-	)
-	s := Suite(
-		Endpoint("/api/pets", "Pets",
-			Method(GET, "Get pets").AssertOK(),
-			Endpoint("/{pet_id}", "Get pet",
-				Method(GET, "Get pet").
-					PathParam(12345).
-					AssertOK(),
-			),
-			Method(DELETE, "Delete pets").AssertOK(),
-		),
-		Endpoint("/foos", "Foos endpoint",
-			SetVar(Before, "rows", QueryRows("SELECT * FROM foos")),
-			SetVar(Before, "row", JsonPath(Var("rows"), LAST)),
-			Method(GET, "Get foos").
-				AssertOK().
-				AssertEqual(3, JsonPath(Var("rows"), LEN)).
-				AssertLen(Var("rows"), 3).
-				AssertLen(Body, 1).
-				AssertEqual(JsonPath(Var("row"), "foo_col"), "foo3").
-				AssertStatus(Var("OK")).
-				//SetVar(Before, "z", Query("xxx", Var("yyy"), Query("zzz"))).
-				SetVar(After, "body", BodyPath(".")).
-				SetVar(After, "foo", JsonPath(Var("body"), "foo")).
-				AssertEqual(Var("foo"), "xxx").
-				AssertEqual(JsonPath(Var("body"), "foo"), "xxx").
-				AssertEqual(JsonPath(Var("body"), "foo"), 123.1),
-			Method(POST, "Post foos").AssertOK().
-				SetVar(After, "bar_id", "1234"),
-			Method(DELETE, "Delete foos").AssertOK(),
-			Method(PUT, "Put foos").AssertOK(),
-			Method(PATCH, "Patch foos").AssertOK(),
-			sub,
-		),
-		Endpoint("/foos", "Foos endpoint",
-			Method(GET, "Get foos").AssertOK(),
-			Method(POST, "Post foos").AssertOK(),
-			Method(DELETE, "Delete foos").AssertOK(),
-			Method(PUT, "Put foos").AssertOK(),
-			Method(PATCH, "Patch foos").AssertOK(),
-		),
-	)
-	db, mock, err := sqlmock.New()
-	require.NoError(t, err)
-	defer db.Close()
-	mock.ExpectQuery("").WillReturnRows(sqlmock.NewRows([]string{"foo_col", "bar_col", "baz_col"}).
-		AddRow("foo1", 1, true).
-		AddRow("foo2", 2, false).
-		AddRow("foo3", 3, true))
-	var cov *coverage.Coverage
-	s.Init(
-		with.OAS(specF),
-		with.Database(db),
-		with.ReportCoverage(func(c *coverage.Coverage) {
-			cov = c
-		}),
-		with.Testing(t),
-		with.Repeats(10, false, func() {
-			// reset the mock db...
-			mock.ExpectQuery("").WillReturnRows(sqlmock.NewRows([]string{"foo_col", "bar_col", "baz_col"}).
-				AddRow("foo1", 1, true).
-				AddRow("foo2", 2, false).
-				AddRow("foo3", 3, true))
-		}),
-		with.HttpDo(&dummyDo{
-			status: http.StatusOK,
-			body:   []byte(`{"foo": "bar"}`),
-		}),
-		with.Var("OK", 201)).
-		Run()
-
-	require.NotNil(t, cov)
-	stats, ok := cov.Timings.Stats(false)
-	require.True(t, ok)
-	assert.Equal(t, 14, stats.Count)
-	assert.Less(t, stats.Variance, 0.01)
-	outliers := cov.Timings.Outliers(0.99)
-	assert.Len(t, outliers, 1)
-
-	specCov, err := cov.SpecCoverage()
-	require.NoError(t, err)
-	tot, covd, perc := specCov.PathsCovered()
-	t.Logf("Spec Coverage Paths:\n\tTotal: %d, Covered: %d, Perc: %.1f%%\n", tot, covd, perc*100)
-	tot, covd, perc = specCov.MethodsCovered()
-	t.Logf("Spec Coverage Methods:\n\tTotal: %d, Covered: %d, Perc: %.1f%%\n", tot, covd, perc*100)
-}
-*/
-
 func TestWithDatabase(t *testing.T) {
 	db, _, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
 
-	s := Suite().Init(with.Database(db))
+	s := Suite().Init(with.Database("", db, common.NumberedDbArgs))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	raw.runInits()
-	assert.NotNil(t, raw.db)
-}
-
-func TestWithDatabaseArgMarkers(t *testing.T) {
-	s := Suite().Init(with.DatabaseArgMarkers(common.NumberedDbArgs))
-	raw, ok := s.(*suite)
-	require.True(t, ok)
-	raw.runInits()
-	assert.Equal(t, common.NumberedDbArgs, raw.dbArgMarkers)
+	err = raw.runInits()
+	require.NoError(t, err)
+	ndb, ok := raw.dbs[""]
+	assert.NotNil(t, ndb)
+	assert.NotNil(t, ndb.db)
+	assert.Equal(t, common.NumberedDbArgs, ndb.argMarkers)
 }
 
 func TestWithHttpDo(t *testing.T) {
 	s := Suite().Init(with.HttpDo(&dummyDo{}))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	raw.runInits()
+	err := raw.runInits()
+	require.NoError(t, err)
 	assert.NotNil(t, raw.httpDo)
 }
 
@@ -398,7 +297,8 @@ func TestWithApiHost(t *testing.T) {
 	s := Suite().Init(with.ApiHost("localhost", 8080))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	raw.runInits()
+	err := raw.runInits()
+	require.NoError(t, err)
 	assert.Equal(t, "localhost", raw.host)
 	assert.Equal(t, 8080, raw.port)
 }
@@ -407,7 +307,8 @@ func TestWithTesting(t *testing.T) {
 	s := Suite().Init(with.Testing(t))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	raw.runInits()
+	err := raw.runInits()
+	require.NoError(t, err)
 	assert.NotNil(t, raw.testing)
 }
 
@@ -415,7 +316,8 @@ func TestWithVar(t *testing.T) {
 	s := Suite().Init(with.Var("foo", "bar"))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	raw.runInits()
+	err := raw.runInits()
+	require.NoError(t, err)
 	assert.Len(t, raw.vars, 1)
 }
 
@@ -423,7 +325,8 @@ func TestWithCookie(t *testing.T) {
 	s := Suite().Init(with.Cookie(&http.Cookie{Name: "foo", Value: "bar"}))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	raw.runInits()
+	err := raw.runInits()
+	require.NoError(t, err)
 	assert.Len(t, raw.cookies, 1)
 	assert.Equal(t, "bar", raw.cookies["foo"].Value)
 }
@@ -432,7 +335,8 @@ func TestWithReportCoverage(t *testing.T) {
 	s := Suite().Init(with.ReportCoverage(func(coverage *coverage.Coverage) {}))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	raw.runInits()
+	err := raw.runInits()
+	require.NoError(t, err)
 	assert.NotNil(t, raw.reportCov)
 }
 
@@ -440,7 +344,8 @@ func TestWithCoverageCollector(t *testing.T) {
 	s := Suite().Init(with.CoverageCollector(coverage.NewNullCoverage()))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	raw.runInits()
+	err := raw.runInits()
+	require.NoError(t, err)
 	assert.NotNil(t, raw.covCollector)
 }
 
@@ -448,7 +353,8 @@ func TestWithOAS(t *testing.T) {
 	s := Suite().Init(with.OAS(strings.NewReader("")))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	raw.runInits()
+	err := raw.runInits()
+	require.NoError(t, err)
 	assert.NotNil(t, raw.oasReader)
 }
 
@@ -456,7 +362,8 @@ func TestWithRepeats(t *testing.T) {
 	s := Suite().Init(with.Repeats(10, true, func() {}))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	raw.runInits()
+	err := raw.runInits()
+	require.NoError(t, err)
 	assert.Equal(t, 10, raw.repeats)
 	assert.True(t, raw.stopOnFailure)
 	assert.Len(t, raw.repeatResets, 1)
@@ -467,7 +374,8 @@ func TestWithLogging(t *testing.T) {
 	s := Suite().Init(with.Logging(nw, nw))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	raw.runInits()
+	err := raw.runInits()
+	require.NoError(t, err)
 	assert.NotNil(t, raw.stdout)
 	assert.Equal(t, nw, raw.stdout)
 	assert.NotNil(t, raw.stderr)
@@ -475,31 +383,162 @@ func TestWithLogging(t *testing.T) {
 }
 
 func TestAddSupportingImage(t *testing.T) {
-	s := Suite().Init(&mockImage{
-		initCalls: []func(init with.SuiteInit){
-			func(init with.SuiteInit) {
-				init.AddSupportingImage(with.ImageInfo{Name: "foo"})
-			},
-		},
+	t.Run("ok", func(t *testing.T) {
+		img := &mockImage{}
+		s := Suite().Init(img, img)
+		raw, ok := s.(*suite)
+		require.True(t, ok)
+		err := raw.runInits()
+		require.NoError(t, err)
+		assert.Len(t, raw.shutdowns, 2)
+		assert.Len(t, raw.images, 2)
+		_, ok = raw.images["mock"]
+		assert.True(t, ok)
+		_, ok = raw.images["mock-2"]
+		assert.True(t, ok)
 	})
-	raw, ok := s.(*suite)
-	require.True(t, ok)
-	raw.runInits()
-	assert.Len(t, raw.shutdowns, 1)
-	assert.Len(t, raw.images, 1)
-	_, ok = raw.images["foo"]
-	assert.True(t, ok)
+	t.Run("errors", func(t *testing.T) {
+		img := &mockImage{err: errors.New("fooey")}
+		s := Suite().Init(img, img)
+		raw, ok := s.(*suite)
+		require.True(t, ok)
+		err := raw.runInits()
+		require.Error(t, err)
+		assert.Len(t, raw.shutdowns, 0)
+		assert.True(t, img.shutdown)
+	})
+}
+
+func TestSuite_ResolveEnv(t *testing.T) {
+	testCases := []struct {
+		value     any
+		vars      map[Var]any
+		images    map[string]with.Image
+		mocks     map[string]service.MockedService
+		expect    string
+		expectErr bool
+	}{
+		{
+			value:  "foo",
+			expect: "foo",
+		},
+		{
+			value:  42,
+			expect: "42",
+		},
+		{
+			value:     Var("foo"),
+			expectErr: true,
+		},
+		{
+			value:  Var("foo"),
+			vars:   map[Var]any{"foo": 42},
+			expect: "42",
+		},
+		{
+			value:     "{$foo}",
+			expectErr: true,
+		},
+		{
+			value:  "{$foo}",
+			vars:   map[Var]any{"foo": 42},
+			expect: "42",
+		},
+		{
+			value:     "{$foo:host}",
+			expectErr: true,
+		},
+		{
+			value: "{$foo:host}",
+			images: map[string]with.Image{
+				"foo": &mockImage{},
+			},
+			expect: "localhost",
+		},
+		{
+			value: "{$foo:port}",
+			images: map[string]with.Image{
+				"foo": &mockImage{},
+			},
+			expect: "8080",
+		},
+		{
+			value: "{$foo:mport}",
+			images: map[string]with.Image{
+				"foo": &mockImage{},
+			},
+			expect: "50080",
+		},
+		{
+			value: "{$foo:username}",
+			images: map[string]with.Image{
+				"foo": &mockImage{},
+			},
+			expect: "foo",
+		},
+		{
+			value: "{$foo:password}",
+			images: map[string]with.Image{
+				"foo": &mockImage{},
+			},
+			expect: "bar",
+		},
+		{
+			value:     "{$mock:foo:host}",
+			expectErr: true,
+		},
+		{
+			value: "{$mock:foo:host}",
+			mocks: map[string]service.MockedService{
+				"foo": &mockService{},
+			},
+			expect: "127.0.0.1",
+		},
+		{
+			value: "{$mock:foo:port}",
+			mocks: map[string]service.MockedService{
+				"foo": &mockService{},
+			},
+			expect: "8888",
+		},
+		{
+			value:  "{$foo",
+			expect: "{$foo",
+		},
+		{
+			value:  "\\\\\\{$foo}",
+			expect: "\\\\{$foo}",
+		},
+	}
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
+			s := &suite{
+				vars:         tc.vars,
+				images:       tc.images,
+				mockServices: tc.mocks,
+			}
+			result, err := s.ResolveEnv(tc.value)
+			if tc.expectErr {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.expect, result)
+			}
+		})
+	}
 }
 
 type mockImage struct {
-	initCalls []func(init with.SuiteInit)
+	err      error
+	shutdown bool
 }
 
+var _ with.With = (*mockImage)(nil)
+var _ with.Image = (*mockImage)(nil)
+
 func (m *mockImage) Init(init with.SuiteInit) error {
-	for _, fn := range m.initCalls {
-		fn(init)
-	}
-	return nil
+	init.AddSupportingImage(m)
+	return m.err
 }
 
 func (m *mockImage) Stage() with.Stage {
@@ -507,10 +546,82 @@ func (m *mockImage) Stage() with.Stage {
 }
 
 func (m *mockImage) Shutdown() func() {
-	return func() {}
+	return func() {
+		m.shutdown = true
+	}
 }
 
-var _ with.With = (*mockImage)(nil)
+func (m *mockImage) Name() string {
+	return "mock"
+}
+
+func (m *mockImage) Host() string {
+	return "localhost"
+}
+
+func (m *mockImage) Port() string {
+	return "8080"
+}
+
+func (m *mockImage) MappedPort() string {
+	return "50080"
+}
+
+func (m *mockImage) IsDocker() bool {
+	return true
+}
+
+func (m *mockImage) Username() string {
+	return "foo"
+}
+
+func (m *mockImage) Password() string {
+	return "bar"
+}
+
+type mockService struct{}
+
+var _ service.MockedService = (*mockService)(nil)
+
+func (m *mockService) Name() string {
+	return "mock"
+}
+
+func (m *mockService) Host() string {
+	return "localhost"
+}
+
+func (m *mockService) ActualHost() string {
+	return "127.0.0.1"
+}
+
+func (m *mockService) Port() int {
+	return 8888
+}
+
+func (m *mockService) Url() string {
+	return ""
+}
+
+func (m *mockService) Start() error {
+	return nil
+}
+
+func (m *mockService) Shutdown() {
+	// mock does nothing
+}
+
+func (m *mockService) Clear() {
+	// mock does nothing
+}
+
+func (m *mockService) MockCall(path string, method string, responseStatus int, responseBody any, headers ...string) {
+	// mock does nothing
+}
+
+func (m *mockService) AssertCalled(path string, method string) bool {
+	return false
+}
 
 type nullWriter struct{}
 

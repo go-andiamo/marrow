@@ -21,7 +21,7 @@ type Coverage struct {
 	Endpoints map[string]*Endpoint
 	OAS       *chioas.Definition
 	Common
-	mutex           sync.Mutex
+	mutex           sync.RWMutex
 	normalizedPaths map[string]map[string]struct{}
 }
 
@@ -124,6 +124,8 @@ func (c *Coverage) ReportTiming(endpoint common.Endpoint, method common.Method, 
 }
 
 func (c *Coverage) HasFailures() bool {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 	return len(c.Failures) > 0 || len(c.Unmet) > 0
 }
 

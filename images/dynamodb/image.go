@@ -2,6 +2,7 @@ package dynamodb
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -16,10 +17,12 @@ import (
 )
 
 type image struct {
+	name       string
 	options    Options
 	mappedPort string
 	container  testcontainers.Container
 	client     *dynamodb.Client
+	db         *sql.DB
 }
 
 const envRyukDisable = "TESTCONTAINERS_RYUK_DISABLED"
@@ -77,10 +80,23 @@ func (i *image) setupClient(ctx context.Context, mapped nat.PortBinding) (err er
 			if cfg, err = awsConfig.LoadDefaultConfig(ctx, awsConfig.WithRegion(region),
 				awsConfig.WithEndpointResolverWithOptions(customResolver)); err == nil {
 				i.client = dynamodb.NewFromConfig(cfg)
-				err = i.createTables(ctx)
+				if err = i.createTables(ctx); err == nil {
+					err = i.openDb()
+				}
 			}
 		}
 	}
+	return err
+}
+
+func (i *image) openDb() (err error) {
+	// dummy creds are fine for LocalStack
+	region := i.options.Region
+	if region == "" {
+		region = "us-east-1"
+	}
+	dsn := fmt.Sprintf(`Region=%s;AkId=dummy;Secret_Key=dummy;Endpoint=http://localhost:%s`, region, i.mappedPort)
+	i.db, err = sql.Open("godynamo", dsn)
 	return err
 }
 
@@ -101,12 +117,12 @@ type customizer struct{}
 var _ testcontainers.ContainerCustomizer = (*customizer)(nil)
 
 func (c *customizer) Customize(req *testcontainers.GenericContainerRequest) error {
-	//TODO any request customizations?
+	// any request customizations?
 	return nil
 }
 
 func (i *image) shutdown() {
-	if i.container != nil {
+	if i.container != nil && !i.options.LeaveRunning {
 		_ = i.container.Terminate(context.Background())
 	}
 }
@@ -121,4 +137,32 @@ func (i *image) Container() testcontainers.Container {
 
 func (i *image) Client() *dynamodb.Client {
 	return i.client
+}
+
+func (i *image) Database() *sql.DB {
+	return i.db
+}
+
+func (i *image) Name() string {
+	return "dynamodb"
+}
+
+func (i *image) Host() string {
+	return "localhost"
+}
+
+func (i *image) Port() string {
+	return i.options.defaultPort()
+}
+
+func (i *image) IsDocker() bool {
+	return true
+}
+
+func (i *image) Username() string {
+	return ""
+}
+
+func (i *image) Password() string {
+	return ""
 }

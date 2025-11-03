@@ -26,15 +26,15 @@ func TestOptions_Defaults(t *testing.T) {
 	})
 	t.Run("username", func(t *testing.T) {
 		o := Options{}
-		assert.Equal(t, defaultUsername, o.username())
-		o = Options{RootUser: "foo"}
-		assert.Equal(t, "foo", o.username())
+		assert.Equal(t, defaultRootUsername, o.rootUsername())
+		o = Options{RootUsername: "foo"}
+		assert.Equal(t, "foo", o.rootUsername())
 	})
 	t.Run("password", func(t *testing.T) {
 		o := Options{}
-		assert.Equal(t, defaultPassword, o.password())
+		assert.Equal(t, defaultRootPassword, o.rootPassword())
 		o = Options{RootPassword: "foo"}
-		assert.Equal(t, "foo", o.password())
+		assert.Equal(t, "foo", o.rootPassword())
 	})
 	t.Run("defaultPort", func(t *testing.T) {
 		o := Options{}

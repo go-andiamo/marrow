@@ -11,8 +11,7 @@ import (
 )
 
 type SuiteInit interface {
-	SetDb(db *sql.DB)
-	SetDbArgMarkers(dbArgMarkers common.DatabaseArgMarkers)
+	AddDb(dnName string, db *sql.DB, dbArgMarkers common.DatabaseArgMarkers)
 	SetHttpDo(do common.HttpDo)
 	SetApiHost(host string, port int)
 	SetTesting(t *testing.T)
@@ -24,5 +23,6 @@ type SuiteInit interface {
 	SetRepeats(n int, stopOnFailure bool, resets ...func())
 	SetLogging(stdout io.Writer, stderr io.Writer)
 	AddMockService(mock service.MockedService)
-	AddSupportingImage(info ImageInfo)
+	AddSupportingImage(info Image)
+	ResolveEnv(v any) (string, error)
 }

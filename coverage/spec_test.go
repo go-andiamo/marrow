@@ -13,7 +13,7 @@ import (
 )
 
 func TestCoverage_LoadSpec_Json(t *testing.T) {
-	f, err := os.Open("../_examples/petstore.json")
+	f, err := os.Open("../_testdata/spec.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +26,7 @@ func TestCoverage_LoadSpec_Json(t *testing.T) {
 }
 
 func TestCoverage_LoadSpec_Yaml(t *testing.T) {
-	f, err := os.Open("../_examples/petstore.yaml")
+	f, err := os.Open("../_testdata/spec.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestCoverage_LoadSpec_Errors(t *testing.T) {
 }
 
 func TestCoverage_SpecCoverage(t *testing.T) {
-	f, err := os.Open("../_examples/petstore.yaml")
+	f, err := os.Open("../_testdata/spec.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,6 +124,10 @@ type testEndpoint struct {
 var _ common.Endpoint = (*testEndpoint)(nil)
 
 func (t *testEndpoint) Url() string {
+	return t.url
+}
+
+func (t *testEndpoint) Path() string {
 	return t.url
 }
 

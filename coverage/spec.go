@@ -89,6 +89,8 @@ func (c *Coverage) LoadSpec(r io.Reader) (err error) {
 }
 
 func (c *Coverage) SpecCoverage() (*Spec, error) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 	const root = "/"
 	if c.OAS == nil {
 		return nil, errors.New("spec not supplied")

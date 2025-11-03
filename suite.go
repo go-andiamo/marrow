@@ -12,6 +12,10 @@ import (
 	"io"
 	"maps"
 	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -24,18 +28,18 @@ type Suite_ interface {
 func Suite(endpoints ...Endpoint_) Suite_ {
 	return &suite{
 		endpoints:    endpoints,
+		dbs:          namedDatabases{},
 		vars:         make(map[Var]any),
 		cookies:      make(map[string]*http.Cookie),
 		mockServices: make(map[string]service.MockedService),
-		images:       make(map[string]with.ImageInfo),
+		images:       make(map[string]with.Image),
 	}
 }
 
 type suite struct {
 	endpoints     []Endpoint_
 	withs         []with.With
-	db            *sql.DB
-	dbArgMarkers  common.DatabaseArgMarkers
+	dbs           namedDatabases
 	host          string
 	port          int
 	httpDo        common.HttpDo
@@ -52,88 +56,249 @@ type suite struct {
 	stderr        io.Writer
 	shutdowns     []func()
 	mockServices  map[string]service.MockedService
-	images        map[string]with.ImageInfo
+	images        map[string]with.Image
+	mutex         sync.RWMutex
 }
 
-func (s *suite) SetDb(db *sql.DB) {
-	s.db = db
-}
+var _ Suite_ = (*suite)(nil)
+var _ with.SuiteInit = (*suite)(nil)
 
-func (s *suite) SetDbArgMarkers(dbArgMarkers common.DatabaseArgMarkers) {
-	s.dbArgMarkers = dbArgMarkers
+func (s *suite) AddDb(dbName string, db *sql.DB, dbArgMarkers common.DatabaseArgMarkers) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.dbs.register(dbName, db, dbArgMarkers)
 }
 
 func (s *suite) SetHttpDo(do common.HttpDo) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.httpDo = do
 }
 
 func (s *suite) SetApiHost(host string, port int) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.host = host
 	s.port = port
 }
 
 func (s *suite) SetTesting(t *testing.T) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.testing = t
 }
 
 func (s *suite) SetVar(name string, value any) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.vars[Var(name)] = value
 }
 
 func (s *suite) SetCookie(cookie *http.Cookie) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	if cookie != nil {
 		s.cookies[cookie.Name] = cookie
 	}
 }
 
 func (s *suite) SetReportCoverage(fn func(coverage *coverage.Coverage)) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.reportCov = fn
 }
 
 func (s *suite) SetCoverageCollector(collector coverage.Collector) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	if collector != nil {
 		s.covCollector = collector
 	}
 }
 
 func (s *suite) SetOAS(r io.Reader) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.oasReader = r
 }
 
 func (s *suite) SetRepeats(n int, stopOnFailure bool, resets ...func()) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.repeats = n
 	s.repeatResets = resets
 	s.stopOnFailure = stopOnFailure
 }
 
 func (s *suite) SetLogging(stdout io.Writer, stderr io.Writer) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.stdout = stdout
 	s.stderr = stderr
 }
 
 func (s *suite) AddMockService(mock service.MockedService) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	if mock != nil {
 		s.mockServices[mock.Name()] = mock
 	}
 }
 
-func (s *suite) AddSupportingImage(info with.ImageInfo) {
-	s.images[info.Name] = info
+func (s *suite) AddSupportingImage(info with.Image) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	name := info.Name()
+	if _, ok := s.images[name]; ok {
+		for idx := 2; ; idx++ {
+			k := name + "-" + strconv.Itoa(idx)
+			if _, exists := s.images[k]; !exists {
+				name = k
+				break
+			}
+		}
+	}
+	s.images[name] = info
+}
+
+func (s *suite) ResolveEnv(v any) (string, error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	switch vt := v.(type) {
+	case Var:
+		if av, ok := s.vars[vt]; ok {
+			return fmt.Sprintf("%v", av), nil
+		} else {
+			return "", fmt.Errorf("variable %q not found", string(vt))
+		}
+	case string:
+		if av, err := s.resolveEnvString(vt); err == nil {
+			return av, nil
+		} else {
+			return "", err
+		}
+	default:
+		return fmt.Sprintf("%v", v), nil
+	}
+}
+
+func (s *suite) resolveEnvString(str string) (string, error) {
+	if !strings.Contains(str, "{$") {
+		return str, nil
+	}
+	var b strings.Builder
+	unresolved := false
+	for i := 0; i < len(str); {
+		j := strings.Index(str[i:], "{$")
+		if j < 0 {
+			b.WriteString(str[i:])
+			break
+		}
+		j += i
+		// count preceding backslashes...
+		k := j - 1
+		backslashes := 0
+		for k >= i && str[k] == '\\' {
+			backslashes++
+			k--
+		}
+		// write the chunk before the backslashes...
+		pre := j - backslashes
+		b.WriteString(str[i:pre])
+		if backslashes%2 == 1 {
+			// escaped: keep one backslash as escape consumer, output "{$" literally
+			// write the remaining backslashes (odd -> one fewer gets consumed)
+			if backslashes > 1 {
+				b.WriteString(str[pre : pre+backslashes-1])
+			}
+			b.WriteString("{$")
+			i = j + 2
+			continue
+		}
+		// unescaped placeholder: try to parse {$name}
+		// scan name
+		nameStart := j + 2
+		nameEnd := nameStart
+		for nameEnd < len(str) {
+			c := str[nameEnd]
+			if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == ':' {
+				nameEnd++
+				continue
+			}
+			break
+		}
+		if nameEnd == nameStart || nameEnd >= len(str) || str[nameEnd] != '}' {
+			// malformed token; treat literally
+			b.WriteString("{$")
+			i = nameStart
+			continue
+		}
+		name := str[nameStart:nameEnd]
+		parts := strings.SplitN(name, ":", 3)
+		found := false
+		switch {
+		case len(parts) == 1:
+			if av, ok := s.vars[Var(name)]; ok {
+				found = true
+				b.WriteString(fmt.Sprintf("%v", av))
+			}
+		case len(parts) == 2 && (parts[1] == "host" || parts[1] == "port" || parts[1] == "mport" || parts[1] == "username" || parts[1] == "password"):
+			// name:port name:host name:username name:password ... where name is the name of a supporting image in s.images
+			if img, ok := s.images[parts[0]]; ok {
+				found = true
+				switch parts[1] {
+				case "host":
+					b.WriteString(img.Host())
+				case "port":
+					b.WriteString(img.Port())
+				case "mport":
+					b.WriteString(img.MappedPort())
+				case "username":
+					b.WriteString(img.Username())
+				case "password":
+					b.WriteString(img.Password())
+				}
+			}
+		case len(parts) == 3 && parts[0] == "mock" && (parts[2] == "host" || parts[2] == "port"):
+			// mock:name:port mock:name:host ... where name is the service name of a mock in s.mockServices
+			if m, ok := s.mockServices[parts[1]]; ok {
+				found = true
+				if parts[2] == "host" {
+					b.WriteString(m.ActualHost())
+				} else {
+					b.WriteString(fmt.Sprintf("%v", m.Port()))
+				}
+			}
+		}
+		if !found {
+			// leave placeholder as-is and flag unresolved
+			b.WriteString(str[j : nameEnd+1])
+			unresolved = true
+		}
+		i = nameEnd + 1
+	}
+	if unresolved {
+		return "", fmt.Errorf("unresolved markers/variables in string %q", b.String())
+	}
+	return b.String(), nil
 }
 
 func (s *suite) Init(withs ...with.With) Suite_ {
 	return &suite{
 		endpoints:    s.endpoints,
+		dbs:          namedDatabases{},
 		withs:        append(s.withs, withs...),
 		vars:         make(map[Var]any),
 		cookies:      make(map[string]*http.Cookie),
 		mockServices: make(map[string]service.MockedService),
-		images:       make(map[string]with.ImageInfo),
+		images:       make(map[string]with.Image),
 	}
 }
 
 func (s *suite) runInits() error {
 	s.shutdowns = make([]func(), 0)
+	s.stdout = os.Stdout
+	s.stderr = os.Stderr
 	supporting := make([]with.With, 0, len(s.withs))
 	finals := make([]with.With, 0, len(s.withs))
 	for _, w := range s.withs {
@@ -152,20 +317,40 @@ func (s *suite) runInits() error {
 			}
 		}
 	}
+	track := &initTrack{}
+	track.add(len(supporting))
 	for _, w := range supporting {
-		if err := w.Init(s); err != nil {
-			return err
-		} else if sdfn := w.Shutdown(); sdfn != nil {
-			s.shutdowns = append(s.shutdowns, sdfn)
-		}
+		uw := w
+		go func() {
+			if !track.errored() {
+				track.addShutdown(uw.Shutdown())
+				if err := uw.Init(s); err != nil {
+					track.error(err)
+				}
+			}
+			track.done()
+		}()
 	}
+	if err := track.wait(); err != nil {
+		return err
+	}
+	track.add(len(finals))
 	for _, w := range finals {
-		if err := w.Init(s); err != nil {
-			return err
-		} else if sdfn := w.Shutdown(); sdfn != nil {
-			s.shutdowns = append(s.shutdowns, sdfn)
-		}
+		uw := w
+		go func() {
+			if !track.errored() {
+				track.addShutdown(uw.Shutdown())
+				if err := uw.Init(s); err != nil {
+					track.error(err)
+				}
+			}
+			track.done()
+		}()
 	}
+	if err := track.wait(); err != nil {
+		return err
+	}
+	s.shutdowns = append(s.shutdowns, track.shutdowns...)
 	return nil
 }
 
@@ -244,8 +429,7 @@ func (s *suite) initContext(cov coverage.Collector, t htesting.Helper) *context 
 		host = "localhost"
 	}
 	result.host = fmt.Sprintf("http://%s:%d", host, s.port)
-	result.db = s.db
-	result.dbArgMarkers = s.dbArgMarkers
+	result.dbs = maps.Clone(s.dbs)
 	result.testing = t
 	result.mockServices = maps.Clone(s.mockServices)
 	for k, v := range s.vars {
@@ -255,4 +439,51 @@ func (s *suite) initContext(cov coverage.Collector, t htesting.Helper) *context 
 		result.cookieJar[k] = v
 	}
 	return result
+}
+
+type initTrack struct {
+	shutdowns []func()
+	err       error
+	wg        sync.WaitGroup
+	mu        sync.RWMutex
+}
+
+func (i *initTrack) addShutdown(sdfn func()) {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	if sdfn != nil {
+		i.shutdowns = append(i.shutdowns, sdfn)
+	}
+}
+
+func (i *initTrack) error(err error) {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	if err != nil {
+		i.err = err
+	}
+}
+
+func (i *initTrack) errored() bool {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+	return i.err != nil
+}
+
+func (i *initTrack) add(delta int) {
+	i.wg.Add(delta)
+}
+
+func (i *initTrack) done() {
+	i.wg.Done()
+}
+
+func (i *initTrack) wait() error {
+	i.wg.Wait()
+	if i.err != nil {
+		for _, sdfn := range i.shutdowns {
+			sdfn()
+		}
+	}
+	return i.err
 }

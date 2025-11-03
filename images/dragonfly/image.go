@@ -57,7 +57,7 @@ func (i *image) Start() (err error) {
 }
 
 func (i *image) shutdown() {
-	if i.container != nil {
+	if i.container != nil && !i.options.LeaveRunning {
 		_ = i.container.Terminate(context.Background())
 	}
 }
@@ -68,4 +68,28 @@ func (i *image) MappedPort() string {
 
 func (i *image) Container() testcontainers.Container {
 	return i.container
+}
+
+func (i *image) Name() string {
+	return "dragonfly"
+}
+
+func (i *image) Host() string {
+	return "localhost"
+}
+
+func (i *image) Port() string {
+	return i.options.defaultPort()
+}
+
+func (i *image) IsDocker() bool {
+	return true
+}
+
+func (i *image) Username() string {
+	return ""
+}
+
+func (i *image) Password() string {
+	return ""
 }

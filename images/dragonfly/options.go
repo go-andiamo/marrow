@@ -5,6 +5,7 @@ type Options struct {
 	Image               string // defaults to "ghcr.io/dragonflydb/dragonfly"
 	DefaultPort         string // is the actual port for dragonfly, defaults to "6379"
 	DisableAutoShutdown bool   // if set, disables container auto (RYUK reaper) shutdown
+	LeaveRunning        bool   // if set, the container is not shutdown
 }
 
 const (

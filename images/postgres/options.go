@@ -12,6 +12,7 @@ type Options struct {
 	Database            string
 	DefaultPort         string // is the actual port for Postgres, defaults to "5432"
 	DisableAutoShutdown bool   // if set, disables container auto (RYUK reaper) shutdown
+	LeaveRunning        bool   // if set, the container is not shutdown
 	Migrations          []Migration
 }
 

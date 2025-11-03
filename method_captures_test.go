@@ -74,8 +74,8 @@ func TestMethod_ClearVars(t *testing.T) {
 
 func TestMethod_DbInsert(t *testing.T) {
 	m := Method(GET, "").
-		DbInsert(Before, "table", Columns{}).
-		DbInsert(After, "table", Columns{})
+		DbInsert(Before, "", "table", Columns{}).
+		DbInsert(After, "", "table", Columns{})
 	raw, ok := m.(*method)
 	require.True(t, ok)
 	assert.Len(t, raw.preCaptures, 1)
@@ -87,8 +87,8 @@ func TestMethod_DbInsert(t *testing.T) {
 
 func TestMethod_DbExec(t *testing.T) {
 	m := Method(GET, "").
-		DbExec(Before, "DELETE FROM tble").
-		DbExec(After, "DELETE FROM tble")
+		DbExec(Before, "", "DELETE FROM tble").
+		DbExec(After, "", "DELETE FROM tble")
 	raw, ok := m.(*method)
 	require.True(t, ok)
 	assert.Len(t, raw.preCaptures, 1)
@@ -100,8 +100,8 @@ func TestMethod_DbExec(t *testing.T) {
 
 func TestMethod_DbClearTables(t *testing.T) {
 	m := Method(GET, "").
-		DbClearTables(Before, "table_a", "table_b").
-		DbClearTables(After, "table_a", "table_b")
+		DbClearTables(Before, "", "table_a", "table_b").
+		DbClearTables(After, "", "table_a", "table_b")
 	raw, ok := m.(*method)
 	require.True(t, ok)
 	assert.Len(t, raw.preCaptures, 2)
@@ -164,4 +164,17 @@ func TestMethod_MockServiceCall(t *testing.T) {
 	raw, ok := m.(*method)
 	require.True(t, ok)
 	assert.Len(t, raw.preCaptures, 1)
+}
+
+func TestMethod_Wait(t *testing.T) {
+	m := Method(GET, "").
+		Wait(Before, 10).
+		Wait(After, 10)
+	raw, ok := m.(*method)
+	require.True(t, ok)
+	assert.Len(t, raw.preCaptures, 1)
+	assert.Len(t, raw.postCaptures, 1)
+	assert.Len(t, raw.postOps, 1)
+	assert.False(t, raw.postOps[0].isExpectation)
+	assert.Equal(t, 0, raw.postOps[0].index)
 }

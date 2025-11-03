@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/go-andiamo/marrow/framing"
 	"net/http"
+	"time"
 )
 
 type Capture interface {
@@ -55,6 +56,7 @@ func (c *clearVars) Frame() *framing.Frame {
 var _ Capture = (*clearVars)(nil)
 
 type dbInsert struct {
+	dbName    string
 	tableName string
 	row       Columns
 	frame     *framing.Frame
@@ -67,7 +69,7 @@ func (c *dbInsert) Name() string {
 }
 
 func (c *dbInsert) Run(ctx Context) error {
-	return wrapCaptureError(ctx.DbInsert(c.tableName, c.row), "", c)
+	return wrapCaptureError(ctx.DbInsert(c.dbName, c.tableName, c.row), "", c)
 }
 
 func (c *dbInsert) Frame() *framing.Frame {
@@ -75,9 +77,10 @@ func (c *dbInsert) Frame() *framing.Frame {
 }
 
 type dbExec struct {
-	query string
-	args  []any
-	frame *framing.Frame
+	dbName string
+	query  string
+	args   []any
+	frame  *framing.Frame
 }
 
 var _ Capture = (*dbExec)(nil)
@@ -87,7 +90,7 @@ func (c *dbExec) Name() string {
 }
 
 func (c *dbExec) Run(ctx Context) error {
-	return wrapCaptureError(ctx.DbExec(c.query, c.args...), "", c)
+	return wrapCaptureError(ctx.DbExec(c.dbName, c.query, c.args...), "", c)
 }
 
 func (c *dbExec) Frame() *framing.Frame {
@@ -95,6 +98,7 @@ func (c *dbExec) Frame() *framing.Frame {
 }
 
 type dbClearTable struct {
+	dbName    string
 	tableName string
 	frame     *framing.Frame
 }
@@ -106,7 +110,7 @@ func (c *dbClearTable) Name() string {
 }
 
 func (c *dbClearTable) Run(ctx Context) error {
-	return wrapCaptureError(ctx.DbExec("DELETE FROM "+c.tableName), "", c)
+	return wrapCaptureError(ctx.DbExec(c.dbName, "DELETE FROM "+c.tableName), "", c)
 }
 
 func (c *dbClearTable) Frame() *framing.Frame {
@@ -270,4 +274,24 @@ func (m *mockServiceCall) Run(ctx Context) (err error) {
 
 func (m *mockServiceCall) Frame() *framing.Frame {
 	return m.frame
+}
+
+type wait struct {
+	ms    int
+	frame *framing.Frame
+}
+
+var _ Capture = (*wait)(nil)
+
+func (w *wait) Name() string {
+	return fmt.Sprintf("WAIT %s", time.Duration(w.ms)*time.Millisecond)
+}
+
+func (w *wait) Run(ctx Context) error {
+	time.Sleep(time.Duration(w.ms) * time.Millisecond)
+	return nil
+}
+
+func (w *wait) Frame() *framing.Frame {
+	return w.frame
 }

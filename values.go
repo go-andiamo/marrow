@@ -1,6 +1,7 @@
 package marrow
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/go-andiamo/columbus"
@@ -290,14 +291,16 @@ func (v ResponseCookie) ResolveValue(ctx Context) (av any, err error) {
 }
 
 type QueryValue struct {
-	Query string
-	Args  []any
+	DbName string
+	Query  string
+	Args   []any
 }
 
-func Query(query string, args ...any) QueryValue {
+func Query(dbName string, query string, args ...any) QueryValue {
 	return QueryValue{
-		Query: query,
-		Args:  args,
+		DbName: dbName,
+		Query:  query,
+		Args:   args,
 	}
 }
 
@@ -314,7 +317,8 @@ func (v QueryValue) String() string {
 }
 
 func (v QueryValue) ResolveValue(ctx Context) (av any, err error) {
-	if ctx.Db() == nil {
+	var db *sql.DB
+	if db = ctx.Db(v.DbName); db == nil {
 		return nil, errors.New("db is nil")
 	}
 	query := v.Query
@@ -334,7 +338,7 @@ func (v QueryValue) ResolveValue(ctx Context) (av any, err error) {
 		var mapper columbus.Mapper
 		if mapper, err = columbus.NewMapper(query, columbus.Query("")); err == nil {
 			var row map[string]any
-			if row, err = mapper.ExactlyOneRow(ctx.Ctx(), ctx.Db(), args); err == nil {
+			if row, err = mapper.ExactlyOneRow(ctx.Ctx(), db, args); err == nil {
 				if len(row) == 1 {
 					for _, cv := range row {
 						av = cv
@@ -350,19 +354,22 @@ func (v QueryValue) ResolveValue(ctx Context) (av any, err error) {
 }
 
 type QueryRowsValue struct {
-	Query string
-	Args  []any
+	DbName string
+	Query  string
+	Args   []any
 }
 
-func QueryRows(query string, args ...any) QueryRowsValue {
+func QueryRows(dbName string, query string, args ...any) QueryRowsValue {
 	return QueryRowsValue{
-		Query: query,
-		Args:  args,
+		DbName: dbName,
+		Query:  query,
+		Args:   args,
 	}
 }
 
 func (v QueryRowsValue) ResolveValue(ctx Context) (av any, err error) {
-	if ctx.Db() == nil {
+	var db *sql.DB
+	if db = ctx.Db(v.DbName); db == nil {
 		return nil, errors.New("db is nil")
 	}
 	query := v.Query
@@ -382,7 +389,7 @@ func (v QueryRowsValue) ResolveValue(ctx Context) (av any, err error) {
 		var mapper columbus.Mapper
 		if mapper, err = columbus.NewMapper(query, columbus.Query("")); err == nil {
 			var rows []map[string]any
-			if rows, err = mapper.Rows(ctx.Ctx(), ctx.Db(), args); err == nil {
+			if rows, err = mapper.Rows(ctx.Ctx(), db, args); err == nil {
 				av = rows
 			}
 		}
@@ -486,13 +493,11 @@ const (
 	Body BodyValue = "Body"
 )
 
-func (BodyValue) ResolveValue(ctx Context) (av any, err error) {
-	if body := ctx.CurrentBody(); body == nil {
-		err = errors.New("body is nil")
-	} else {
-		av = body
+func (BodyValue) ResolveValue(ctx Context) (any, error) {
+	if body := ctx.CurrentBody(); body != nil {
+		return body, nil
 	}
-	return av, err
+	return nil, nil
 }
 
 func (BodyValue) String() string {

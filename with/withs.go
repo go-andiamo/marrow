@@ -23,15 +23,9 @@ type With interface {
 	Shutdown() func()
 }
 
-func Database(db *sql.DB) With {
+func Database(typeName string, db *sql.DB, dbArgMarkers common.DatabaseArgMarkers) With {
 	return withFn(func(init SuiteInit) {
-		init.SetDb(db)
-	})
-}
-
-func DatabaseArgMarkers(dbArgMarkers common.DatabaseArgMarkers) With {
-	return withFn(func(init SuiteInit) {
-		init.SetDbArgMarkers(dbArgMarkers)
+		init.AddDb(typeName, db, dbArgMarkers)
 	})
 }
 

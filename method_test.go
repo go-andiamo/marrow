@@ -284,6 +284,16 @@ func TestMethod_unmarshalResponseBody(t *testing.T) {
 		require.True(t, ok)
 		assert.Nil(t, ctx.currBody)
 	})
+	t.Run("empty response body", func(t *testing.T) {
+		response := &http.Response{
+			Body: io.NopCloser(bytes.NewReader([]byte{})),
+		}
+		ctx := newTestContext(nil)
+		m := &method{}
+		ok := m.unmarshalResponseBody(ctx, response)
+		require.True(t, ok)
+		assert.Nil(t, ctx.currBody)
+	})
 	t.Run("default unmarshal", func(t *testing.T) {
 		response := &http.Response{
 			Body: io.NopCloser(bytes.NewReader([]byte(`{"foo":42}`))),
