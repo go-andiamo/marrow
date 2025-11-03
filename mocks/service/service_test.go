@@ -13,6 +13,9 @@ import (
 func TestNewMockedService(t *testing.T) {
 	svc := NewMockedService("foo")
 	assert.Equal(t, "foo", svc.Name())
+	assert.Equal(t, "localhost", svc.Host())
+	assert.NotEqual(t, "127.0.0.1", svc.ActualHost())
+	assert.NotEqual(t, "localhost", svc.ActualHost())
 }
 
 func TestMockedService_Start_MockCall_Shutdown(t *testing.T) {

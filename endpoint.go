@@ -111,11 +111,15 @@ func (e *endpoint) Url() string {
 	if len(e.ancestors) > 0 {
 		parts := make([]string, 0, len(e.ancestors)+1)
 		for _, a := range e.ancestors {
-			parts = append(parts, strings.TrimPrefix(a.Url(), "/"))
+			parts = append(parts, strings.TrimPrefix(a.Path(), "/"))
 		}
 		parts = append(parts, strings.TrimPrefix(e.url, "/"))
 		return "/" + strings.Join(parts, "/")
 	}
+	return e.url
+}
+
+func (e *endpoint) Path() string {
 	return e.url
 }
 

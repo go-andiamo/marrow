@@ -103,9 +103,10 @@ type Method_ interface {
 	CaptureFunc(when When, fn func(Context) error) Method_
 	SetVar(when When, name string, value any) Method_
 	ClearVars(when When) Method_
-	DbInsert(when When, tableName string, row Columns) Method_
-	DbExec(when When, query string, args ...any) Method_
-	DbClearTables(when When, tableNames ...string) Method_
+	DbInsert(when When, dbName string, tableName string, row Columns) Method_
+	DbExec(when When, dbName string, query string, args ...any) Method_
+	DbClearTables(when When, dbName string, tableNames ...string) Method_
+	Wait(when When, ms int) Method_
 
 	RequestMarshal(fn func(ctx Context, body any) ([]byte, error)) Method_
 	ResponseUnmarshal(fn func(response *http.Response) (any, error)) Method_
@@ -792,15 +793,17 @@ func (m *method) ClearVars(when When) Method_ {
 }
 
 //go:noinline
-func (m *method) DbInsert(when When, tableName string, row Columns) Method_ {
+func (m *method) DbInsert(when When, dbName string, tableName string, row Columns) Method_ {
 	if when == Before {
 		m.preCaptures = append(m.preCaptures, &dbInsert{
+			dbName:    dbName,
 			tableName: tableName,
 			row:       row,
 			frame:     framing.NewFrame(0),
 		})
 	} else {
 		m.addPostCapture(&dbInsert{
+			dbName:    dbName,
 			tableName: tableName,
 			row:       row,
 			frame:     framing.NewFrame(0),
@@ -810,28 +813,31 @@ func (m *method) DbInsert(when When, tableName string, row Columns) Method_ {
 }
 
 //go:noinline
-func (m *method) DbExec(when When, query string, args ...any) Method_ {
+func (m *method) DbExec(when When, dbName string, query string, args ...any) Method_ {
 	if when == Before {
 		m.preCaptures = append(m.preCaptures, &dbExec{
-			query: query,
-			args:  args,
-			frame: framing.NewFrame(0),
+			dbName: dbName,
+			query:  query,
+			args:   args,
+			frame:  framing.NewFrame(0),
 		})
 	} else {
 		m.addPostCapture(&dbExec{
-			query: query,
-			args:  args,
-			frame: framing.NewFrame(0),
+			dbName: dbName,
+			query:  query,
+			args:   args,
+			frame:  framing.NewFrame(0),
 		})
 	}
 	return m
 }
 
 //go:noinline
-func (m *method) DbClearTables(when When, tableNames ...string) Method_ {
+func (m *method) DbClearTables(when When, dbName string, tableNames ...string) Method_ {
 	if when == Before {
 		for _, tableName := range tableNames {
 			m.preCaptures = append(m.preCaptures, &dbClearTable{
+				dbName:    dbName,
 				tableName: tableName,
 				frame:     framing.NewFrame(0),
 			})
@@ -839,6 +845,7 @@ func (m *method) DbClearTables(when When, tableNames ...string) Method_ {
 	} else {
 		for _, tableName := range tableNames {
 			m.addPostCapture(&dbClearTable{
+				dbName:    dbName,
 				tableName: tableName,
 				frame:     framing.NewFrame(0),
 			})
@@ -924,6 +931,22 @@ func (m *method) RequireMockServiceCalled(svcName string, path string, method Me
 	return m
 }
 
+//go:noinline
+func (m *method) Wait(when When, ms int) Method_ {
+	if when == Before {
+		m.preCaptures = append(m.preCaptures, &wait{
+			ms:    ms,
+			frame: framing.NewFrame(0),
+		})
+	} else {
+		m.addPostCapture(&wait{
+			ms:    ms,
+			frame: framing.NewFrame(0),
+		})
+	}
+	return m
+}
+
 func (m *method) Run(ctx Context) error {
 	ctx.setCurrentMethod(m)
 	if m.preRun(ctx) {
@@ -1001,6 +1024,9 @@ func (m *method) unmarshalResponseBody(ctx Context, res *http.Response) bool {
 			decoder.UseNumber()
 			if err = decoder.Decode(&body); err == nil {
 				body, err = normalizeBody(body)
+			} else if err == io.EOF {
+				body = nil
+				err = nil
 			}
 		}
 		if err != nil {

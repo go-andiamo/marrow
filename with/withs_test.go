@@ -15,8 +15,7 @@ import (
 
 func TestWith_Initials(t *testing.T) {
 	testCases := []any{
-		Database(nil),
-		DatabaseArgMarkers(0),
+		Database("", nil, 0),
 		HttpDo(nil),
 		ApiHost("", 0),
 		Testing(nil),
@@ -40,31 +39,27 @@ func TestWith_Initials(t *testing.T) {
 		})
 	}
 	assert.Len(t, mock.called, len(testCases))
-	assert.Len(t, mock.called, 12)
+	assert.Len(t, mock.called, 11)
 }
 
 func newMockInit() *mockInit {
 	return &mockInit{
 		called:   make(map[string]struct{}),
 		services: make(map[string]service.MockedService),
-		images:   make(map[string]ImageInfo),
+		images:   make(map[string]Image),
 	}
 }
 
 type mockInit struct {
 	called   map[string]struct{}
 	services map[string]service.MockedService
-	images   map[string]ImageInfo
+	images   map[string]Image
 }
 
 var _ SuiteInit = (*mockInit)(nil)
 
-func (d *mockInit) SetDb(db *sql.DB) {
-	d.called["SetDb"] = struct{}{}
-}
-
-func (d *mockInit) SetDbArgMarkers(dbArgMarkers common.DatabaseArgMarkers) {
-	d.called["SetDbArgMarkers"] = struct{}{}
+func (d *mockInit) AddDb(typeName string, db *sql.DB, dbArgMarkers common.DatabaseArgMarkers) {
+	d.called["AddDb"] = struct{}{}
 }
 
 func (d *mockInit) SetHttpDo(do common.HttpDo) {
@@ -112,7 +107,11 @@ func (d *mockInit) AddMockService(mock service.MockedService) {
 	d.services[mock.Name()] = mock
 }
 
-func (d *mockInit) AddSupportingImage(info ImageInfo) {
-	d.called["AddSupportingImage:"+info.Name] = struct{}{}
-	d.images[info.Name] = info
+func (d *mockInit) AddSupportingImage(info Image) {
+	d.called["AddSupportingImage:"+info.Name()] = struct{}{}
+	d.images[info.Name()] = info
+}
+
+func (d *mockInit) ResolveEnv(v any) (string, error) {
+	return fmt.Sprintf("%v", v), nil
 }

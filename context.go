@@ -4,6 +4,7 @@ import (
 	gctx "context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
 	"github.com/go-andiamo/marrow/mocks/service"
@@ -19,7 +20,7 @@ import (
 type Context interface {
 	Host() string
 	Vars() map[Var]any
-	Db() *sql.DB
+	Db(dbName string) *sql.DB
 	Ctx() gctx.Context
 	SetVar(Var, any)
 	ClearVars()
@@ -29,8 +30,8 @@ type Context interface {
 	CurrentRequest() *http.Request
 	CurrentResponse() *http.Response
 	CurrentBody() any
-	DbInsert(tableName string, row Columns) error
-	DbExec(query string, args ...any) error
+	DbInsert(dbName string, tableName string, row Columns) error
+	DbExec(dbName string, query string, args ...any) error
 	StoreCookie(cookie *http.Cookie)
 	GetCookie(name string) *http.Cookie
 	GetMockService(name string) service.MockedService
@@ -53,10 +54,9 @@ type context struct {
 	httpDo       common.HttpDo
 	host         string
 	vars         map[Var]any
-	db           *sql.DB
+	dbs          namedDatabases
 	testing      testing.Helper
 	currTesting  []testing.Helper
-	dbArgMarkers common.DatabaseArgMarkers
 	currEndpoint Endpoint_
 	currMethod   Method_
 	currRequest  *http.Request
@@ -70,6 +70,7 @@ type context struct {
 func newContext() *context {
 	return &context{
 		coverage:     coverage.NewNullCoverage(),
+		dbs:          make(namedDatabases),
 		vars:         make(map[Var]any),
 		cookieJar:    make(map[string]*http.Cookie),
 		httpDo:       http.DefaultClient,
@@ -87,8 +88,11 @@ func (c *context) Vars() map[Var]any {
 	return maps.Clone(c.vars)
 }
 
-func (c *context) Db() *sql.DB {
-	return c.db
+func (c *context) Db(dbNamw string) *sql.DB {
+	if tdb, ok := c.dbs[dbNamw]; ok {
+		return tdb.db
+	}
+	return nil
 }
 
 func (c *context) Ctx() gctx.Context {
@@ -133,13 +137,19 @@ func (c *context) ClearVars() {
 type Columns map[string]any
 type RawQuery string
 
-func (c *context) DbInsert(tableName string, row Columns) (err error) {
+func (c *context) DbInsert(dbName string, tableName string, row Columns) (err error) {
+	tdb := c.dbs[dbName]
+	if tdb == nil {
+		return fmt.Errorf("db name %q not found", dbName)
+	}
+	db := tdb.db
+	argMarkers := tdb.argMarkers
 	args := make([]any, 0, len(row))
 	markers := make([]string, 0, len(row))
 	cols := make([]string, 0, len(row))
 	i := 0
 	addMarker := func() {
-		if c.dbArgMarkers == common.PositionalDbArgs {
+		if argMarkers == common.PositionalDbArgs {
 			markers = append(markers, "?")
 		} else {
 			i++
@@ -176,12 +186,17 @@ func (c *context) DbInsert(tableName string, row Columns) (err error) {
 	}
 	if err == nil {
 		query := "INSERT INTO " + tableName + " (" + strings.Join(cols, ",") + ") VALUES (" + strings.Join(markers, ",") + ")"
-		_, err = c.db.Exec(query, args...)
+		_, err = db.Exec(query, args...)
 	}
 	return err
 }
 
-func (c *context) DbExec(query string, args ...any) (err error) {
+func (c *context) DbExec(dbName string, query string, args ...any) (err error) {
+	tdb := c.dbs[dbName]
+	if tdb == nil {
+		return fmt.Errorf("db name %q not found", dbName)
+	}
+	db := tdb.db
 	avArgs := make([]any, len(args))
 	for i, v := range args {
 		var av any
@@ -192,7 +207,7 @@ func (c *context) DbExec(query string, args ...any) (err error) {
 		}
 	}
 	if err == nil {
-		_, err = c.db.Exec(query, avArgs...)
+		_, err = db.Exec(query, avArgs...)
 	}
 	return err
 }

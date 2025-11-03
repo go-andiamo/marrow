@@ -41,7 +41,7 @@ func TestDbInsert(t *testing.T) {
 	mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 	defer db.Close()
 	ctx := newTestContext(nil)
-	ctx.db = db
+	ctx.dbs.register("", db, 0)
 	err = w.Run(ctx)
 	require.NoError(t, err)
 }
@@ -56,7 +56,7 @@ func TestDbExec(t *testing.T) {
 	mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 	defer db.Close()
 	ctx := newTestContext(nil)
-	ctx.db = db
+	ctx.dbs.register("", db, 0)
 	err = w.Run(ctx)
 	require.NoError(t, err)
 }
@@ -71,7 +71,7 @@ func TestDbClearTable(t *testing.T) {
 	mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 	defer db.Close()
 	ctx := newTestContext(nil)
-	ctx.db = db
+	ctx.dbs.register("", db, 0)
 	err = w.Run(ctx)
 	require.NoError(t, err)
 }
@@ -141,6 +141,10 @@ func (m *mockMockedService) Host() string {
 	return "localhost"
 }
 
+func (m *mockMockedService) ActualHost() string {
+	return "127.0.0.1"
+}
+
 func (m *mockMockedService) Port() int {
 	return 8080
 }
@@ -168,4 +172,14 @@ func (m *mockMockedService) MockCall(path string, method string, responseStatus 
 
 func (m *mockMockedService) AssertCalled(path string, method string) bool {
 	return m.called
+}
+
+func TestWait(t *testing.T) {
+	w := Wait(After, 10)
+	assert.Equal(t, After, w.When())
+	assert.NotNil(t, w.Frame())
+
+	ctx := newTestContext(nil)
+	err := w.Run(ctx)
+	require.NoError(t, err)
 }

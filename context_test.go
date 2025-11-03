@@ -71,12 +71,12 @@ func TestContext_Cookies(t *testing.T) {
 
 func TestContext_Db(t *testing.T) {
 	ctx := newContext()
-	assert.Nil(t, ctx.Db())
+	assert.Nil(t, ctx.Db(""))
 	db, _, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
-	ctx.db = db
-	assert.NotNil(t, ctx.Db())
+	ctx.dbs.register("", db, 0)
+	assert.NotNil(t, ctx.Db(""))
 }
 
 func TestContext_DbInsert(t *testing.T) {
@@ -85,12 +85,12 @@ func TestContext_DbInsert(t *testing.T) {
 		db, mock, err := sqlmock.New()
 		require.NoError(t, err)
 		defer db.Close()
-		ctx.db = db
+		ctx.dbs.register("", db, 0)
 
 		ctx.SetVar("id", 1)
 		mock.ExpectExec(`INSERT INTO table \(id\) VALUES \(\?\)`).WithArgs(1).WillReturnResult(sqlmock.NewResult(1, 1))
 
-		err = ctx.DbInsert("table", Columns{
+		err = ctx.DbInsert("", "table", Columns{
 			"id": Var("id"),
 		})
 		require.NoError(t, err)
@@ -98,16 +98,15 @@ func TestContext_DbInsert(t *testing.T) {
 	})
 	t.Run("basic, NumberedDbArgs", func(t *testing.T) {
 		ctx := newContext()
-		ctx.dbArgMarkers = common.NumberedDbArgs
 		db, mock, err := sqlmock.New()
 		require.NoError(t, err)
 		defer db.Close()
-		ctx.db = db
+		ctx.dbs.register("", db, common.NumberedDbArgs)
 
 		ctx.SetVar("id", 1)
 		mock.ExpectExec(`INSERT INTO table \(id\) VALUES \(\$1\)`).WithArgs(1).WillReturnResult(sqlmock.NewResult(1, 1))
 
-		err = ctx.DbInsert("table", Columns{
+		err = ctx.DbInsert("", "table", Columns{
 			"id": Var("id"),
 		})
 		require.NoError(t, err)
@@ -118,12 +117,12 @@ func TestContext_DbInsert(t *testing.T) {
 		db, mock, err := sqlmock.New()
 		require.NoError(t, err)
 		defer db.Close()
-		ctx.db = db
+		ctx.dbs.register("", db, 0)
 
 		ctx.SetVar("id", 1)
 		mock.ExpectExec(`INSERT INTO table \(id\) VALUES \(\(SELECT id FROM other WHERE id = 1\)\)`).WillReturnResult(sqlmock.NewResult(1, 1))
 
-		err = ctx.DbInsert("table", Columns{
+		err = ctx.DbInsert("", "table", Columns{
 			"id": RawQuery("SELECT id FROM other WHERE id = {$id}"),
 		})
 		require.NoError(t, err)
@@ -134,9 +133,9 @@ func TestContext_DbInsert(t *testing.T) {
 		db, _, err := sqlmock.New()
 		require.NoError(t, err)
 		defer db.Close()
-		ctx.db = db
+		ctx.dbs.register("", db, 0)
 
-		err = ctx.DbInsert("table", Columns{
+		err = ctx.DbInsert("", "table", Columns{
 			"id": RawQuery("SELECT id FROM other WHERE id = {$id}"),
 		})
 		require.Error(t, err)
@@ -147,11 +146,11 @@ func TestContext_DbInsert(t *testing.T) {
 		db, mock, err := sqlmock.New()
 		require.NoError(t, err)
 		defer db.Close()
-		ctx.db = db
+		ctx.dbs.register("", db, 0)
 
 		mock.ExpectExec(``).WithArgs(`{"foo":"bar"}`).WillReturnResult(sqlmock.NewResult(1, 1))
 
-		err = ctx.DbInsert("table", Columns{
+		err = ctx.DbInsert("", "table", Columns{
 			"id": map[string]any{"foo": "bar"},
 		})
 		require.NoError(t, err)
@@ -162,11 +161,11 @@ func TestContext_DbInsert(t *testing.T) {
 		db, mock, err := sqlmock.New()
 		require.NoError(t, err)
 		defer db.Close()
-		ctx.db = db
+		ctx.dbs.register("", db, 0)
 
 		mock.ExpectExec(``).WillReturnError(errors.New("fooey"))
 
-		err = ctx.DbInsert("table", Columns{
+		err = ctx.DbInsert("", "table", Columns{
 			"id": 1,
 		})
 		require.Error(t, err)
@@ -178,13 +177,19 @@ func TestContext_DbInsert(t *testing.T) {
 		db, _, err := sqlmock.New()
 		require.NoError(t, err)
 		defer db.Close()
-		ctx.db = db
+		ctx.dbs.register("", db, 0)
 
-		err = ctx.DbInsert("table", Columns{
+		err = ctx.DbInsert("", "table", Columns{
 			"id": Var("id"),
 		})
 		require.Error(t, err)
 		assert.Equal(t, "unknown variable \"id\"", err.Error())
+	})
+	t.Run("no db name", func(t *testing.T) {
+		ctx := newContext()
+		err := ctx.DbInsert("foo", "table", Columns{})
+		require.Error(t, err)
+		assert.Equal(t, "db name \"foo\" not found", err.Error())
 	})
 }
 
@@ -194,12 +199,12 @@ func TestContext_DbExec(t *testing.T) {
 		db, mock, err := sqlmock.New()
 		require.NoError(t, err)
 		defer db.Close()
-		ctx.db = db
+		ctx.dbs.register("", db, 0)
 
 		ctx.SetVar("id", "foo")
 		mock.ExpectExec("DELETE FROM table WHERE id = ?").WithArgs("foo").WillReturnResult(sqlmock.NewResult(1, 1))
 
-		err = ctx.DbExec("DELETE FROM table WHERE id = ?", Var("id"))
+		err = ctx.DbExec("", "DELETE FROM table WHERE id = ?", Var("id"))
 		require.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -208,12 +213,12 @@ func TestContext_DbExec(t *testing.T) {
 		db, mock, err := sqlmock.New()
 		require.NoError(t, err)
 		defer db.Close()
-		ctx.db = db
+		ctx.dbs.register("", db, 0)
 
 		ctx.SetVar("id", "foo")
 		mock.ExpectExec("DELETE FROM table").WillReturnError(errors.New("fooey"))
 
-		err = ctx.DbExec("DELETE FROM table")
+		err = ctx.DbExec("", "DELETE FROM table")
 		require.Error(t, err)
 		assert.Equal(t, "fooey", err.Error())
 		assert.NoError(t, mock.ExpectationsWereMet())
@@ -223,11 +228,17 @@ func TestContext_DbExec(t *testing.T) {
 		db, _, err := sqlmock.New()
 		require.NoError(t, err)
 		defer db.Close()
-		ctx.db = db
+		ctx.dbs.register("", db, 0)
 
-		err = ctx.DbExec("DELETE FROM table WHERE id = ?", Var("id"))
+		err = ctx.DbExec("", "DELETE FROM table WHERE id = ?", Var("id"))
 		require.Error(t, err)
 		assert.Equal(t, "unknown variable \"id\"", err.Error())
+	})
+	t.Run("no db name", func(t *testing.T) {
+		ctx := newContext()
+		err := ctx.DbExec("foo", "")
+		require.Error(t, err)
+		assert.Equal(t, "db name \"foo\" not found", err.Error())
 	})
 }
 
@@ -566,6 +577,7 @@ func (m *mockRunnable) Frame() *framing.Frame {
 func newTestContext(vars map[Var]any) *context {
 	result := &context{
 		coverage:     coverage.NewNullCoverage(),
+		dbs:          make(namedDatabases),
 		vars:         make(map[Var]any),
 		cookieJar:    make(map[string]*http.Cookie),
 		mockServices: make(map[string]service.MockedService),

@@ -129,3 +129,14 @@ func MockServiceCall(when When, svcName string, path string, method MethodName, 
 		},
 	}
 }
+
+//go:noinline
+func Wait(when When, ms int) BeforeAfter_ {
+	return &beforeAfter{
+		when: when,
+		do: &wait{
+			ms:    ms,
+			frame: framing.NewFrame(0),
+		},
+	}
+}

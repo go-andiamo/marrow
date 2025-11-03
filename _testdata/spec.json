@@ -317,13 +317,7 @@
 				],
 				"parameters": [
 					{
-						"name": "id",
-						"description": "id path param",
-						"in": "path",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
+						"$ref": "#/components/parameters/id"
 					}
 				],
 				"responses": {
@@ -387,13 +381,7 @@
 				],
 				"parameters": [
 					{
-						"name": "id",
-						"description": "id path param",
-						"in": "path",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
+						"$ref": "#/components/parameters/id"
 					}
 				],
 				"requestBody": {
@@ -498,13 +486,7 @@
 				],
 				"parameters": [
 					{
-						"name": "id",
-						"description": "id path param",
-						"in": "path",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
+						"$ref": "#/components/parameters/id"
 					}
 				],
 				"responses": {
@@ -529,7 +511,11 @@
 				"description": "common id param",
 				"in": "path",
 				"required": true,
-				"example": "example"
+				"example": "example",
+				"schema": {
+					"type": "string",
+					"format": "uuid"
+				}
 			}
 		}
 	}

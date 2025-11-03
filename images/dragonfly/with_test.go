@@ -2,6 +2,7 @@ package dragonfly
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/go-andiamo/marrow"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
@@ -32,8 +33,15 @@ func TestWithInit_Mocked(t *testing.T) {
 	_, ok := init.called["AddSupportingImage:dragonfly"]
 	assert.True(t, ok)
 	assert.Len(t, init.images, 1)
-	_, ok = init.images["dragonfly"]
+	img, ok := init.images["dragonfly"]
 	assert.True(t, ok)
+	assert.Equal(t, "dragonfly", img.Name())
+	assert.True(t, img.IsDocker())
+	assert.Equal(t, "localhost", img.Host())
+	assert.Equal(t, defaultPort, img.Port())
+	assert.NotEqual(t, defaultPort, img.MappedPort())
+	assert.Equal(t, "", img.Username())
+	assert.Equal(t, "", img.Password())
 
 	w.Shutdown()()
 }
@@ -49,24 +57,20 @@ func newMockInit() *mockInit {
 	return &mockInit{
 		called:   make(map[string]struct{}),
 		services: make(map[string]service.MockedService),
-		images:   make(map[string]with.ImageInfo),
+		images:   make(map[string]with.Image),
 	}
 }
 
 type mockInit struct {
 	called   map[string]struct{}
 	services map[string]service.MockedService
-	images   map[string]with.ImageInfo
+	images   map[string]with.Image
 }
 
 var _ with.SuiteInit = (*mockInit)(nil)
 
-func (d *mockInit) SetDb(db *sql.DB) {
-	d.called["SetDb"] = struct{}{}
-}
-
-func (d *mockInit) SetDbArgMarkers(dbArgMarkers common.DatabaseArgMarkers) {
-	d.called["SetDbArgMarkers"] = struct{}{}
+func (d *mockInit) AddDb(dnName string, db *sql.DB, dbArgMarkers common.DatabaseArgMarkers) {
+	d.called["AddDb"] = struct{}{}
 }
 
 func (d *mockInit) SetHttpDo(do common.HttpDo) {
@@ -114,7 +118,11 @@ func (d *mockInit) AddMockService(mock service.MockedService) {
 	d.services[mock.Name()] = mock
 }
 
-func (d *mockInit) AddSupportingImage(info with.ImageInfo) {
-	d.called["AddSupportingImage:"+info.Name] = struct{}{}
-	d.images[info.Name] = info
+func (d *mockInit) AddSupportingImage(info with.Image) {
+	d.called["AddSupportingImage:"+info.Name()] = struct{}{}
+	d.images[info.Name()] = info
+}
+
+func (d *mockInit) ResolveEnv(v any) (string, error) {
+	return fmt.Sprintf("%v", v), nil
 }

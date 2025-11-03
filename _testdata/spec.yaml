@@ -218,12 +218,7 @@ paths:
       tags:
         - Pets
       parameters:
-        - name: id
-          description: "id path param"
-          in: path
-          required: true
-          schema:
-            type: string
+        - $ref: "#/components/parameters/id"
       responses:
         200:
           description: OK
@@ -267,12 +262,7 @@ paths:
       tags:
         - Pets
       parameters:
-        - name: id
-          description: "id path param"
-          in: path
-          required: true
-          schema:
-            type: string
+        - $ref: "#/components/parameters/id"
       requestBody:
         description: "Pet update"
         required: true
@@ -366,3 +356,6 @@ components:
       in: path
       required: true
       example: example
+      schema:
+        type: string
+        format: uuid

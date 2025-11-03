@@ -14,6 +14,7 @@ import (
 )
 
 type image struct {
+	name       string
 	options    Options
 	db         *sql.DB
 	mappedPort string
@@ -63,7 +64,7 @@ func (i *image) openDatabase() (err error) {
 
 func (i *image) dsn(host string, dbName string) string {
 	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=true&multiStatements=true",
-		i.options.username(), i.options.password(), host, i.mappedPort, dbName)
+		i.options.rootUsername(), i.options.rootPassword(), host, i.mappedPort, dbName)
 }
 
 const envRyukDisable = "TESTCONTAINERS_RYUK_DISABLED"
@@ -89,8 +90,8 @@ func (i *image) startContainer() (err error) {
 			wait.ForLog("port: "+dbPort+"  MySQL Community Server - GPL"),
 			wait.ForListeningPort(natPort)),
 		Env: map[string]string{
-			"MYSQL_ROOT_USER":     i.options.username(),
-			"MYSQL_ROOT_PASSWORD": i.options.password(),
+			"MYSQL_ROOT_USER":     i.options.rootUsername(),
+			"MYSQL_ROOT_PASSWORD": i.options.rootPassword(),
 		},
 	}
 	if i.container, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{ContainerRequest: req, Started: true}); err == nil {
@@ -110,7 +111,7 @@ func (i *image) shutdown() {
 	if i.db != nil {
 		_ = i.db.Close()
 	}
-	if i.container != nil {
+	if i.container != nil && !i.options.LeaveRunning {
 		_ = i.container.Terminate(context.Background())
 	}
 }
@@ -125,4 +126,28 @@ func (i *image) Database() *sql.DB {
 
 func (i *image) Container() testcontainers.Container {
 	return i.container
+}
+
+func (i *image) Name() string {
+	return "mysql"
+}
+
+func (i *image) Host() string {
+	return "localhost"
+}
+
+func (i *image) Port() string {
+	return i.options.defaultPort()
+}
+
+func (i *image) IsDocker() bool {
+	return true
+}
+
+func (i *image) Username() string {
+	return i.options.rootUsername()
+}
+
+func (i *image) Password() string {
+	return i.options.rootPassword()
 }

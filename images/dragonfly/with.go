@@ -18,19 +18,14 @@ func With(options Options) Image {
 }
 
 var _ with.With = (*image)(nil)
+var _ with.Image = (*image)(nil)
 var _ Image = (*image)(nil)
 
 func (i *image) Init(init with.SuiteInit) error {
 	if err := i.Start(); err != nil {
 		return fmt.Errorf("with dragonfly image init error: %w", err)
 	}
-	init.AddSupportingImage(with.ImageInfo{
-		Name:       "dragonfly",
-		Host:       "localhost",
-		Port:       i.options.defaultPort(),
-		MappedPort: i.mappedPort,
-		IsDocker:   true,
-	})
+	init.AddSupportingImage(i)
 	return nil
 }
 

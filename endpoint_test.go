@@ -125,17 +125,6 @@ func TestEndpoint_Url_WithAncestors(t *testing.T) {
 		})
 		assert.Equal(t, "/api/foos/{id}", e.Url())
 	})
-	t.Run("with ancestors nested", func(t *testing.T) {
-		e := Endpoint("/{id}", "")
-		assert.Equal(t, "/{id}", e.Url())
-		e.setAncestry([]Endpoint_{
-			&endpoint{
-				url:       "/foos",
-				ancestors: []Endpoint_{Endpoint("/api", "")},
-			},
-		})
-		assert.Equal(t, "/api/foos/{id}", e.Url())
-	})
 }
 
 func TestEndpoint_Run(t *testing.T) {

@@ -14,6 +14,7 @@ import (
 type MockedService interface {
 	Name() string
 	Host() string
+	ActualHost() string
 	Port() int
 	Url() string
 	Start() error
@@ -25,21 +26,25 @@ type MockedService interface {
 
 func NewMockedService(name string) MockedService {
 	return &mockedService{
-		name:      name,
-		host:      "localhost",
-		endpoints: make(map[string]*mockedEndpoint),
+		name:       name,
+		host:       "localhost",
+		actualHost: localIP(),
+		endpoints:  make(map[string]*mockedEndpoint),
 	}
 }
 
 type mockedService struct {
-	name      string
-	host      string
-	port      int
-	server    *http.Server
-	listener  net.Listener
-	mu        sync.RWMutex
-	endpoints map[string]*mockedEndpoint
+	name       string
+	host       string
+	actualHost string
+	port       int
+	server     *http.Server
+	listener   net.Listener
+	mu         sync.RWMutex
+	endpoints  map[string]*mockedEndpoint
 }
+
+var _ MockedService = &mockedService{}
 
 type mockedEndpoint struct {
 	calls    int
@@ -59,6 +64,10 @@ func (m *mockedService) Host() string {
 	return m.host
 }
 
+func (m *mockedService) ActualHost() string {
+	return m.actualHost
+}
+
 func (m *mockedService) Port() int {
 	return m.port
 }
@@ -73,7 +82,6 @@ func (m *mockedService) Start() (err error) {
 			err = fmt.Errorf("mocked service: %w", err)
 		}
 	}()
-	//	if m.host, err = localIP(); err == nil {
 	// listen on "127.0.0.1:0" (i.e. port 0) tells the OS to pick an unused port
 	if m.listener, err = net.Listen("tcp", "127.0.0.1:0"); err == nil {
 		addr := m.listener.Addr().(*net.TCPAddr)
@@ -83,7 +91,6 @@ func (m *mockedService) Start() (err error) {
 			_ = m.server.Serve(m.listener)
 		}()
 	}
-	//	}
 	return
 }
 
@@ -172,25 +179,18 @@ func (m *mockedService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/*
-func localIP() (string, error) {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return "", fmt.Errorf("cannot get local IP addresses: %w", err)
-	}
-	var local string
-	for _, addr := range addrs {
-		// check if the address is an IP address and not a loopback...
-		if ipNet, ok := addr.(*net.IPNet); ok && !ipNet.IP.IsLoopback() {
-			if ipNet.IP.To4() != nil { // ensure it's an IPv4 address
-				local = ipNet.IP.String()
-				break
+func localIP() (result string) {
+	result = "127.0.0.1"
+	if addrs, err := net.InterfaceAddrs(); err == nil {
+		for _, addr := range addrs {
+			// check if the address is an IP address and not a loopback...
+			if ipNet, ok := addr.(*net.IPNet); ok && !ipNet.IP.IsLoopback() {
+				if ipNet.IP.To4() != nil { // ensure it's an IPv4 address
+					result = ipNet.IP.String()
+					break
+				}
 			}
 		}
 	}
-	if local == "" {
-		return "", fmt.Errorf("could not determine local IP address")
-	}
-	return local, nil
+	return result
 }
-*/

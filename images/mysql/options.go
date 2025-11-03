@@ -5,14 +5,16 @@ import "io/fs"
 type Options struct {
 	ImageVersion string // defaults to "8.0.40"
 	Image        string // defaults to "docker.io/mysql"
-	RootUser     string // defaults to "root"
+	RootUsername string // defaults to "root"
 	RootPassword string // defaults to "root"
 	// Database is the database (schema) name to use
 	// If this is a non-empty string, the database will be created
 	Database            string
 	DefaultPort         string // is the actual port for MySql, defaults to "3306"
 	DisableAutoShutdown bool   // if set, disables container auto (RYUK reaper) shutdown
+	LeaveRunning        bool   // if set, the container is not shutdown
 	Migrations          []Migration
+	Scripts             []string // use Scripts for any scripts to be executed after schema is created (e.g. creating users, granting privileges)
 }
 
 type Migration struct {
@@ -29,11 +31,11 @@ func (m Migration) path() string {
 }
 
 const (
-	defaultVersion  = "8.0.40"
-	defaultImage    = "docker.io/mysql"
-	defaultUsername = "root"
-	defaultPassword = "root"
-	defaultPort     = "3306"
+	defaultVersion      = "8.0.40"
+	defaultImage        = "docker.io/mysql"
+	defaultRootUsername = "root"
+	defaultRootPassword = "root"
+	defaultPort         = "3306"
 )
 
 func (o Options) version() string {
@@ -54,18 +56,18 @@ func (o Options) useImage() string {
 	return o.image() + ":" + o.version()
 }
 
-func (o Options) username() string {
-	if o.RootUser != "" {
-		return o.RootUser
+func (o Options) rootUsername() string {
+	if o.RootUsername != "" {
+		return o.RootUsername
 	}
-	return defaultUsername
+	return defaultRootUsername
 }
 
-func (o Options) password() string {
+func (o Options) rootPassword() string {
 	if o.RootPassword != "" {
 		return o.RootPassword
 	}
-	return defaultPassword
+	return defaultRootPassword
 }
 
 func (o Options) defaultPort() string {
