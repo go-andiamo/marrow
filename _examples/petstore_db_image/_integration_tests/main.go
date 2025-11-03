@@ -28,6 +28,7 @@ var endpoints = []Endpoint_{
 					},
 				}).
 				AssertCreated().
+				AssertOnlyHasProperties(Body, "id", "name", "dob", "category", "$ref").
 				SetVar(After, "created-pet-id", JsonPath(Body, "id")),
 			Method(GET, "Get pets (non-empty)").
 				AssertOK().
@@ -38,7 +39,8 @@ var endpoints = []Endpoint_{
 					AssertNotFound(),
 				Method(GET, "Get pet").
 					PathParam(Var("created-pet-id")).
-					AssertOK(),
+					AssertOK().
+					AssertOnlyHasProperties(Body, "id", "name", "dob", "category", "$ref"),
 				Method(DELETE, "Delete pet (not found)").
 					PathParam(Var("non-uuid")).
 					AssertNotFound(),
@@ -60,7 +62,8 @@ var endpoints = []Endpoint_{
 					AssertNotFound(),
 				Method(GET, "Get category (found)").
 					PathParam(Var("categoryId")).
-					AssertOK(),
+					AssertOK().
+					AssertOnlyHasProperties(Body, "id", "name", "$ref"),
 			),
 		),
 	),
