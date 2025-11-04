@@ -12,9 +12,17 @@ import (
 	"time"
 )
 
-func ResolveValue(v any, ctx Context) (av any, err error) {
-	av = v
-	switch vt := v.(type) {
+// ResolveValue takes any value and attempts to resolve it (using the supplied Context to obtain actual values - such as vars, response etc.)
+//
+// the value can be of any type - the following types are treated specially:
+//   - anything that implements Resolvable (the value is deep resolved)
+//   - BodyReader is executed to read the current context response body
+//   - `func(any) (any, error)` is called with the current context response body
+//   - TemplateString any var markers in the string are resolved
+//   - `map[string]any`, `[]any`, JSON, JSONArray - all values within the map/slice are resolved
+func ResolveValue(value any, ctx Context) (av any, err error) {
+	av = value
+	switch vt := value.(type) {
 	case Resolvable:
 		av, err = deepResolveValue(vt, ctx)
 	case BodyReader:
@@ -156,9 +164,9 @@ func stringifyValue(v any) string {
 }
 
 const (
-	FIRST = "FIRST"
-	LAST  = "LAST"
-	LEN   = "LEN"
+	FIRST = "FIRST" // FIRST is a special token for path in JsonPath - and means resolve to first item in slice
+	LAST  = "LAST"  // LAST is a special token for path in JsonPath - and means resolve to last item in slice
+	LEN   = "LEN"   // LEN is a special token for path in JsonPath - and means resolve to length of slice
 )
 
 func resolveJsonPath(v any, path string) (av any, err error) {
@@ -218,12 +226,21 @@ func resolveJsonPath(v any, path string) (av any, err error) {
 	return av, err
 }
 
+// Resolvable is an interface to be implemented by any type where the value is to be resolved
 type Resolvable interface {
 	ResolveValue(ctx Context) (av any, err error)
 }
 
+// BodyReader is a func that is called to resolve the value of the current context response body
+//
+// is specially treated by ResolveValue
+//
+// see also Body
 type BodyReader func(body any) (any, error)
 
+// Var is the name of a variable in the current Context
+//
+// when resolved, if the variable name is not set in the current Context it will cause an error in the test
 type Var string
 
 func (v Var) ResolveValue(ctx Context) (av any, err error) {
@@ -240,6 +257,7 @@ func (v Var) String() string {
 	return "Var(" + string(v) + ")"
 }
 
+// StatusCode is a type that indicates resolve to the current Context response status code
 type StatusCode int
 
 func (StatusCode) ResolveValue(ctx Context) (av any, err error) {
@@ -250,6 +268,13 @@ func (StatusCode) ResolveValue(ctx Context) (av any, err error) {
 	}
 }
 
+// ResponseHeader is a type that will resolve to the specified header in the current Context response
+//
+// example:
+//
+//	ResponseHeader("Content-Type")
+//
+// will resolve to the "Content-Type" header vale in the current Context response
 type ResponseHeader string
 
 func (v ResponseHeader) ResolveValue(ctx Context) (av any, err error) {
@@ -260,6 +285,15 @@ func (v ResponseHeader) ResolveValue(ctx Context) (av any, err error) {
 	}
 }
 
+// ResponseCookie is a type that will resolve to the specified named cookie in the current Context response
+//
+// example:
+//
+//	ResponseCookie("session")
+//
+// will resolve to the named cookie "session" in the current Context response
+//
+// The resolved value is a `map[string]any` representation of a http.Cookie
 type ResponseCookie string
 
 func (v ResponseCookie) ResolveValue(ctx Context) (av any, err error) {
@@ -297,6 +331,13 @@ type QueryValue struct {
 	Args   []any
 }
 
+// Query resolves to a value obtained by executing the query and args against the named database
+//
+// Notes:
+//   - if only one supporting database is used in tests, the dbName can be just ""
+//   - the query **must** start with "SELECT "
+//   - if there is only one selected column, the resolved value will be the value in that column
+//   - if there are multiple columns selected, the resolved value will be a `map[string]any` representation of the row
 func Query(dbName string, query string, args ...any) QueryValue {
 	return QueryValue{
 		DbName: dbName,
@@ -360,6 +401,12 @@ type QueryRowsValue struct {
 	Args   []any
 }
 
+// QueryRows resolves to a value obtained by executing the query and args against the named database
+//
+// Notes:
+//   - if only one supporting database is used in tests, the dbName can be just ""
+//   - the query **must** start with "SELECT "
+//   - the resolved value is a `[]map[string]any` representation of the selected rows and columns
 func QueryRows(dbName string, query string, args ...any) QueryRowsValue {
 	return QueryRowsValue{
 		DbName: dbName,
@@ -398,6 +445,13 @@ func (v QueryRowsValue) ResolveValue(ctx Context) (av any, err error) {
 	return av, err
 }
 
+// BodyPath resolves to a value using the supplied path against the current Context response body
+//
+// example:
+//
+//	BodyPath("foo.bar")
+//
+// will resolve to the value of property foo.bar in the current Context response body
 type BodyPath string
 
 func (v BodyPath) ResolveValue(ctx Context) (av any, err error) {
@@ -414,6 +468,13 @@ type JsonPathValue struct {
 	Path  string
 }
 
+// JsonPath resolves to a value using the supplied path on the supplied value
+//
+// example:
+//
+//	JsonPath(Var("foo"), "bar")
+//
+// will resolve to the value of Var("foo") and return the value of property "bar" within that
 func JsonPath(v any, path string) JsonPathValue {
 	return JsonPathValue{
 		Path:  path,
@@ -437,6 +498,21 @@ type JsonTraverseValue struct {
 	Steps []any
 }
 
+// JsonTraverse resolves to a value using the supplied path steps on the supplied value
+//
+// example:
+//
+//	JsonTraverse(Var("foo"), FIRST, "bar", LAST)
+//
+// if the Var("foo") resolved to...
+//
+//	[
+//	  {
+//	    "bar": ["aaa", "bbb", "ccc"]
+//	  }
+//	]
+//
+// the final resolved value would be "ccc"
 func JsonTraverse(v any, pathSteps ...any) JsonTraverseValue {
 	return JsonTraverseValue{
 		Value: v,
@@ -482,9 +558,23 @@ func (v JsonTraverseValue) ResolveValue(ctx Context) (av any, err error) {
 	return av, err
 }
 
+// TemplateString is a string type that can contain variable markers - which are resolved to produce the final string
+//
+// variable markers are in the format "{$name}"
+//
+// when being resolved (against a Context), any variables not found will cause an error in the test
+//
+// to escape the marker start, use "\{$"
 type TemplateString string
 
+// JSON is shorthand for a `map[string]any` representation of a json object
+//
+// it is also treated specially by ResolveValue - where all values are deep resolved
 type JSON map[string]any
+
+// JSONArray is shorthand for a `[]any` representation of a json array
+//
+// it is also treated specially by ResolveValue - where all values are deep resolved
 type JSONArray []any
 
 type BodyValue string
