@@ -45,13 +45,13 @@ func Endpoint(url string, desc string, operations ...any) Endpoint_ {
 				}
 				result.subs = append(result.subs, e)
 			}
-		case BeforeAfter_:
+		case BeforeAfter:
 			if op.When() == Before {
 				result.befores = append(result.befores, op)
 			} else {
 				result.afters = append(result.afters, op)
 			}
-		case []BeforeAfter_:
+		case []BeforeAfter:
 			for _, ba := range op {
 				if ba == nil {
 					continue
@@ -72,7 +72,7 @@ func Endpoint(url string, desc string, operations ...any) Endpoint_ {
 						result.methods = append(result.methods, opv)
 					case Endpoint_:
 						result.subs = append(result.subs, opv)
-					case BeforeAfter_:
+					case BeforeAfter:
 						if opv.When() == Before {
 							result.befores = append(result.befores, opv)
 						} else {
@@ -99,8 +99,8 @@ type endpoint struct {
 	methods   []Method_
 	ancestors []Endpoint_
 	subs      []Endpoint_
-	befores   []BeforeAfter_
-	afters    []BeforeAfter_
+	befores   []BeforeAfter
+	afters    []BeforeAfter
 }
 
 func (e *endpoint) String() string {

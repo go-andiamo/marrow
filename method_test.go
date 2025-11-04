@@ -401,9 +401,15 @@ func TestMethod_Run(t *testing.T) {
 		ctx.currEndpoint = Endpoint("/foos/{id}", "")
 		cov := coverage.NewCoverage()
 		ctx.coverage = cov
+		authFnCalled := false
+		authFn := func(ctx Context) error {
+			authFnCalled = true
+			return nil
+		}
 		m := Method(GET, "",
 			SetVar(Before, "id", 123),
 		).PathParam(Var("id")).
+			Authorize(authFn).
 			AssertOK().
 			SetVar(After, "foo", JsonPath(Body, "foo")).
 			AssertEqual(Var("foo"), 42)
@@ -411,6 +417,7 @@ func TestMethod_Run(t *testing.T) {
 		err := m.Run(ctx)
 		require.NoError(t, err)
 		require.False(t, ctx.failed)
+		assert.True(t, authFnCalled)
 		assert.Len(t, cov.Timings, 1)
 		assert.Len(t, cov.Met, 2)
 		require.Len(t, cov.Endpoints, 1)
@@ -476,6 +483,24 @@ func TestMethod_Run(t *testing.T) {
 		assert.Len(t, mc.Failures, 1)
 		assert.Len(t, ec.Met, 1)
 		assert.Len(t, ec.Skipped, 1)
+	})
+	t.Run("authorize fails", func(t *testing.T) {
+		ctx := newTestContext(nil)
+		ctx.currEndpoint = Endpoint("/foos", "")
+		cov := coverage.NewCoverage()
+		ctx.coverage = cov
+		authFnCalled := false
+		authFn := func(ctx Context) error {
+			authFnCalled = true
+			return errors.New("fooey")
+		}
+		m := Method(GET, "").Authorize(authFn)
+		err := m.Run(ctx)
+		require.NoError(t, err)
+		require.True(t, ctx.failed)
+		assert.True(t, authFnCalled)
+		assert.Len(t, cov.Timings, 0)
+		assert.Len(t, cov.Failures, 1)
 	})
 	t.Run("expectation met & unmet", func(t *testing.T) {
 		ctx := newTestContext(nil)

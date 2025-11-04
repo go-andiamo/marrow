@@ -32,7 +32,7 @@ func TestClearVars(t *testing.T) {
 }
 
 func TestDbInsert(t *testing.T) {
-	w := DbInsert(After, "table_name", Columns{"foo": "bar"})
+	w := DbInsert(After, "", "table_name", Columns{"foo": "bar"})
 	assert.Equal(t, After, w.When())
 	assert.NotNil(t, w.Frame())
 
@@ -47,7 +47,7 @@ func TestDbInsert(t *testing.T) {
 }
 
 func TestDbExec(t *testing.T) {
-	w := DbExec(After, "DELETE FROM table_name")
+	w := DbExec(After, "", "DELETE FROM table_name")
 	assert.Equal(t, After, w.When())
 	assert.NotNil(t, w.Frame())
 
@@ -62,7 +62,7 @@ func TestDbExec(t *testing.T) {
 }
 
 func TestDbClearTable(t *testing.T) {
-	w := DbClearTable(After, "table_name")
+	w := DbClearTable(After, "", "table_name")
 	assert.Equal(t, After, w.When())
 	assert.NotNil(t, w.Frame())
 

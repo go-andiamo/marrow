@@ -298,38 +298,80 @@ type methodExpectations interface {
 }
 
 type methodMockService interface {
+	// MockServicesClearAll clears all mock services
 	MockServicesClearAll(when When) Method_
+	// MockServiceClear clears a specific named mock service
 	MockServiceClear(when When, svcName string) Method_
+	// MockServiceCall sets up a mock response on a specific named mock service
 	MockServiceCall(svcName string, path string, method MethodName, responseStatus int, responseBody any, headers ...any) Method_
+	// AssertMockServiceCalled asserts that a specific mock service endpoint+method was called
 	AssertMockServiceCalled(svcName string, path string, method MethodName) Method_
+	// RequireMockServiceCalled requires that a specific mock service endpoint+method was called
 	RequireMockServiceCalled(svcName string, path string, method MethodName) Method_
 }
 
 type Method_ interface {
 	common.Method
 
-	Authorize(func(ctx Context) error) Method_
+	// QueryParam sets a http query param to value(s) for the method call
 	QueryParam(name string, values ...any) Method_
+	// PathParam sets a URL path param for the method call
+	//
+	// path params are specified in the order in which they appear in the url template
 	PathParam(value any) Method_
+	// RequestHeader sets a http header for the method call
 	RequestHeader(name string, value any) Method_
+	// RequestBody sets the http request body for the method call
 	RequestBody(value any) Method_
+	// UseCookie sets a named cookie to use on the method call
+	//
+	// the named cookie has to have been previously stored in the Context
 	UseCookie(name string) Method_
+	// SetCookie sets a cookie to be used for the method call
 	SetCookie(cookie *http.Cookie) Method_
+	// StoreCookie stores a named cookie from the response in the Context
 	StoreCookie(name string) Method_
+	// Authorize provides a function that can be used to authorize a http request
+	//
+	// the func is passed the current Context, and can obtain the built request using Context.CurrentRequest and manipulate it
+	//
+	// Notes:
+	//  * multiple authorize functions can be added.
+	//  * authorize functions are called after pre-captures (i.e. Before's) and after the request has been built
+	Authorize(func(ctx Context) error) Method_
 
 	methodExpectations
 	methodMockService
 
-	Capture(op BeforeAfter_) Method_
-	CaptureFunc(when When, fn func(Context) error) Method_
+	// SetVar sets a variable in the current Context
 	SetVar(when When, name string, value any) Method_
+	// ClearVars clears all variables in the current Context
 	ClearVars(when When) Method_
+	// DbInsert performs an insert into a database table
+	//
+	// Note: when only one database is used by tests, the dbName can be ""
 	DbInsert(when When, dbName string, tableName string, row Columns) Method_
+	// DbExec executes a statement on a database
+	//
+	// Note: when only one database is used by tests, the dbName can be ""
 	DbExec(when When, dbName string, query string, args ...any) Method_
+	// DbClearTables clears table(s) in a database
+	//
+	// Note: when only one database is used by tests, the dbName can be ""
 	DbClearTables(when When, dbName string, tableNames ...string) Method_
 	Wait(when When, ms int) Method_
+	// Capture adds a before/after operation
+	Capture(op BeforeAfter) Method_
+	// CaptureFunc adds the provided func as a before/after operation
+	CaptureFunc(when When, fn func(Context) error) Method_
 
+	// RequestMarshal provides an override function to build (marshal) the request body
+	//
+	// only one func is used, so if this is called multiple times - last one wins
 	RequestMarshal(fn func(ctx Context, body any) ([]byte, error)) Method_
+	// ResponseUnmarshal provides an override function to unmarshal the response body
+	//
+	// only one func is used, so if this is called multiple times - last one wins
 	ResponseUnmarshal(fn func(response *http.Response) (any, error)) Method_
 	Runnable
 	fmt.Stringer
@@ -344,7 +386,7 @@ type Method_ interface {
 // ops args are any before/after operations to be run as part of the method test
 //
 //go:noinline
-func Method(verb MethodName, desc string, ops ...BeforeAfter_) Method_ {
+func Method(verb MethodName, desc string, ops ...BeforeAfter) Method_ {
 	return newMethod(verb, desc, ops...)
 }
 
@@ -353,7 +395,7 @@ func Method(verb MethodName, desc string, ops ...BeforeAfter_) Method_ {
 // synonymous with calling Method(GET, ...)
 //
 //go:noinline
-func Get(desc string, ops ...BeforeAfter_) Method_ {
+func Get(desc string, ops ...BeforeAfter) Method_ {
 	return newMethod(GET, desc, ops...)
 }
 
@@ -362,7 +404,7 @@ func Get(desc string, ops ...BeforeAfter_) Method_ {
 // synonymous with calling Method(HEAD, ...)
 //
 //go:noinline
-func Head(desc string, ops ...BeforeAfter_) Method_ {
+func Head(desc string, ops ...BeforeAfter) Method_ {
 	return newMethod(HEAD, desc, ops...)
 }
 
@@ -371,7 +413,7 @@ func Head(desc string, ops ...BeforeAfter_) Method_ {
 // synonymous with calling Method(POST, ...)
 //
 //go:noinline
-func Post(desc string, ops ...BeforeAfter_) Method_ {
+func Post(desc string, ops ...BeforeAfter) Method_ {
 	return newMethod(POST, desc, ops...)
 }
 
@@ -380,7 +422,7 @@ func Post(desc string, ops ...BeforeAfter_) Method_ {
 // synonymous with calling Method(PUT, ...)
 //
 //go:noinline
-func Put(desc string, ops ...BeforeAfter_) Method_ {
+func Put(desc string, ops ...BeforeAfter) Method_ {
 	return newMethod(PUT, desc, ops...)
 }
 
@@ -389,7 +431,7 @@ func Put(desc string, ops ...BeforeAfter_) Method_ {
 // synonymous with calling Method(PATCH, ...)
 //
 //go:noinline
-func Patch(desc string, ops ...BeforeAfter_) Method_ {
+func Patch(desc string, ops ...BeforeAfter) Method_ {
 	return newMethod(PATCH, desc, ops...)
 }
 
@@ -398,12 +440,12 @@ func Patch(desc string, ops ...BeforeAfter_) Method_ {
 // synonymous with calling Method(DELETE, ...)
 //
 //go:noinline
-func Delete(desc string, ops ...BeforeAfter_) Method_ {
+func Delete(desc string, ops ...BeforeAfter) Method_ {
 	return newMethod(DELETE, desc, ops...)
 }
 
 //go:noinline
-func newMethod(m MethodName, desc string, ops ...BeforeAfter_) Method_ {
+func newMethod(m MethodName, desc string, ops ...BeforeAfter) Method_ {
 	result := &method{
 		desc:        desc,
 		frame:       framing.NewFrame(1),
@@ -439,6 +481,7 @@ type method struct {
 	headers           map[string]any
 	body              any
 	preCaptures       []Runnable
+	authFns           []Runnable
 	postOps           []postOp
 	postCaptures      []Runnable
 	expectations      []Expectation
@@ -484,12 +527,11 @@ func (m *method) FailFast() Method_ {
 //go:noinline
 func (m *method) Authorize(fn func(ctx Context) error) Method_ {
 	if fn != nil {
-		m.preCaptures = append(m.preCaptures, &userDefinedCapture{
+		m.authFns = append(m.authFns, &userDefinedCapture{
 			name:  "Authorize",
 			fn:    fn,
 			frame: framing.NewFrame(0),
 		})
-
 	}
 	return m
 }
@@ -793,7 +835,7 @@ func (m *method) RequireStatus(status any) Method_ {
 }
 
 //go:noinline
-func (m *method) Capture(op BeforeAfter_) Method_ {
+func (m *method) Capture(op BeforeAfter) Method_ {
 	if op != nil {
 		if op.When() == Before {
 			m.preCaptures = append(m.preCaptures, op)
@@ -1283,9 +1325,11 @@ func (m *method) Run(ctx Context) error {
 	ctx.setCurrentMethod(m)
 	if m.preRun(ctx) {
 		if request, ok := m.buildRequest(ctx); ok {
-			if response, ok := ctx.doRequest(request); ok {
-				if m.unmarshalResponseBody(ctx, response) {
-					m.postRun(ctx)
+			if m.preRequestRun(ctx) {
+				if response, ok := ctx.doRequest(request); ok {
+					if m.unmarshalResponseBody(ctx, response) {
+						m.postRun(ctx)
+					}
 				}
 			}
 		}
@@ -1295,6 +1339,18 @@ func (m *method) Run(ctx Context) error {
 
 func (m *method) preRun(ctx Context) bool {
 	for _, c := range m.preCaptures {
+		if c != nil {
+			if err := c.Run(ctx); err != nil {
+				ctx.reportFailure(err)
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (m *method) preRequestRun(ctx Context) bool {
+	for _, c := range m.authFns {
 		if c != nil {
 			if err := c.Run(ctx); err != nil {
 				ctx.reportFailure(err)

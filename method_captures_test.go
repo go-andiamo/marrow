@@ -13,7 +13,7 @@ func TestMethod_Authorize(t *testing.T) {
 	})
 	raw, ok := m.(*method)
 	require.True(t, ok)
-	assert.Len(t, raw.preCaptures, 1)
+	assert.Len(t, raw.authFns, 1)
 }
 
 func TestMethod_Capture(t *testing.T) {

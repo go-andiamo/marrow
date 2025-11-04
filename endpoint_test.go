@@ -57,7 +57,7 @@ func TestNewEndpoint(t *testing.T) {
 		assert.Len(t, raw.afters, 1)
 	})
 	t.Run("with befores/afters", func(t *testing.T) {
-		bas := []BeforeAfter_{
+		bas := []BeforeAfter{
 			SetVar(Before, "foo", nil),
 			SetVar(After, "foo", nil),
 			nil,
