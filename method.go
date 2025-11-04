@@ -359,6 +359,9 @@ type Method_ interface {
 	//
 	// Note: when only one database is used by tests, the dbName can be ""
 	DbClearTables(when When, dbName string, tableNames ...string) Method_
+	// Wait wait a specified milliseconds
+	//
+	// Note: the wait time is not included in the coverage timings
 	Wait(when When, ms int) Method_
 	// Capture adds a before/after operation
 	Capture(op BeforeAfter) Method_
