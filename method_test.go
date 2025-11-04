@@ -29,6 +29,51 @@ func TestMethod(t *testing.T) {
 	assert.True(t, raw.failFast)
 }
 
+func TestMethods(t *testing.T) {
+	t.Run("Get", func(t *testing.T) {
+		m := Get("foo")
+		assert.NotNil(t, m.Frame())
+		assert.Equal(t, "GET \"foo\"", m.String())
+		assert.Equal(t, "GET", m.MethodName())
+		assert.Equal(t, "foo", m.Description())
+	})
+	t.Run("Head", func(t *testing.T) {
+		m := Head("foo")
+		assert.NotNil(t, m.Frame())
+		assert.Equal(t, "HEAD \"foo\"", m.String())
+		assert.Equal(t, "HEAD", m.MethodName())
+		assert.Equal(t, "foo", m.Description())
+	})
+	t.Run("Post", func(t *testing.T) {
+		m := Post("foo")
+		assert.NotNil(t, m.Frame())
+		assert.Equal(t, "POST \"foo\"", m.String())
+		assert.Equal(t, "POST", m.MethodName())
+		assert.Equal(t, "foo", m.Description())
+	})
+	t.Run("Put", func(t *testing.T) {
+		m := Put("foo")
+		assert.NotNil(t, m.Frame())
+		assert.Equal(t, "PUT \"foo\"", m.String())
+		assert.Equal(t, "PUT", m.MethodName())
+		assert.Equal(t, "foo", m.Description())
+	})
+	t.Run("Patch", func(t *testing.T) {
+		m := Patch("foo")
+		assert.NotNil(t, m.Frame())
+		assert.Equal(t, "PATCH \"foo\"", m.String())
+		assert.Equal(t, "PATCH", m.MethodName())
+		assert.Equal(t, "foo", m.Description())
+	})
+	t.Run("Delete", func(t *testing.T) {
+		m := Delete("foo")
+		assert.NotNil(t, m.Frame())
+		assert.Equal(t, "DELETE \"foo\"", m.String())
+		assert.Equal(t, "DELETE", m.MethodName())
+		assert.Equal(t, "foo", m.Description())
+	})
+}
+
 func TestMethod_WithBeforesAndAfters(t *testing.T) {
 	m := Method(GET, "foo",
 		SetVar(Before, "foo", "bar"),

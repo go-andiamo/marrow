@@ -14,64 +14,281 @@ import (
 )
 
 type methodExpectations interface {
+	// Expect adds a new expectation to the Method_
 	Expect(exp Expectation) Method_
 
+	// AssertOK asserts the response status code is 200 "OK"
 	AssertOK() Method_
+	// AssertCreated asserts the response status code is 201 "Created"
 	AssertCreated() Method_
+	// AssertAccepted asserts the response status code is 202 "Accepted"
 	AssertAccepted() Method_
+	// AssertNoContent asserts the response status code is 204 "No Content"
 	AssertNoContent() Method_
+	// AssertBadRequest asserts the response status code is 400 "Bad Request"
 	AssertBadRequest() Method_
+	// AssertUnauthorized asserts the response status code is 401 "Unauthorized"
 	AssertUnauthorized() Method_
+	// AssertForbidden asserts the response status code is 403 "Forbidden"
 	AssertForbidden() Method_
+	// AssertNotFound asserts the response status code is 404 "Not Found"
 	AssertNotFound() Method_
+	// AssertConflict asserts the response status code is 409 "Conflict"
 	AssertConflict() Method_
+	// AssertGone asserts the response status code is 410 "Gone"
 	AssertGone() Method_
+	// AssertUnprocessableEntity asserts the response status code is 422 "Unprocessable Entity"
 	AssertUnprocessableEntity() Method_
+	// AssertStatus asserts the response status code is the status supplied
 	AssertStatus(status any) Method_
+	// AssertFunc asserts that the supplied func is met
 	AssertFunc(fn func(Context) (unmet error, err error)) Method_
+	// AssertEqual asserts that the supplied values are equal
+	//
+	// values can be any of:
+	//  * primitive type of string, bool, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	AssertEqual(v1, v2 any) Method_
+	// AssertNotEqual asserts that the supplied values are not equal
+	//
+	// values can be any of:
+	//  * primitive type of string, bool, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	AssertNotEqual(v1, v2 any) Method_
+	// AssertLessThan asserts that v1 is less than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	AssertLessThan(v1, v2 any) Method_
+	// AssertLessThanOrEqual asserts that v1 is less than or equal to v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	AssertLessThanOrEqual(v1, v2 any) Method_
+	// AssertGreaterThan asserts that v1 is greater than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	AssertGreaterThan(v1, v2 any) Method_
+	// AssertGreaterThanOrEqual asserts that v1 is greater than or equal to v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	AssertGreaterThanOrEqual(v1, v2 any) Method_
+	// AssertNotLessThan asserts that v1 is not less than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	AssertNotLessThan(v1, v2 any) Method_
+	// AssertNotGreaterThan asserts that v1 is not greater than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	AssertNotGreaterThan(v1, v2 any) Method_
+	// AssertMatch asserts that the value matches the supplied regex
+	//
+	// when attempting to match against the regex, the value (or resolved value) is "stringified"
+	//
+	// values can be any of:
+	//  * primitive type of string, bool, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	AssertMatch(value any, regex string) Method_
+	// AssertType asserts that the value (or resolved value) is of the supplied type
 	AssertType(value any, typ Type_) Method_
+	// AssertNil asserts that the value (or resolved value) is nil
 	AssertNil(value any) Method_
+	// AssertNotNil asserts that the value (or resolved value) is not nil
 	AssertNotNil(value any) Method_
+	// AssertLen asserts that the value (or resolved value) has the supplied length
+	//
+	// the value (or resolved value) must be a string, map or slice
 	AssertLen(value any, length int) Method_
+	// AssertHasProperties asserts that the value (or resolved value) has the supplied properties
+	//
+	// the value (or resolved value) must be a map
 	AssertHasProperties(value any, propertyNames ...string) Method_
+	// AssertOnlyHasProperties asserts that the value (or resolved value) only has the supplied properties
+	//
+	// the value (or resolved value) must be a map
 	AssertOnlyHasProperties(value any, propertyNames ...string) Method_
 
+	// RequireOK requires the response status code is 200 "OK"
 	RequireOK() Method_
+	// RequireCreated requires the response status code is 201 "Created"
 	RequireCreated() Method_
+	// RequireAccepted requires the response status code is 202 "Accepted"
 	RequireAccepted() Method_
+	// RequireNoContent requires the response status code is 204 "No Content"
 	RequireNoContent() Method_
+	// RequireBadRequest requires the response status code is 400 "Bad Request"
 	RequireBadRequest() Method_
+	// RequireUnauthorized requires the response status code is 401 "Unauthorized"
 	RequireUnauthorized() Method_
+	// RequireForbidden requires the response status code is 403 "Forbidden"
 	RequireForbidden() Method_
+	// RequireNotFound requires the response status code is 404 "Not Found"
 	RequireNotFound() Method_
+	// RequireConflict requires the response status code is 409 "Conflict"
 	RequireConflict() Method_
+	// RequireGone requires the response status code is 410 "Gone"
 	RequireGone() Method_
+	// RequireUnprocessableEntity requires the response status code is 422 "Unprocessable Entity"
 	RequireUnprocessableEntity() Method_
+	// RequireStatus requires the response status code is the status supplied
 	RequireStatus(status any) Method_
+	// RequireFunc requires that the supplied func is met
 	RequireFunc(fn func(Context) (unmet error, err error)) Method_
+	// RequireEqual requires that the supplied values are equal
+	//
+	// values can be any of:
+	//  * primitive type of string, bool, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	RequireEqual(v1, v2 any) Method_
+	// RequireNotEqual requires that the supplied values are not equal
+	//
+	// values can be any of:
+	//  * primitive type of string, bool, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	RequireNotEqual(v1, v2 any) Method_
+	// RequireLessThan requires that v1 is less than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	RequireLessThan(v1, v2 any) Method_
+	// RequireLessThanOrEqual requires that v1 is less than or equal to v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	RequireLessThanOrEqual(v1, v2 any) Method_
+	// RequireGreaterThan requires that v1 is greater than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	RequireGreaterThan(v1, v2 any) Method_
+	// RequireGreaterThanOrEqual requires that v1 is greater than or equal to v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	RequireGreaterThanOrEqual(v1, v2 any) Method_
+	// RequireNotLessThan requires that v1 is not less than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	RequireNotLessThan(v1, v2 any) Method_
+	// RequireNotGreaterThan requires that v1 is not greater than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	RequireNotGreaterThan(v1, v2 any) Method_
+	// RequireMatch requires that the value matches the supplied regex
+	//
+	// when attempting to match against the regex, the value (or resolved value) is "stringified"
+	//
+	// values can be any of:
+	//  * primitive type of string, bool, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	RequireMatch(value any, regex string) Method_
+	// RequireType requires that the value (or resolved value) is of the supplied type
 	RequireType(value any, typ Type_) Method_
+	// RequireNil requires that the value (or resolved value) is nil
 	RequireNil(value any) Method_
+	// RequireNotNil requires that the value (or resolved value) is not nil
 	RequireNotNil(value any) Method_
+	// RequireLen requires that the value (or resolved value) has the supplied length
+	//
+	// the value (or resolved value) must be a string, map or slice
 	RequireLen(value any, length int) Method_
+	// RequireHasProperties requires that the value (or resolved value) has the supplied properties
+	//
+	// the value (or resolved value) must be a map
 	RequireHasProperties(value any, propertyNames ...string) Method_
+	// RequireOnlyHasProperties requires that the value (or resolved value) only has the supplied properties
+	//
+	// the value (or resolved value) must be a map
 	RequireOnlyHasProperties(value any, propertyNames ...string) Method_
 
 	// FailFast instructs the method to fail on unmet assertions
@@ -118,11 +335,78 @@ type Method_ interface {
 	fmt.Stringer
 }
 
+// Method instantiates a new method test
+//
+// verb arg is the http method, e.g. "GET", "PUT", "POST" etc.
+//
+// desc arg is the description of the method test
+//
+// ops args are any before/after operations to be run as part of the method test
+//
 //go:noinline
-func Method(m MethodName, desc string, ops ...BeforeAfter_) Method_ {
+func Method(verb MethodName, desc string, ops ...BeforeAfter_) Method_ {
+	return newMethod(verb, desc, ops...)
+}
+
+// Get instantiates a new GET method test
+//
+// synonymous with calling Method(GET, ...)
+//
+//go:noinline
+func Get(desc string, ops ...BeforeAfter_) Method_ {
+	return newMethod(GET, desc, ops...)
+}
+
+// Head instantiates a new HEAD method test
+//
+// synonymous with calling Method(HEAD, ...)
+//
+//go:noinline
+func Head(desc string, ops ...BeforeAfter_) Method_ {
+	return newMethod(HEAD, desc, ops...)
+}
+
+// Post instantiates a new POST method test
+//
+// synonymous with calling Method(POST, ...)
+//
+//go:noinline
+func Post(desc string, ops ...BeforeAfter_) Method_ {
+	return newMethod(POST, desc, ops...)
+}
+
+// Put instantiates a new PUT method test
+//
+// synonymous with calling Method(PUT, ...)
+//
+//go:noinline
+func Put(desc string, ops ...BeforeAfter_) Method_ {
+	return newMethod(PUT, desc, ops...)
+}
+
+// Patch instantiates a new PATCH method test
+//
+// synonymous with calling Method(PATCH, ...)
+//
+//go:noinline
+func Patch(desc string, ops ...BeforeAfter_) Method_ {
+	return newMethod(PATCH, desc, ops...)
+}
+
+// Delete instantiates a new DELETE method test
+//
+// synonymous with calling Method(DELETE, ...)
+//
+//go:noinline
+func Delete(desc string, ops ...BeforeAfter_) Method_ {
+	return newMethod(DELETE, desc, ops...)
+}
+
+//go:noinline
+func newMethod(m MethodName, desc string, ops ...BeforeAfter_) Method_ {
 	result := &method{
 		desc:        desc,
-		frame:       framing.NewFrame(0),
+		frame:       framing.NewFrame(1),
 		method:      m.Normalize(),
 		queryParams: queryParams{},
 		pathParams:  pathParams{},

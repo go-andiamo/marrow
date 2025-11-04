@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// Framed is an interface implemented by many components with marrow
 type Framed interface {
 	Frame() *Frame
 }
@@ -21,6 +22,7 @@ func NewFrame(skip int) (f *Frame) {
 	return f
 }
 
+// Frame is information about where something was declared
 type Frame struct {
 	File    string
 	Line    int

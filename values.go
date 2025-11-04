@@ -221,6 +221,7 @@ func resolveJsonPath(v any, path string) (av any, err error) {
 type Resolvable interface {
 	ResolveValue(ctx Context) (av any, err error)
 }
+
 type BodyReader func(body any) (any, error)
 
 type Var string
