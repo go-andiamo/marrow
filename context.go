@@ -18,23 +18,59 @@ import (
 )
 
 type Context interface {
+	// Host returns the currently tested API host
 	Host() string
+	// Vars returns the current Context variables
+	//
+	// the returned map is mutable but has no effect on the actual variables
 	Vars() map[Var]any
+	// Db returns a *sql.DB for the named database
+	//
+	// Note: when only one database is used by tests, the dbName can be ""
 	Db(dbName string) *sql.DB
+	// Ctx returns the go context.Context
 	Ctx() gctx.Context
+	// SetVar sets a variable in the context
 	SetVar(Var, any)
+	// ClearVars clears all variables in the context
 	ClearVars()
+	// CurrentEndpoint returns the current Endpoint being tested
+	//
+	// Note: may be nil if an endpoint not yet started
 	CurrentEndpoint() Endpoint_
+	// CurrentMethod returns the current Method being tested
+	//
+	// Note: may be nil if a method not yet started
 	CurrentMethod() Method_
+	// CurrentUrl returns the current URL for the current Endpoint
 	CurrentUrl() string
+	// CurrentRequest returns the current built request for a method
+	//
+	// Note: may be nil if the request has not yet been built
 	CurrentRequest() *http.Request
+	// CurrentResponse returns the current response for a method call
+	//
+	// Note: may be nil if the method has not yet been called
 	CurrentResponse() *http.Response
+	// CurrentBody returns the current unmarshalled response body for a method call
+	//
+	// Note: may be nil if the method has not yet been called or the response body was empty
 	CurrentBody() any
+	// DbInsert performs an insert into a database table
+	//
+	// Note: when only one database is used by tests, the dbName can be ""
 	DbInsert(dbName string, tableName string, row Columns) error
+	// DbExec executes a statement on a database
+	//
+	// Note: when only one database is used by tests, the dbName can be ""
 	DbExec(dbName string, query string, args ...any) error
+	// StoreCookie stores the cookie for later use
 	StoreCookie(cookie *http.Cookie)
+	// GetCookie returns a specific named cookie (or nil if that cookie has not been stored)
 	GetCookie(name string) *http.Cookie
+	// GetMockService returns a specific named mock service (or nil if that name is not registered)
 	GetMockService(name string) service.MockedService
+	// ClearMockServices clears all mock services
 	ClearMockServices()
 
 	setCurrentEndpoint(Endpoint_)

@@ -15,6 +15,7 @@ const (
 	ErrorCapture
 )
 
+// Error represents the basic error for almost all errors produced
 type Error interface {
 	error
 	Type() ErrorType
@@ -25,6 +26,7 @@ type Error interface {
 	framing.Framed
 }
 
+// UnmetError represents specific information about an expectation (assert/require) that was unmet
 type UnmetError interface {
 	Error
 	Expected() OperandValue
@@ -35,6 +37,7 @@ type UnmetError interface {
 	Right() OperandValue
 }
 
+// OperandValue is a representation of an operand value - giving the original, resolved & coerced value
 type OperandValue struct {
 	Original      any
 	Resolved      any
