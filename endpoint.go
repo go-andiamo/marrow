@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// Endpoint_ is the interface implemented by an instantiated Endpoint
 type Endpoint_ interface {
 	common.Endpoint
 	Runnable
@@ -15,6 +16,17 @@ type Endpoint_ interface {
 	fmt.Stringer
 }
 
+// Endpoint instantiates a new endpoint test
+//
+// the operations can be any of the following types:
+//   - Method     - adds a method test under this endpoint
+//   - []Method   - ditto
+//   - Endpoint   - adds a sub-path endpoint to this endpoint
+//   - []Endpoint - ditto
+//   - BeforeAfter - adds a before/after operation to the endpoint (befores are run before all methods and sub-endpoints, afters are run after all methods and sub-endpoints
+//   - []BeforeAfter - ditto
+//   - []any - treats each item as above
+//
 //go:noinline
 func Endpoint(url string, desc string, operations ...any) Endpoint_ {
 	result := &endpoint{

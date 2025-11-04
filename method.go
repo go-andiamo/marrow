@@ -310,6 +310,7 @@ type methodMockService interface {
 	RequireMockServiceCalled(svcName string, path string, method MethodName) Method_
 }
 
+// Method_ is the interface implemented by an instantiated Method (see Method(), Get(), Post(), etc.)
 type Method_ interface {
 	common.Method
 
