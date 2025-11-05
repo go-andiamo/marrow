@@ -13,7 +13,23 @@ import (
 
 // ApiImage initialises a marrow.Suite with a docker image to run and test against
 //
-// The image should be built either by the user (externally) or by using the Make
+// the image should be built either by the user (externally) or by using the Make
+//
+// the env arg is used to build the environment vars for the docker container - each key being the name of the environment
+// variable and the value is reduced to a string.  If the value is already a string, it can contain special markers which are resolved...
+//
+// Special env marker examples:
+//   - "{$mysql:host}" - where a supporting image of "mysql" has been provided, and you want the host
+//   - "{$mysql:port}" - where a supporting image of "mysql" has been provided, and you want the port
+//   - "{$mysql:mport}" - where a supporting image of "mysql" has been provided, and you want the docker mapped port
+//   - "{$mysql:username}" - where a supporting image of "mysql" has been provided, and you want the username
+//   - "{$mysql:password}" - where a supporting image of "mysql" has been provided, and you want the password
+//   - "{$mock:mymock:host}" - where a mock service named "mymock" has been provided, and you want the host
+//   - "{$mock:mymock:port}" - where a mock service named "mymock" has been provided, and you want the port
+//
+// multiple markers can be used in the string value - so that, you can for example, build a DSN - e.g.
+//
+//	"DSN": "{$mysql:username}:{$mysql:password}@tcp(host.docker.internal:{$mysql:mport})/petstore"
 func ApiImage(imageName string, tag string, port int, env map[string]any, leaveRunning bool) ImageApi {
 	return &apiImage{
 		imageName:    imageName,

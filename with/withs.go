@@ -113,7 +113,7 @@ func Repeats(n int, stopOnFailure bool, resets ...func()) With {
 
 // Logging initialises a marrow.Suite with log writers to use
 //
-// # By default, the marrow.Suite will use os.Stdout and os.Stderr
+// by default, the marrow.Suite will use os.Stdout and os.Stderr
 //
 // These log writers are not used if Testing is used
 func Logging(stdout io.Writer, stderr io.Writer) With {
