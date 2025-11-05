@@ -2,6 +2,7 @@ package marrow
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
@@ -13,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"os"
 	"strings"
 	"testing"
@@ -237,6 +239,14 @@ func TestSuite_Run(t *testing.T) {
 		s := Suite()
 		err := s.Init(with.MockService("foo"), with.MockService("bar")).Run()
 		require.NoError(t, err)
+	})
+	t.Run("with trace timings", func(t *testing.T) {
+		s := Suite().Init(with.TraceTimings())
+		err := s.Run()
+		require.NoError(t, err)
+		raw, ok := s.(*suite)
+		require.True(t, ok)
+		assert.True(t, raw.traceTimings)
 	})
 }
 
@@ -640,6 +650,35 @@ type dummyDo struct {
 func (d *dummyDo) Do(req *http.Request) (*http.Response, error) {
 	if d.err != nil {
 		return nil, d.err
+	}
+	if tt := httptrace.ContextClientTrace(req.Context()); tt != nil {
+		if tt.DNSStart != nil {
+			tt.DNSStart(httptrace.DNSStartInfo{})
+		}
+		if tt.DNSDone != nil {
+			tt.DNSDone(httptrace.DNSDoneInfo{})
+		}
+		if tt.ConnectStart != nil {
+			tt.ConnectStart("", "")
+		}
+		if tt.ConnectDone != nil {
+			tt.ConnectDone("", "", nil)
+		}
+		if tt.TLSHandshakeStart != nil {
+			tt.TLSHandshakeStart()
+		}
+		if tt.TLSHandshakeDone != nil {
+			tt.TLSHandshakeDone(tls.ConnectionState{}, nil)
+		}
+		if tt.GotConn != nil {
+			tt.GotConn(httptrace.GotConnInfo{})
+		}
+		if tt.WroteRequest != nil {
+			tt.WroteRequest(httptrace.WroteRequestInfo{})
+		}
+		if tt.GotFirstResponseByte != nil {
+			tt.GotFirstResponseByte()
+		}
 	}
 	return &http.Response{
 		StatusCode: d.status,

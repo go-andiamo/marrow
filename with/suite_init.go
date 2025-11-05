@@ -88,4 +88,8 @@ type SuiteInit interface {
 	//
 	// see also HttpDo
 	SetHttpDo(do common.HttpDo)
+	// SetTraceTimings sets whether the marrow.Suite should collect trace timings within coverage
+	//
+	// see also TraceTimings
+	SetTraceTimings(collect bool)
 }

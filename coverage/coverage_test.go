@@ -129,14 +129,14 @@ func TestCoverage_ReportSkipped(t *testing.T) {
 func TestCoverage_ReportTiming(t *testing.T) {
 	t.Run("top level", func(t *testing.T) {
 		cov := NewCoverage()
-		cov.ReportTiming(nil, nil, nil, time.Second)
+		cov.ReportTiming(nil, nil, nil, time.Second, nil)
 		assert.False(t, cov.HasFailures())
 		assert.Len(t, cov.Endpoints, 0)
 		assert.Len(t, cov.Timings, 1)
 	})
 	t.Run("endpoint only", func(t *testing.T) {
 		cov := NewCoverage()
-		cov.ReportTiming(&testEndpoint{"/"}, nil, nil, time.Second)
+		cov.ReportTiming(&testEndpoint{"/"}, nil, nil, time.Second, nil)
 		assert.False(t, cov.HasFailures())
 		assert.Len(t, cov.Timings, 1)
 		assert.Len(t, cov.Endpoints, 1)
@@ -145,7 +145,7 @@ func TestCoverage_ReportTiming(t *testing.T) {
 	})
 	t.Run("endpoint+method", func(t *testing.T) {
 		cov := NewCoverage()
-		cov.ReportTiming(&testEndpoint{"/"}, &testMethod{"GET"}, nil, time.Second)
+		cov.ReportTiming(&testEndpoint{"/"}, &testMethod{"GET"}, nil, time.Second, nil)
 		assert.False(t, cov.HasFailures())
 		assert.Len(t, cov.Timings, 1)
 		assert.Len(t, cov.Endpoints, 1)

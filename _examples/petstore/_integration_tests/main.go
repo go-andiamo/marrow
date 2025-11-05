@@ -100,6 +100,7 @@ func main() {
 		with.Repeats(10, true),
 		with.Logging(os.Stdout, os.Stdout),
 		with.Var("non-uuid", "00000000-0000-485c-0000-000000000000"),
+		with.TraceTimings(),
 	)
 
 	// run the suite...

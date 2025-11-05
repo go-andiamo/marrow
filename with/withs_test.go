@@ -26,6 +26,7 @@ func TestWith_Initials(t *testing.T) {
 		OAS(nil),
 		Repeats(0, false),
 		Logging(nil, nil),
+		TraceTimings(),
 	}
 	mock := newMockInit()
 	for i, tc := range testCases {
@@ -39,7 +40,7 @@ func TestWith_Initials(t *testing.T) {
 		})
 	}
 	assert.Len(t, mock.called, len(testCases))
-	assert.Len(t, mock.called, 11)
+	assert.Len(t, mock.called, 12)
 }
 
 func newMockInit() *mockInit {
@@ -114,4 +115,8 @@ func (d *mockInit) AddSupportingImage(info Image) {
 
 func (d *mockInit) ResolveEnv(v any) (string, error) {
 	return fmt.Sprintf("%v", v), nil
+}
+
+func (d *mockInit) SetTraceTimings(collect bool) {
+	d.called["SetTraceTimings"] = struct{}{}
 }

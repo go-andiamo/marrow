@@ -122,6 +122,15 @@ func Logging(stdout io.Writer, stderr io.Writer) With {
 	})
 }
 
+// TraceTimings initialises a marrow.Suite to collect full trace timings on http calls for method tests
+//
+// if this is used, additional information about timings is available in coverage.Timings
+func TraceTimings() With {
+	return withFn(func(init SuiteInit) {
+		init.SetTraceTimings(true)
+	})
+}
+
 type withFn func(init SuiteInit)
 
 func (w withFn) Init(init SuiteInit) error {

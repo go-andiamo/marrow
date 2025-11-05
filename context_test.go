@@ -298,6 +298,7 @@ func TestContext_doRequest(t *testing.T) {
 		res, ok := ctx.doRequest(req)
 		require.True(t, ok)
 		assert.Len(t, cov.Timings, 1)
+		assert.Nil(t, cov.Timings[0].Trace)
 		require.NotNil(t, res)
 		currReq := ctx.CurrentRequest()
 		require.NotNil(t, currReq)
@@ -307,6 +308,19 @@ func TestContext_doRequest(t *testing.T) {
 		body, err := io.ReadAll(currRes.Body)
 		require.NoError(t, err)
 		assert.Equal(t, `{"foo":"bar"}`, string(body))
+	})
+	t.Run("with traceTimings", func(t *testing.T) {
+		ctx := newContext()
+		ctx.traceTimings = true
+		ctx.httpDo = &dummyDo{status: http.StatusOK, body: []byte(`{"foo":"bar"}`)}
+		cov := coverage.NewCoverage()
+		ctx.coverage = cov
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		_, ok := ctx.doRequest(req)
+		require.True(t, ok)
+		assert.Len(t, cov.Timings, 1)
+		assert.NotNil(t, cov.Timings[0].Trace)
 	})
 	t.Run("failure", func(t *testing.T) {
 		ctx := newContext()
