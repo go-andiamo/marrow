@@ -105,7 +105,7 @@ func (c *Coverage) ReportSkipped(endpoint common.Endpoint, method common.Method,
 	c.Skipped = append(c.Skipped, skip)
 }
 
-func (c *Coverage) ReportTiming(endpoint common.Endpoint, method common.Method, req *http.Request, dur time.Duration) {
+func (c *Coverage) ReportTiming(endpoint common.Endpoint, method common.Method, req *http.Request, dur time.Duration, tt *TraceTiming) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	timing := Timing{
@@ -113,6 +113,7 @@ func (c *Coverage) ReportTiming(endpoint common.Endpoint, method common.Method, 
 		Method:   method,
 		Request:  requestShallowClone(req),
 		Duration: dur,
+		Trace:    tt,
 	}
 	covE, covM := c.add(endpoint, method)
 	if covE != nil {

@@ -40,7 +40,7 @@ func (n *nullCoverage) ReportSkipped(endpoint common.Endpoint, method common.Met
 	// nullCoverage does nothing
 }
 
-func (n *nullCoverage) ReportTiming(endpoint common.Endpoint, method common.Method, req *http.Request, dur time.Duration) {
+func (n *nullCoverage) ReportTiming(endpoint common.Endpoint, method common.Method, req *http.Request, dur time.Duration, tt *TraceTiming) {
 	// nullCoverage does nothing
 }
 

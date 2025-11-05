@@ -14,6 +14,6 @@ type Collector interface {
 	ReportUnmet(endpoint common.Endpoint, method common.Method, req *http.Request, exp common.Expectation, err error)
 	ReportMet(endpoint common.Endpoint, method common.Method, req *http.Request, exp common.Expectation)
 	ReportSkipped(endpoint common.Endpoint, method common.Method, req *http.Request, exp common.Expectation)
-	ReportTiming(endpoint common.Endpoint, method common.Method, req *http.Request, dur time.Duration)
+	ReportTiming(endpoint common.Endpoint, method common.Method, req *http.Request, dur time.Duration, tt *TraceTiming)
 	HasFailures() bool
 }

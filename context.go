@@ -2,6 +2,7 @@ package marrow
 
 import (
 	gctx "context"
+	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"github.com/go-andiamo/marrow/testing"
 	"maps"
 	"net/http"
+	"net/http/httptrace"
 	"reflect"
 	"strconv"
 	"strings"
@@ -88,6 +90,7 @@ type Context interface {
 type context struct {
 	coverage     coverage.Collector
 	httpDo       common.HttpDo
+	traceTimings bool
 	host         string
 	vars         map[Var]any
 	dbs          namedDatabases
@@ -292,11 +295,36 @@ func (c *context) setCurrentBody(body any) {
 func (c *context) doRequest(request *http.Request) (*http.Response, bool) {
 	c.currRequest = request
 	var err error
+	var tt *coverage.TraceTiming
+	useRequest := request
+	if c.traceTimings {
+		tt = &coverage.TraceTiming{}
+		trace := &httptrace.ClientTrace{
+			DNSStart:          func(_ httptrace.DNSStartInfo) { tt.DNSStart = time.Now() },
+			DNSDone:           func(_ httptrace.DNSDoneInfo) { tt.DNSDone = time.Now() },
+			ConnectStart:      func(_, _ string) { tt.ConnStart = time.Now() },
+			ConnectDone:       func(_, _ string, _ error) { tt.ConnDone = time.Now() },
+			TLSHandshakeStart: func() { tt.TLSStart = time.Now() },
+			TLSHandshakeDone:  func(_ tls.ConnectionState, _ error) { tt.TLSDone = time.Now() },
+			GotConn: func(info httptrace.GotConnInfo) {
+				tt.ReusedConn = info.Reused
+			},
+			WroteRequest: func(_ httptrace.WroteRequestInfo) { tt.WroteReq = time.Now() },
+			GotFirstResponseByte: func() {
+				tt.FirstByte = time.Now()
+				tt.TTFB = tt.FirstByte.Sub(tt.Start)
+			},
+		}
+		useRequest = useRequest.WithContext(httptrace.WithClientTrace(useRequest.Context(), trace))
+	}
 	start := time.Now()
-	c.currResponse, err = c.httpDo.Do(request)
+	if tt != nil {
+		tt.Start = start
+	}
+	c.currResponse, err = c.httpDo.Do(useRequest)
 	dur := time.Since(start)
 	if err == nil {
-		c.coverage.ReportTiming(c.currEndpoint, c.currMethod, c.currRequest, dur)
+		c.coverage.ReportTiming(c.currEndpoint, c.currMethod, c.currRequest, dur, tt)
 		return c.currResponse, true
 	}
 	c.reportFailure(err)

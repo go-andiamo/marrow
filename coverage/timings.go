@@ -14,6 +14,19 @@ type Timing struct {
 	Method   common.Method
 	Request  *http.Request
 	Duration time.Duration
+	Trace    *TraceTiming
+}
+
+// TraceTiming is used for more precise timing information (use with.TraceTimings to collect this information)
+type TraceTiming struct {
+	Start               time.Time
+	DNSStart, DNSDone   time.Time
+	ConnStart, ConnDone time.Time
+	TLSStart, TLSDone   time.Time
+	WroteReq            time.Time
+	FirstByte           time.Time
+	ReusedConn          bool
+	TTFB                time.Duration
 }
 
 // Timings is a slice of Timing

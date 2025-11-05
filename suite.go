@@ -56,6 +56,7 @@ type suite struct {
 	host          string
 	port          int
 	httpDo        common.HttpDo
+	traceTimings  bool
 	testing       *testing.T
 	vars          map[Var]any
 	cookies       map[string]*http.Cookie
@@ -172,6 +173,10 @@ func (s *suite) AddSupportingImage(info with.Image) {
 		}
 	}
 	s.images[name] = info
+}
+
+func (s *suite) SetTraceTimings(collect bool) {
+	s.traceTimings = collect
 }
 
 func (s *suite) ResolveEnv(v any) (string, error) {
@@ -434,6 +439,7 @@ func (s *suite) Run() error {
 func (s *suite) initContext(cov coverage.Collector, t htesting.Helper) *context {
 	result := newContext()
 	result.coverage = cov
+	result.traceTimings = s.traceTimings
 	if s.httpDo != nil {
 		result.httpDo = s.httpDo
 	}

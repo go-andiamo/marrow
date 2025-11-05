@@ -126,3 +126,7 @@ func (d *mockInit) AddSupportingImage(info with.Image) {
 func (d *mockInit) ResolveEnv(v any) (string, error) {
 	return fmt.Sprintf("%v", v), nil
 }
+
+func (d *mockInit) SetTraceTimings(collect bool) {
+	d.called["SetTraceTimings"] = struct{}{}
+}

@@ -14,7 +14,7 @@ func TestNullCoverage(t *testing.T) {
 	assert.False(t, cov.HasFailures())
 	cov.ReportSkipped(nil, nil, nil, nil)
 	assert.False(t, cov.HasFailures())
-	cov.ReportTiming(nil, nil, nil, time.Second)
+	cov.ReportTiming(nil, nil, nil, time.Second, nil)
 	assert.False(t, cov.HasFailures())
 	cov.ReportUnmet(nil, nil, nil, nil, nil)
 	assert.True(t, cov.HasFailures())
