@@ -20,11 +20,24 @@ import (
 	"time"
 )
 
+// Suite_ is the interface for the main API tests runner
 type Suite_ interface {
+	// Init initializes the Suite using the provided withs
+	//
+	// a with can be from any provided by the [with] package -
+	// with.ApiImage, with.Make, with.Database, with.HttpDo, with.ApiHost, with.Testing, with.Var, with.Cookie, with.ReportCoverage, with.CoverageCollector, with.OAS, with.Repeats, with.Logging
+	//
+	// a with can also be supporting image - see [images] package
+	//
+	// Note: Init takes a clone of the Suite, so that multiple runners with independent initialisation can be run from the same test endpoint definitions
 	Init(withs ...with.With) Suite_
+	// Run runs the test suite
+	//
+	// only critical errors are returned - unmet expectations are not (use coverage to inspect test failures and unmet expectations)
 	Run() error
 }
 
+// Suite instantiates a new test suite for the provided Endpoint's
 func Suite(endpoints ...Endpoint_) Suite_ {
 	return &suite{
 		endpoints:    endpoints,
