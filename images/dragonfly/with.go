@@ -13,6 +13,7 @@ type Image interface {
 	Container() testcontainers.Container
 }
 
+// With creates a new dragonfly (drop-in replacement for Redis) support image for use in marrow.Suite .Init()
 func With(options Options) Image {
 	return &image{options: options}
 }

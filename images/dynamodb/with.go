@@ -18,6 +18,7 @@ type Image interface {
 	Container() testcontainers.Container
 }
 
+// With creates a new DynamoDB (using localstack) support image for use in marrow.Suite .Init()
 func With(name string, options Options) Image {
 	return &image{
 		name:    name,

@@ -9,7 +9,8 @@ type Options struct {
 	DisableAutoShutdown bool   // if set, disables container auto (RYUK reaper) shutdown
 	LeaveRunning        bool   // if set, the container is not shutdown
 	Region              string // defaults to "us-east-1"
-	CreateTables        []dynamodb.CreateTableInput
+	// CreateTables is a list of tables to be created in DynamoDB
+	CreateTables []dynamodb.CreateTableInput
 }
 
 const (

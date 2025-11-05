@@ -10,15 +10,15 @@ type Options struct {
 	// Database is the database (schema) name to use
 	// If this is a non-empty string, the database will be created
 	Database            string
-	DefaultPort         string // is the actual port for MySql, defaults to "3306"
-	DisableAutoShutdown bool   // if set, disables container auto (RYUK reaper) shutdown
-	LeaveRunning        bool   // if set, the container is not shutdown
-	Migrations          []Migration
-	Scripts             []string // use Scripts for any scripts to be executed after schema is created (e.g. creating users, granting privileges)
+	DefaultPort         string      // is the actual port for MySql, defaults to "3306"
+	DisableAutoShutdown bool        // if set, disables container auto (RYUK reaper) shutdown
+	LeaveRunning        bool        // if set, the container is not shutdown
+	Migrations          []Migration // is a list of Migration's to be run on the database
 }
 
+// Migration is an individual migration to be run in a database
 type Migration struct {
-	Filesystem fs.FS
+	Filesystem fs.FS  // the file system containing the migration .up.sql and .down.sql files (see github.com/golang-migrate/migrate/v4)
 	Path       string // defaults to "." (all files in the supplied Filesystem)
 	TableName  string // is the migration table name for this migration (defaults to "schema_migrations")
 }
