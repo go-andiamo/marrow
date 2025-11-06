@@ -164,3 +164,128 @@ func TestTimings_Stats(t *testing.T) {
 		assert.Equal(t, "1.0396s", stats.P99.String())
 	})
 }
+
+func TestTimings_StatsTTFB(t *testing.T) {
+	t.Run("empty false", func(t *testing.T) {
+		timings := Timings{}
+		_, ok := timings.StatsTTFB(false)
+		assert.False(t, ok)
+	})
+	t.Run("all same (sample)", func(t *testing.T) {
+		timings := Timings{
+			{
+				Trace: &TraceTiming{TTFB: time.Second},
+			},
+			{
+				Trace: &TraceTiming{TTFB: time.Second},
+			},
+			{
+				Trace: &TraceTiming{TTFB: time.Second},
+			},
+			{
+				Trace: &TraceTiming{TTFB: time.Second},
+			},
+		}
+		stats, ok := timings.StatsTTFB(true)
+		assert.True(t, ok)
+		assert.True(t, stats.Sample)
+		assert.Equal(t, 4, stats.Count)
+		assert.Equal(t, time.Second, stats.Mean)
+		assert.Equal(t, time.Duration(0), stats.StdDev)
+		assert.Equal(t, float64(0), stats.Variance)
+		assert.Equal(t, time.Second, stats.Minimum)
+		assert.Equal(t, time.Second, stats.Maximum)
+		assert.Equal(t, time.Second, stats.P50)
+		assert.Equal(t, time.Second, stats.P90)
+		assert.Equal(t, time.Second, stats.P99)
+	})
+	t.Run("sample 1", func(t *testing.T) {
+		timings := Timings{
+			{
+				Trace: &TraceTiming{TTFB: time.Second},
+			},
+		}
+		stats, ok := timings.StatsTTFB(true)
+		assert.True(t, ok)
+		assert.True(t, stats.Sample)
+		assert.Equal(t, 1, stats.Count)
+		assert.Equal(t, time.Second, stats.Mean)
+		assert.Equal(t, time.Duration(0), stats.StdDev)
+		assert.Equal(t, float64(0), stats.Variance)
+		assert.Equal(t, time.Second, stats.Minimum)
+		assert.Equal(t, time.Second, stats.Maximum)
+		assert.Equal(t, time.Second, stats.P50)
+		assert.Equal(t, time.Second, stats.P90)
+		assert.Equal(t, time.Second, stats.P99)
+	})
+	t.Run("all same (population)", func(t *testing.T) {
+		timings := Timings{
+			{
+				Trace: &TraceTiming{TTFB: time.Second},
+			},
+			{
+				Trace: &TraceTiming{TTFB: time.Second},
+			},
+			{
+				Trace: &TraceTiming{TTFB: time.Second},
+			},
+			{
+				Trace: &TraceTiming{TTFB: time.Second},
+			},
+		}
+		stats, ok := timings.StatsTTFB(false)
+		assert.True(t, ok)
+		assert.False(t, stats.Sample)
+		assert.Equal(t, 4, stats.Count)
+		assert.Equal(t, time.Second, stats.Mean)
+		assert.Equal(t, time.Duration(0), stats.StdDev)
+		assert.Equal(t, float64(0), stats.Variance)
+		assert.Equal(t, time.Second, stats.Minimum)
+		assert.Equal(t, time.Second, stats.Maximum)
+		assert.Equal(t, time.Second, stats.P50)
+		assert.Equal(t, time.Second, stats.P90)
+		assert.Equal(t, time.Second, stats.P99)
+	})
+	t.Run("various", func(t *testing.T) {
+		timings := Timings{
+			{
+				Trace: &TraceTiming{TTFB: time.Second + (10 * time.Millisecond)},
+			},
+			{
+				Trace: &TraceTiming{TTFB: time.Second + (20 * time.Millisecond)},
+			},
+			{
+				Trace: &TraceTiming{TTFB: time.Second},
+			},
+			{
+				Trace: &TraceTiming{TTFB: time.Second + (30 * time.Millisecond)},
+			},
+			{
+				Trace: &TraceTiming{TTFB: time.Second + (40 * time.Millisecond)},
+			},
+		}
+		stats, ok := timings.StatsTTFB(false)
+		assert.True(t, ok)
+		assert.False(t, stats.Sample)
+		assert.Equal(t, 5, stats.Count)
+		assert.Equal(t, time.Second+(20*time.Millisecond), stats.Mean)
+		assert.Greater(t, stats.StdDev, 14*time.Millisecond)
+		assert.Less(t, stats.StdDev, 15*time.Millisecond)
+		assert.Less(t, stats.Variance, float64(0.001))
+		assert.Equal(t, time.Second, stats.Minimum)
+		assert.Equal(t, "1.04s", stats.Maximum.String())
+		assert.Equal(t, "1.02s", stats.P50.String())
+		assert.Equal(t, "1.036s", stats.P90.String())
+		assert.Equal(t, "1.0396s", stats.P99.String())
+	})
+	t.Run("missing trace", func(t *testing.T) {
+		timings := Timings{
+			{},
+			{
+				Trace: &TraceTiming{TTFB: time.Second + (10 * time.Millisecond)},
+			},
+		}
+		_, ok := timings.StatsTTFB(false)
+		assert.False(t, ok)
+	})
+}

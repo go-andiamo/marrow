@@ -73,18 +73,41 @@ const sec = float64(time.Second)
 // sample arg determines whether resulting TimingStats.StdDev & TimingStats.Variance are computed
 // using sample (n-1) or population (n)
 func (ct Timings) Stats(sample bool) (TimingStats, bool) {
-	if len(ct) == 0 {
+	durations := make([]time.Duration, len(ct))
+	for i, d := range ct {
+		durations[i] = d.Duration
+	}
+	return calcStats(sample, durations)
+}
+
+// StatsTTFB creates a TimingStats from the Timings TTFB (if collected)
+//
+// sample arg determines whether resulting TimingStats.StdDev & TimingStats.Variance are computed
+// using sample (n-1) or population (n)
+func (ct Timings) StatsTTFB(sample bool) (TimingStats, bool) {
+	durations := make([]time.Duration, 0, len(ct))
+	for _, d := range ct {
+		if d.Trace != nil {
+			durations = append(durations, d.Trace.TTFB)
+		} else {
+			break
+		}
+	}
+	if len(durations) != len(ct) {
+		return TimingStats{}, false
+	}
+	return calcStats(sample, durations)
+}
+
+func calcStats(sample bool, durations []time.Duration) (TimingStats, bool) {
+	if len(durations) == 0 {
 		return TimingStats{}, false
 	}
 	n := 0.0
 	meanSec := 0.0
 	m2Sec2 := 0.0
-	minD := ct[0].Duration
-	maxD := ct[0].Duration
-	durations := make([]time.Duration, len(ct))
-	for i, d := range ct {
-		durations[i] = d.Duration
-	}
+	minD := durations[0]
+	maxD := durations[0]
 	for _, d := range durations {
 		if d < minD {
 			minD = d
@@ -117,7 +140,7 @@ func (ct Timings) Stats(sample bool) (TimingStats, bool) {
 	result := TimingStats{
 		Sample:  sample,
 		Mean:    time.Duration(math.Round(meanSec * sec)),
-		Count:   len(ct),
+		Count:   len(durations),
 		Maximum: maxD,
 		Minimum: minD,
 		P50:     percentile(0.5),
