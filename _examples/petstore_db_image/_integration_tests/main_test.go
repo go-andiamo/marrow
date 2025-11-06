@@ -7,6 +7,7 @@ import (
 	"app/repository/schema"
 	"app/repository/schema/seeds"
 	. "github.com/go-andiamo/marrow"
+	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/images/mysql"
 	"github.com/go-andiamo/marrow/with"
 	"testing"
@@ -41,7 +42,7 @@ func TestApi(t *testing.T) {
 	// now run the suite...
 	err := Suite(endpoints...).Init(
 		with.Var("non-uuid", "00000000-0000-485c-0000-000000000000"),
-		with.Database("", img.Database(), 0),
+		with.Database("", img.Database(), common.DatabaseArgs{Style: common.PositionalDbArgs}),
 		with.ApiHost("localhost", 8080),
 		with.Testing(t),
 	).Run()
