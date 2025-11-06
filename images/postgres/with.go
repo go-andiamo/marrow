@@ -32,7 +32,7 @@ func (i *image) Init(init with.SuiteInit) error {
 	if err := i.Start(); err != nil {
 		return fmt.Errorf("with mysql image init error: %w", err)
 	}
-	init.AddDb(i.name, i.db, common.NumberedDbArgs)
+	init.AddDb(i.name, i.db, common.DatabaseArgs{Style: common.NumberedDbArgs, Base: 1})
 	init.AddSupportingImage(i)
 	return nil
 }

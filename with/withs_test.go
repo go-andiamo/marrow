@@ -15,7 +15,7 @@ import (
 
 func TestWith_Initials(t *testing.T) {
 	testCases := []any{
-		Database("", nil, 0),
+		Database("", nil, common.DatabaseArgs{}),
 		HttpDo(nil),
 		ApiHost("", 0),
 		Testing(nil),
@@ -59,7 +59,7 @@ type mockInit struct {
 
 var _ SuiteInit = (*mockInit)(nil)
 
-func (d *mockInit) AddDb(typeName string, db *sql.DB, dbArgMarkers common.DatabaseArgMarkers) {
+func (d *mockInit) AddDb(typeName string, db *sql.DB, dbArgs common.DatabaseArgs) {
 	d.called["AddDb"] = struct{}{}
 }
 

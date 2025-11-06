@@ -77,10 +77,10 @@ type suite struct {
 var _ Suite_ = (*suite)(nil)
 var _ with.SuiteInit = (*suite)(nil)
 
-func (s *suite) AddDb(dbName string, db *sql.DB, dbArgMarkers common.DatabaseArgMarkers) {
+func (s *suite) AddDb(dbName string, db *sql.DB, dbArgs common.DatabaseArgs) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	s.dbs.register(dbName, db, dbArgMarkers)
+	s.dbs.register(dbName, db, dbArgs)
 }
 
 func (s *suite) SetHttpDo(do common.HttpDo) {

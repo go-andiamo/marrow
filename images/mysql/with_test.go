@@ -77,7 +77,7 @@ type mockInit struct {
 
 var _ with.SuiteInit = (*mockInit)(nil)
 
-func (d *mockInit) AddDb(dnName string, db *sql.DB, dbArgMarkers common.DatabaseArgMarkers) {
+func (d *mockInit) AddDb(dnName string, db *sql.DB, dbArgs common.DatabaseArgs) {
 	d.called["AddDb"] = struct{}{}
 }
 

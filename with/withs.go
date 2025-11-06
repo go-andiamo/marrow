@@ -28,9 +28,9 @@ type With interface {
 // Database initialises a marrow.Suite with an existing database (*sql.DB)
 //
 // The name arg is only needed when tests might use multiple different databases, otherwise an empty string is sufficient
-func Database(name string, db *sql.DB, dbArgMarkers common.DatabaseArgMarkers) With {
+func Database(name string, db *sql.DB, dbArgs common.DatabaseArgs) With {
 	return withFn(func(init SuiteInit) {
-		init.AddDb(name, db, dbArgMarkers)
+		init.AddDb(name, db, dbArgs)
 	})
 }
 

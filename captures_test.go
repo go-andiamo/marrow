@@ -2,6 +2,7 @@ package marrow
 
 import (
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/framing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -51,7 +52,7 @@ func Test_dbInsert(t *testing.T) {
 	mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 	defer db.Close()
 	ctx := newTestContext(nil)
-	ctx.dbs.register("", db, 0)
+	ctx.dbs.register("", db, common.DatabaseArgs{})
 	err = c.Run(ctx)
 	require.NoError(t, err)
 }
@@ -69,7 +70,7 @@ func Test_dbExec(t *testing.T) {
 	mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 	defer db.Close()
 	ctx := newTestContext(nil)
-	ctx.dbs.register("", db, 0)
+	ctx.dbs.register("", db, common.DatabaseArgs{})
 	err = c.Run(ctx)
 	require.NoError(t, err)
 }
@@ -87,7 +88,7 @@ func Test_dbClearTable(t *testing.T) {
 	mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 	defer db.Close()
 	ctx := newTestContext(nil)
-	ctx.dbs.register("", db, 0)
+	ctx.dbs.register("", db, common.DatabaseArgs{})
 	err = c.Run(ctx)
 	require.NoError(t, err)
 }

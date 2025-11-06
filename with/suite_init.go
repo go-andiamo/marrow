@@ -24,7 +24,7 @@ type SuiteInit interface {
 	// If the tests only use one supporting database, dbName can just be ""
 	//
 	// see also Database
-	AddDb(dbName string, db *sql.DB, dbArgMarkers common.DatabaseArgMarkers)
+	AddDb(dbName string, db *sql.DB, dbArgs common.DatabaseArgs)
 	// SetApiHost sets the host and port for the API being tested
 	//
 	// This can be called multiple times but only one API is used - therefore, last one wins
