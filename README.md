@@ -94,3 +94,48 @@ var endpointTests = []Endpoint_{
     ),
 }
 ```
+
+And to run the endpoints tests...
+
+```go
+package main
+
+import (
+    . "github.com/go-andiamo/marrow"
+)
+
+func main() {
+    s := Suite(endpoints...)
+    err := s.Init(/* whatever initializers needed */).Run()
+    if err != nil {
+        panic(err)
+    }
+}
+```
+
+Or to run as part of Go tests...
+
+```go
+package main
+
+import (
+    . "github.com/go-andiamo/marrow"
+    "github.com/go-andiamo/marrow/with"
+    "testing"
+)
+
+func TestApi(t *testing.T) {
+    s := Suite(endpoints...)
+    err := s.Init(
+        with.Testing(t),
+        /* whatever other initializers needed */).Run()
+    if err != nil {
+        t.Fatal(err)
+    }
+}
+```
+
+## Installation
+
+    go get github.com/go-andiamo/marrow
+
