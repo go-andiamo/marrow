@@ -176,6 +176,13 @@ func (c *context) ClearVars() {
 type Columns map[string]any
 type RawQuery string
 
+func defaultStr(actual string, def string) string {
+	if actual != "" {
+		return actual
+	}
+	return def
+}
+
 func (c *context) DbInsert(dbName string, tableName string, row Columns) (err error) {
 	tdb := c.dbs[dbName]
 	if tdb == nil {
@@ -186,13 +193,16 @@ func (c *context) DbInsert(dbName string, tableName string, row Columns) (err er
 	args := make([]any, 0, len(row))
 	markers := make([]string, 0, len(row))
 	cols := make([]string, 0, len(row))
-	i := 0
-	addMarker := func() {
-		if argMarkers == common.PositionalDbArgs {
-			markers = append(markers, "?")
-		} else {
+	i := argMarkers.Base
+	addMarker := func(name string) {
+		switch argMarkers.Style {
+		case common.NumberedDbArgs:
+			markers = append(markers, defaultStr(argMarkers.Prefix, "$")+strconv.Itoa(i))
 			i++
-			markers = append(markers, "$"+strconv.Itoa(i))
+		case common.NamedDbArgs:
+			markers = append(markers, defaultStr(argMarkers.Prefix, ":")+name)
+		default:
+			markers = append(markers, defaultStr(argMarkers.Prefix, "?"))
 		}
 	}
 	for k, v := range row {
@@ -208,13 +218,13 @@ func (c *context) DbInsert(dbName string, tableName string, row Columns) (err er
 			if to.Kind() == reflect.Map || to.Kind() == reflect.Slice {
 				var data []byte
 				if data, err = json.Marshal(v); err == nil {
-					addMarker()
+					addMarker(k)
 					args = append(args, string(data))
 				}
 			} else {
 				var av any
 				if av, err = ResolveValue(v, c); err == nil {
-					addMarker()
+					addMarker(k)
 					args = append(args, av)
 				}
 			}

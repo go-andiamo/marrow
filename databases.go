@@ -10,10 +10,10 @@ type namedDatabases map[string]*namedDb
 
 type namedDb struct {
 	db         *sql.DB
-	argMarkers common.DatabaseArgMarkers
+	argMarkers common.DatabaseArgs
 }
 
-func (nd namedDatabases) register(name string, db *sql.DB, argMarker common.DatabaseArgMarkers) {
+func (nd namedDatabases) register(name string, db *sql.DB, argMarker common.DatabaseArgs) {
 	if db != nil {
 		tdb := &namedDb{db: db, argMarkers: argMarker}
 		if len(nd) == 0 {

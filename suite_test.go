@@ -283,7 +283,7 @@ func TestWithDatabase(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	s := Suite().Init(with.Database("", db, common.NumberedDbArgs))
+	s := Suite().Init(with.Database("", db, common.DatabaseArgs{Style: common.NumberedDbArgs}))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
 	err = raw.runInits()
@@ -291,7 +291,7 @@ func TestWithDatabase(t *testing.T) {
 	ndb, ok := raw.dbs[""]
 	assert.NotNil(t, ndb)
 	assert.NotNil(t, ndb.db)
-	assert.Equal(t, common.NumberedDbArgs, ndb.argMarkers)
+	assert.Equal(t, common.NumberedDbArgs, ndb.argMarkers.Style)
 }
 
 func TestWithHttpDo(t *testing.T) {

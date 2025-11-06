@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-andiamo/marrow/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -479,7 +480,7 @@ func TestResolveValue(t *testing.T) {
 			ctx.currBody = tc.body
 			if tc.dbMock != nil {
 				db := tc.dbMock(t)
-				ctx.dbs.register("", db, 0)
+				ctx.dbs.register("", db, common.DatabaseArgs{})
 				defer db.Close()
 			}
 			if tc.response != nil && tc.responseCookie != nil {

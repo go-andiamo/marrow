@@ -34,7 +34,7 @@ func (i *image) Init(init with.SuiteInit) error {
 	if err := i.Start(); err != nil {
 		return fmt.Errorf("with dynamodb image init error: %w", err)
 	}
-	init.AddDb(i.name, i.db, common.PositionalDbArgs)
+	init.AddDb(i.name, i.db, common.DatabaseArgs{})
 	init.AddSupportingImage(i)
 	return nil
 }
