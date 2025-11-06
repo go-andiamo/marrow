@@ -1,5 +1,5 @@
 # Marrow
-[![GoDoc](https://godoc.org/github.com/go-andiamo/marrow?status.svg)](https://pkg.go.dev/github.com/go-andiamo/marrow/typed)
+[![GoDoc](https://godoc.org/github.com/go-andiamo/marrow?status.svg)](https://pkg.go.dev/github.com/go-andiamo/marrow)
 [![Latest Version](https://img.shields.io/github/v/tag/go-andiamo/marrow.svg?sort=semver&style=flat&label=version&color=blue)](https://github.com/go-andiamo/marrow/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/go-andiamo/marrow)](https://goreportcard.com/report/github.com/go-andiamo/marrow)
 
