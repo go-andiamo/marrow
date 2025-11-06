@@ -37,7 +37,11 @@ func TestMain(m *testing.M) {
 		db: testDb,
 	}
 
-	os.Exit(m.Run())
+	ec := m.Run()
+	// shutdown image - rather than waiting for reaper...
+	img.Shutdown()()
+
+	os.Exit(ec)
 }
 
 type rawQuery string
