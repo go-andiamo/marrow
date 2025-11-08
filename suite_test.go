@@ -289,6 +289,7 @@ func TestWithDatabase(t *testing.T) {
 	err = raw.runInits()
 	require.NoError(t, err)
 	ndb, ok := raw.dbs[""]
+	assert.True(t, ok)
 	assert.NotNil(t, ndb)
 	assert.NotNil(t, ndb.db)
 	assert.Equal(t, common.NumberedDbArgs, ndb.argMarkers.Style)

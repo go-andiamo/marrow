@@ -449,6 +449,7 @@ func (s *suite) initContext(cov coverage.Collector, t htesting.Helper) *context 
 	}
 	result.host = fmt.Sprintf("http://%s:%d", host, s.port)
 	result.dbs = maps.Clone(s.dbs)
+	result.images = maps.Clone(s.images)
 	result.testing = t
 	result.mockServices = maps.Clone(s.mockServices)
 	for k, v := range s.vars {

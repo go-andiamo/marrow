@@ -10,6 +10,7 @@ import (
 	"github.com/go-andiamo/marrow/coverage"
 	"github.com/go-andiamo/marrow/mocks/service"
 	"github.com/go-andiamo/marrow/testing"
+	"github.com/go-andiamo/marrow/with"
 	"maps"
 	"net/http"
 	"net/http/httptrace"
@@ -74,6 +75,8 @@ type Context interface {
 	GetMockService(name string) service.MockedService
 	// ClearMockServices clears all mock services
 	ClearMockServices()
+	// GetImage returns the named supporting image
+	GetImage(name string) with.Image
 
 	setCurrentEndpoint(Endpoint_)
 	setCurrentMethod(Method_)
@@ -94,6 +97,7 @@ type context struct {
 	host         string
 	vars         map[Var]any
 	dbs          namedDatabases
+	images       map[string]with.Image
 	testing      testing.Helper
 	currTesting  []testing.Helper
 	currEndpoint Endpoint_
@@ -110,6 +114,7 @@ func newContext() *context {
 	return &context{
 		coverage:     coverage.NewNullCoverage(),
 		dbs:          make(namedDatabases),
+		images:       make(map[string]with.Image),
 		vars:         make(map[Var]any),
 		cookieJar:    make(map[string]*http.Cookie),
 		httpDo:       http.DefaultClient,
@@ -279,6 +284,10 @@ func (c *context) ClearMockServices() {
 	for _, ms := range c.mockServices {
 		ms.Clear()
 	}
+}
+
+func (c *context) GetImage(name string) with.Image {
+	return c.images[name]
 }
 
 func (c *context) setCurrentEndpoint(e Endpoint_) {

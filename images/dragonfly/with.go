@@ -3,6 +3,7 @@ package dragonfly
 import (
 	"fmt"
 	"github.com/go-andiamo/marrow/with"
+	"github.com/go-redis/redis/v7"
 	"github.com/testcontainers/testcontainers-go"
 )
 
@@ -11,6 +12,8 @@ type Image interface {
 	Start() error
 	MappedPort() string
 	Container() testcontainers.Container
+	Client() Client
+	RedisClient() *redis.Client
 }
 
 // With creates a new dragonfly (drop-in replacement for Redis) support image for use in marrow.Suite .Init()

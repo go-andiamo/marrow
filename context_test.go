@@ -10,6 +10,7 @@ import (
 	"github.com/go-andiamo/marrow/framing"
 	"github.com/go-andiamo/marrow/mocks/service"
 	htesting "github.com/go-andiamo/marrow/testing"
+	"github.com/go-andiamo/marrow/with"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -67,6 +68,20 @@ func TestContext_Cookies(t *testing.T) {
 	ctx.StoreCookie(&http.Cookie{Name: "session", Value: "foo"})
 	c = ctx.GetCookie("session")
 	assert.NotNil(t, c)
+}
+
+func TestContext_GetMockService(t *testing.T) {
+	ctx := newContext()
+	ctx.mockServices["foo"] = &mockService{}
+	m := ctx.GetMockService("foo")
+	assert.NotNil(t, m)
+}
+
+func TestContext_GetImage(t *testing.T) {
+	ctx := newContext()
+	ctx.images["foo"] = &mockImage{}
+	i := ctx.GetImage("foo")
+	assert.NotNil(t, i)
 }
 
 func TestContext_Db(t *testing.T) {
@@ -608,6 +623,7 @@ func newTestContext(vars map[Var]any) *context {
 	result := &context{
 		coverage:     coverage.NewNullCoverage(),
 		dbs:          make(namedDatabases),
+		images:       make(map[string]with.Image),
 		vars:         make(map[Var]any),
 		cookieJar:    make(map[string]*http.Cookie),
 		mockServices: make(map[string]service.MockedService),

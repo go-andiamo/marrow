@@ -33,9 +33,9 @@ func TestWithInit_Mocked(t *testing.T) {
 	_, ok := init.called["AddSupportingImage:dragonfly"]
 	assert.True(t, ok)
 	assert.Len(t, init.images, 1)
-	img, ok := init.images["dragonfly"]
+	img, ok := init.images[imageName]
 	assert.True(t, ok)
-	assert.Equal(t, "dragonfly", img.Name())
+	assert.Equal(t, imageName, img.Name())
 	assert.True(t, img.IsDocker())
 	assert.Equal(t, "localhost", img.Host())
 	assert.Equal(t, defaultPort, img.Port())
