@@ -6,15 +6,20 @@ import (
 	"fmt"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
+	"github.com/go-redis/redis/v7"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"os"
 )
 
 type image struct {
-	options    Options
-	mappedPort string
-	container  testcontainers.Container
+	options        Options
+	mappedPort     string
+	container      testcontainers.Container
+	client         Client
+	rClient        *redis.Client
+	topicListeners map[string]*listener
+	queueListeners map[string]*listener
 }
 
 const envRyukDisable = "TESTCONTAINERS_RYUK_DISABLED"
@@ -48,6 +53,8 @@ func (i *image) Start() (err error) {
 		if ir, err = i.container.Inspect(ctx); err == nil {
 			if mapped, ok := ir.NetworkSettings.Ports[natPort]; ok {
 				i.mappedPort = mapped[0].HostPort
+				i.client, i.rClient = newClient(i.Host(), i.mappedPort)
+				err = i.setupListeners()
 			} else {
 				err = fmt.Errorf("could not find port %s in container", port)
 			}
@@ -70,8 +77,10 @@ func (i *image) Container() testcontainers.Container {
 	return i.container
 }
 
+const imageName = "dragonfly"
+
 func (i *image) Name() string {
-	return "dragonfly"
+	return imageName
 }
 
 func (i *image) Host() string {
@@ -92,4 +101,12 @@ func (i *image) Username() string {
 
 func (i *image) Password() string {
 	return ""
+}
+
+func (i *image) Client() Client {
+	return i.client
+}
+
+func (i *image) RedisClient() *redis.Client {
+	return i.rClient
 }

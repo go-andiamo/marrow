@@ -19,6 +19,7 @@ func TestMockService(t *testing.T) {
 	_, ok := mock.services["foo"]
 	assert.True(t, ok)
 	_, ok = mock.called["AddMockService:foo"]
+	assert.True(t, ok)
 	require.NotNil(t, w.Shutdown())
 	w.Shutdown()()
 }
