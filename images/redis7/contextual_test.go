@@ -125,7 +125,7 @@ func TestCapturesAndListeners(t *testing.T) {
 
 func TestQueueLen(t *testing.T) {
 	c := QueueLen("queue_foo")
-	assert.Equal(t, "dragonfly.QueueLen(\"queue_foo\")", fmt.Sprintf("%s", c))
+	assert.Equal(t, "redis.QueueLen(\"queue_foo\")", fmt.Sprintf("%s", c))
 }
 
 func TestSendMessage(t *testing.T) {
@@ -142,12 +142,12 @@ func TestPublishMessage(t *testing.T) {
 
 func TestReceivedQueueMessages(t *testing.T) {
 	c := ReceivedQueueMessages("queue_foo")
-	assert.Equal(t, "dragonfly.ReceivedQueueMessages(\"queue_foo\")", fmt.Sprintf("%s", c))
+	assert.Equal(t, "redis.ReceivedQueueMessages(\"queue_foo\")", fmt.Sprintf("%s", c))
 }
 
 func TestReceivedTopicMessages(t *testing.T) {
 	c := ReceivedTopicMessages("topic_foo")
-	assert.Equal(t, "dragonfly.ReceivedTopicMessages(\"topic_foo\")", fmt.Sprintf("%s", c))
+	assert.Equal(t, "redis.ReceivedTopicMessages(\"topic_foo\")", fmt.Sprintf("%s", c))
 }
 
 type dummyDo struct {

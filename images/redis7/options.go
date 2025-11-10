@@ -1,8 +1,8 @@
 package redis7
 
 type Options struct {
-	ImageVersion        string // defaults to "v1.34.2"
-	Image               string // defaults to "ghcr.io/dragonflydb/dragonfly"
+	ImageVersion        string // defaults to "v7.2.5"
+	Image               string // defaults to "redis"
 	DefaultPort         string // is the actual port for redis, defaults to "6379"
 	DisableAutoShutdown bool   // if set, disables container auto (RYUK reaper) shutdown
 	LeaveRunning        bool   // if set, the container is not shutdown
@@ -30,8 +30,8 @@ type Receiver struct {
 }
 
 const (
-	defaultVersion = "v1.34.2"
-	defaultImage   = "ghcr.io/dragonflydb/dragonfly"
+	defaultVersion = "7.2.5"
+	defaultImage   = "redis"
 	defaultPort    = "6379"
 )
 

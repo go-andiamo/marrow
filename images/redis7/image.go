@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/go-redis/redis/v7"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"os"
 )
 
 type image struct {
@@ -77,7 +78,7 @@ func (i *image) Container() testcontainers.Container {
 	return i.container
 }
 
-const imageName = "dragonfly"
+const imageName = "redis"
 
 func (i *image) Name() string {
 	return imageName
