@@ -252,30 +252,13 @@ func (s *suite) resolveEnvString(str string) (string, error) {
 			continue
 		}
 		name := str[nameStart:nameEnd]
-		parts := strings.SplitN(name, ":", 3)
+		parts := strings.Split(name, ":")
 		found := false
 		switch {
 		case len(parts) == 1:
 			if av, ok := s.vars[Var(name)]; ok {
 				found = true
 				b.WriteString(fmt.Sprintf("%v", av))
-			}
-		case len(parts) == 2 && (parts[1] == "host" || parts[1] == "port" || parts[1] == "mport" || parts[1] == "username" || parts[1] == "password"):
-			// name:port name:host name:username name:password ... where name is the name of a supporting image in s.images
-			if img, ok := s.images[parts[0]]; ok {
-				found = true
-				switch parts[1] {
-				case "host":
-					b.WriteString(img.Host())
-				case "port":
-					b.WriteString(img.Port())
-				case "mport":
-					b.WriteString(img.MappedPort())
-				case "username":
-					b.WriteString(img.Username())
-				case "password":
-					b.WriteString(img.Password())
-				}
 			}
 		case len(parts) == 3 && parts[0] == "mock" && (parts[2] == "host" || parts[2] == "port"):
 			// mock:name:port mock:name:host ... where name is the service name of a mock in s.mockServices
@@ -285,6 +268,35 @@ func (s *suite) resolveEnvString(str string) (string, error) {
 					b.WriteString(m.ActualHost())
 				} else {
 					b.WriteString(fmt.Sprintf("%v", m.Port()))
+				}
+			}
+		case len(parts) > 1:
+			// name:port name:host name:username name:password ... where name is the name of a supporting image in s.images
+			if img, ok := s.images[parts[0]]; ok {
+				switch parts[1] {
+				case "host":
+					found = true
+					b.WriteString(img.Host())
+				case "port":
+					found = true
+					b.WriteString(img.Port())
+				case "mport":
+					found = true
+					b.WriteString(img.MappedPort())
+				case "username":
+					found = true
+					b.WriteString(img.Username())
+				case "password":
+					found = true
+					b.WriteString(img.Password())
+				default:
+					if ire, ok := img.(with.ImageResolveEnv); ok {
+						tokens := parts[1:]
+						if v, ok := ire.ResolveEnv(tokens...); ok {
+							found = true
+							b.WriteString(v)
+						}
+					}
 				}
 			}
 		}

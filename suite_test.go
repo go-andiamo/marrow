@@ -495,6 +495,24 @@ func TestSuite_ResolveEnv(t *testing.T) {
 			expect: "bar",
 		},
 		{
+			value: "{$foo:bar}",
+			images: map[string]with.Image{
+				"foo": &mockImage{
+					envs: map[string]string{"bar": "baz"},
+				},
+			},
+			expect: "baz",
+		},
+		{
+			value: "{$foo:bar:baz}",
+			images: map[string]with.Image{
+				"foo": &mockImage{
+					envs: map[string]string{"bar:baz": "buzz"},
+				},
+			},
+			expect: "buzz",
+		},
+		{
 			value:     "{$mock:foo:host}",
 			expectErr: true,
 		},
@@ -542,10 +560,12 @@ func TestSuite_ResolveEnv(t *testing.T) {
 type mockImage struct {
 	err      error
 	shutdown bool
+	envs     map[string]string
 }
 
 var _ with.With = (*mockImage)(nil)
 var _ with.Image = (*mockImage)(nil)
+var _ with.ImageResolveEnv = (*mockImage)(nil)
 
 func (m *mockImage) Init(init with.SuiteInit) error {
 	init.AddSupportingImage(m)
@@ -588,6 +608,11 @@ func (m *mockImage) Username() string {
 
 func (m *mockImage) Password() string {
 	return "bar"
+}
+
+func (m *mockImage) ResolveEnv(tokens ...string) (string, bool) {
+	s, ok := m.envs[strings.Join(tokens, ":")]
+	return s, ok
 }
 
 type mockService struct{}
