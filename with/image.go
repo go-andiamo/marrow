@@ -1,6 +1,6 @@
 package with
 
-// Image is the interface that described a running docker image
+// Image is the interface that describes a running docker image
 type Image interface {
 	Name() string
 	Host() string
@@ -9,4 +9,9 @@ type Image interface {
 	IsDocker() bool
 	Username() string
 	Password() string
+}
+
+// ImageResolveEnv is an additional interface that images can implement to resolve additional env settings
+type ImageResolveEnv interface {
+	ResolveEnv(tokens ...string) (string, bool)
 }
