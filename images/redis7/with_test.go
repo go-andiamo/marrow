@@ -31,7 +31,7 @@ func TestWithInit_Mocked(t *testing.T) {
 
 	// check suit init was called
 	assert.Len(t, init.called, 1)
-	_, ok := init.called["AddSupportingImage:dragonfly"]
+	_, ok := init.called["AddSupportingImage:redis"]
 	assert.True(t, ok)
 	assert.Len(t, init.images, 1)
 	img, ok := init.images[imageName]

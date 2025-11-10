@@ -3,7 +3,7 @@ package redis7
 type Options struct {
 	ImageVersion        string // defaults to "v1.34.2"
 	Image               string // defaults to "ghcr.io/dragonflydb/dragonfly"
-	DefaultPort         string // is the actual port for dragonfly, defaults to "6379"
+	DefaultPort         string // is the actual port for redis, defaults to "6379"
 	DisableAutoShutdown bool   // if set, disables container auto (RYUK reaper) shutdown
 	LeaveRunning        bool   // if set, the container is not shutdown
 	// Subscribers is a map of the topic subscribers to setup - where the key is the topic name

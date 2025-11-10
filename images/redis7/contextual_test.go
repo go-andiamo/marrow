@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"testing"
+
 	"github.com/go-andiamo/marrow"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
 	"github.com/go-andiamo/marrow/with"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
-	"net/http"
-	"testing"
 )
 
 func TestCapturesAndListeners(t *testing.T) {
@@ -107,7 +108,7 @@ func TestCapturesAndListeners(t *testing.T) {
 				_, _ = marrow.ResolveValue(ReceivedTopicMessage("not_listened_topic", 0), ctx)
 				return nil
 			}).
-			Capture(PublishMessage(marrow.After, "topic_foo", "", "not-dragonfly")),
+			Capture(PublishMessage(marrow.After, "topic_foo", "", "not-redis")),
 	)
 	var cov *coverage.Coverage
 	s := marrow.Suite(endpoint).Init(

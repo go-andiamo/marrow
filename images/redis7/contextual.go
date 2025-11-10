@@ -3,10 +3,11 @@ package redis7
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-andiamo/marrow"
-	"github.com/go-andiamo/marrow/framing"
 	"reflect"
 	"time"
+
+	"github.com/go-andiamo/marrow"
+	"github.com/go-andiamo/marrow/framing"
 )
 
 // QueueLen can be used as a resolvable value (e.g. in marrow.Method .AssertEqual)
@@ -28,7 +29,7 @@ func QueueLen(queueName string, imgName ...string) marrow.Resolvable {
 }
 
 // SendMessage can be used as a before/after on marrow.Method .Capture
-// and sends a message to a dragonfly queue
+// and sends a message to a redis queue
 //
 //go:noinline
 func SendMessage(when marrow.When, queueName string, message any, imgName ...string) marrow.BeforeAfter {
@@ -48,7 +49,7 @@ func SendMessage(when marrow.When, queueName string, message any, imgName ...str
 }
 
 // PublishMessage can be used as a before/after on marrow.Method .Capture
-// and publishes a message to a dragonfly topic
+// and publishes a message to a redis topic
 //
 //go:noinline
 func PublishMessage(when marrow.When, topicName string, message any, imgName ...string) marrow.BeforeAfter {
