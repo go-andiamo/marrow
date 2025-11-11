@@ -3,7 +3,6 @@ module petstore
 go 1.24.4
 
 require (
-	github.com/go-andiamo/marrow v0.0.0
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/gofrs/uuid v4.4.0+incompatible
 )
@@ -28,6 +27,7 @@ require (
 	github.com/go-andiamo/chioas v1.19.0 // indirect
 	github.com/go-andiamo/columbus v1.2.0 // indirect
 	github.com/go-andiamo/gopt v1.6.1 // indirect
+	github.com/go-andiamo/marrow v1.2.2 // indirect
 	github.com/go-andiamo/splitter v1.2.5 // indirect
 	github.com/go-andiamo/urit v1.2.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -71,5 +71,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
-
-replace github.com/go-andiamo/marrow => ../..
