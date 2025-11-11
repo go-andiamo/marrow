@@ -3,7 +3,7 @@ package dynamodb
 import "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 
 type Options struct {
-	ImageVersion        string // defaults to "2.1.0"
+	ImageVersion        string // defaults to "latest"
 	Image               string // defaults to "localstack/localstack"
 	DefaultPort         string // is the actual port for dynamodb, defaults to "4566"
 	DisableAutoShutdown bool   // if set, disables container auto (RYUK reaper) shutdown
@@ -14,7 +14,7 @@ type Options struct {
 }
 
 const (
-	defaultVersion = "2.1.0"
+	defaultVersion = "latest"
 	defaultImage   = "localstack/localstack"
 	defaultPort    = "4566"
 )
