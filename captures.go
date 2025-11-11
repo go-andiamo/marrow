@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/go-andiamo/marrow/framing"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -294,4 +296,57 @@ func (w *wait) Run(ctx Context) error {
 
 func (w *wait) Frame() *framing.Frame {
 	return w.frame
+}
+
+type setEnv struct {
+	name  string
+	value any
+	frame *framing.Frame
+}
+
+var _ Capture = (*setEnv)(nil)
+
+func (s *setEnv) Name() string {
+	return fmt.Sprintf("SET ENV: %q", s.name)
+}
+
+func (s *setEnv) Run(ctx Context) (err error) {
+	var av any
+	if av, err = ResolveValue(s.value, ctx); err == nil {
+		sv := ""
+		switch avt := av.(type) {
+		case string:
+			sv = avt
+		default:
+			sv = fmt.Sprintf("%v", av)
+		}
+		err = os.Setenv(s.name, sv)
+	}
+	return err
+}
+
+func (s *setEnv) Frame() *framing.Frame {
+	return s.frame
+}
+
+type unSetEnv struct {
+	names []string
+	frame *framing.Frame
+}
+
+var _ Capture = (*unSetEnv)(nil)
+
+func (u *unSetEnv) Name() string {
+	return `UNSET ENV: "` + strings.Join(u.names, `", "`) + `"`
+}
+
+func (u *unSetEnv) Run(ctx Context) (err error) {
+	for i := 0; i < len(u.names) && err == nil; i++ {
+		err = os.Unsetenv(u.names[i])
+	}
+	return err
+}
+
+func (u *unSetEnv) Frame() *framing.Frame {
+	return u.frame
 }

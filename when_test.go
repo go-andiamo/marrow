@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
+	"os"
 	"testing"
 )
 
@@ -183,4 +184,41 @@ func TestWait(t *testing.T) {
 	ctx := newTestContext(nil)
 	err := w.Run(ctx)
 	require.NoError(t, err)
+}
+
+func TestSetEnv(t *testing.T) {
+	w := SetEnv(After, "FOO", "bar")
+	assert.Equal(t, After, w.When())
+	assert.NotNil(t, w.Frame())
+
+	_ = os.Unsetenv("FOO")
+	ctx := newTestContext(nil)
+	err := w.Run(ctx)
+	require.NoError(t, err)
+	v, ok := os.LookupEnv("FOO")
+	assert.True(t, ok)
+	assert.Equal(t, "bar", v)
+
+	w = SetEnv(After, "FOO", 42)
+	err = w.Run(ctx)
+	require.NoError(t, err)
+	v, ok = os.LookupEnv("FOO")
+	assert.True(t, ok)
+	assert.Equal(t, "42", v)
+}
+
+func TestUnSetEnv(t *testing.T) {
+	w := UnSetEnv(After, "FOO", "BAR")
+	assert.Equal(t, After, w.When())
+	assert.NotNil(t, w.Frame())
+
+	_ = os.Setenv("FOO", "foo")
+	_ = os.Setenv("BAR", "bar")
+	ctx := newTestContext(nil)
+	err := w.Run(ctx)
+	require.NoError(t, err)
+	_, ok := os.LookupEnv("FOO")
+	assert.False(t, ok)
+	_, ok = os.LookupEnv("BAR")
+	assert.False(t, ok)
 }

@@ -172,3 +172,30 @@ func Wait(when When, ms int) BeforeAfter {
 		},
 	}
 }
+
+// SetEnv is a before/after operation to set an environment variable
+//
+//go:noinline
+func SetEnv(when When, name string, value any) BeforeAfter {
+	return &beforeAfter{
+		when: when,
+		do: &setEnv{
+			name:  name,
+			value: value,
+			frame: framing.NewFrame(0),
+		},
+	}
+}
+
+// UnSetEnv is a before/after operation to unset an environment variable
+//
+//go:noinline
+func UnSetEnv(when When, names ...string) BeforeAfter {
+	return &beforeAfter{
+		when: when,
+		do: &unSetEnv{
+			names: names,
+			frame: framing.NewFrame(0),
+		},
+	}
+}
