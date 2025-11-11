@@ -176,6 +176,8 @@ func (s *suite) AddSupportingImage(info with.Image) {
 }
 
 func (s *suite) SetTraceTimings(collect bool) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.traceTimings = collect
 }
 
@@ -269,6 +271,11 @@ func (s *suite) resolveEnvString(str string) (string, error) {
 				} else {
 					b.WriteString(fmt.Sprintf("%v", m.Port()))
 				}
+			}
+		case len(parts) == 2 && parts[0] == "env":
+			if s, ok := os.LookupEnv(parts[1]); ok {
+				found = true
+				b.WriteString(s)
 			}
 		case len(parts) > 1:
 			// name:port name:host name:username name:password ... where name is the name of a supporting image in s.images

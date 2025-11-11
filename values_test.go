@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
+	"os"
 	"testing"
 )
 
@@ -21,6 +22,7 @@ func TestResolveValue(t *testing.T) {
 		responseCookie *http.Cookie
 		expect         any
 		expectErr      string
+		setup          func(t *testing.T) func()
 	}{
 		{
 			value: BodyReader(func(body any) (any, error) {
@@ -469,6 +471,34 @@ func TestResolveValue(t *testing.T) {
 			body:   map[string]any{"foo": 42},
 			expect: map[string]any{"foo": 42},
 		},
+		{
+			value:  Env("TEST_ENV"),
+			expect: "",
+		},
+		{
+			value: Env("TEST_ENV"),
+			setup: func(t *testing.T) func() {
+				_ = os.Setenv("TEST_ENV", "test")
+				return func() {
+					_ = os.Unsetenv("TEST_ENV")
+				}
+			},
+			expect: "test",
+		},
+		{
+			value:     TemplateString("{$env:TEST_ENV}"),
+			expectErr: "unresolved env var: ",
+		},
+		{
+			value: TemplateString("{$env:TEST_ENV}"),
+			setup: func(t *testing.T) func() {
+				_ = os.Setenv("TEST_ENV", "test")
+				return func() {
+					_ = os.Unsetenv("TEST_ENV")
+				}
+			},
+			expect: "test",
+		},
 	}
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
@@ -482,6 +512,12 @@ func TestResolveValue(t *testing.T) {
 				db := tc.dbMock(t)
 				ctx.dbs.register("", db, common.DatabaseArgs{})
 				defer db.Close()
+			}
+			if tc.setup != nil {
+				td := tc.setup(t)
+				if td != nil {
+					defer td()
+				}
 			}
 			if tc.response != nil && tc.responseCookie != nil {
 				if tc.response.Header == nil {
@@ -509,4 +545,5 @@ func Test_stringifyValue(t *testing.T) {
 	assert.Equal(t, `Query("SELECT *", "foo")`, stringifyValue(QueryValue{Query: "SELECT *", Args: []any{"foo"}}))
 	assert.Equal(t, `JsonPath(Var(test), ".")`, stringifyValue(JsonPathValue{Value: Var("test"), Path: "."}))
 	assert.Equal(t, "Body", stringifyValue(Body))
+	assert.Equal(t, `Env(TEST_ENV)`, stringifyValue(Env("TEST_ENV")))
 }

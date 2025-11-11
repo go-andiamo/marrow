@@ -310,3 +310,22 @@ func Test_wait(t *testing.T) {
 	assert.Equal(t, "WAIT 10ms", c.Name())
 	assert.NotNil(t, c.Frame())
 }
+
+func Test_setEnv(t *testing.T) {
+	c := &setEnv{
+		name:  "TEST_ENV",
+		value: "foo",
+		frame: framing.NewFrame(0),
+	}
+	assert.Equal(t, "SET ENV: \"TEST_ENV\"", c.Name())
+	assert.NotNil(t, c.Frame())
+}
+
+func Test_unSetEnv(t *testing.T) {
+	c := &unSetEnv{
+		names: []string{"TEST_ENV", "TEST_ENV2"},
+		frame: framing.NewFrame(0),
+	}
+	assert.Equal(t, "UNSET ENV: \"TEST_ENV\", \"TEST_ENV2\"", c.Name())
+	assert.NotNil(t, c.Frame())
+}

@@ -428,6 +428,7 @@ func TestSuite_ResolveEnv(t *testing.T) {
 		mocks     map[string]service.MockedService
 		expect    string
 		expectErr bool
+		setup     func(t *testing.T) func()
 	}{
 		{
 			value:  "foo",
@@ -538,6 +539,20 @@ func TestSuite_ResolveEnv(t *testing.T) {
 			value:  "\\\\\\{$foo}",
 			expect: "\\\\{$foo}",
 		},
+		{
+			value:     "{$env:TEST_AUTH}",
+			expectErr: true,
+		},
+		{
+			value:  "{$env:TEST_AUTH}",
+			expect: "TEST_VALUE",
+			setup: func(t *testing.T) func() {
+				_ = os.Setenv("TEST_AUTH", "TEST_VALUE")
+				return func() {
+					_ = os.Unsetenv("TEST_AUTH")
+				}
+			},
+		},
 	}
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
@@ -545,6 +560,12 @@ func TestSuite_ResolveEnv(t *testing.T) {
 				vars:         tc.vars,
 				images:       tc.images,
 				mockServices: tc.mocks,
+			}
+			if tc.setup != nil {
+				td := tc.setup(t)
+				if td != nil {
+					defer td()
+				}
 			}
 			result, err := s.ResolveEnv(tc.value)
 			if tc.expectErr {

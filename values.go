@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/go-andiamo/columbus"
 	"github.com/go-andiamo/gopt"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -116,7 +117,7 @@ func resolveValueString(s string, ctx Context) (string, error) {
 		nameEnd := nameStart
 		for nameEnd < len(s) {
 			c := s[nameEnd]
-			if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' {
+			if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == ':' || c == '.' {
 				nameEnd++
 				continue
 			}
@@ -129,7 +130,13 @@ func resolveValueString(s string, ctx Context) (string, error) {
 			continue
 		}
 		name := s[nameStart:nameEnd]
-		if v, ok := vars[Var(name)]; ok {
+		if after, ok := strings.CutPrefix(name, "env:"); ok {
+			if s, ok := os.LookupEnv(after); ok {
+				b.WriteString(s)
+			} else {
+				return "", fmt.Errorf("unresolved env var: %q", after)
+			}
+		} else if v, ok := vars[Var(name)]; ok {
 			if av, err := ResolveValue(v, ctx); err != nil {
 				return "", err
 			} else {
@@ -255,6 +262,19 @@ func (v Var) ResolveValue(ctx Context) (av any, err error) {
 
 func (v Var) String() string {
 	return "Var(" + string(v) + ")"
+}
+
+// Env is the name of an environment variable
+//
+// when resolved, the value is the current environment variable of the name
+type Env string
+
+func (e Env) ResolveValue(ctx Context) (av any, err error) {
+	return os.Getenv(string(e)), nil
+}
+
+func (e Env) String() string {
+	return "Env(" + string(e) + ")"
 }
 
 // StatusCode is a type that indicates resolve to the current Context response status code
