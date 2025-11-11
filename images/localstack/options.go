@@ -43,10 +43,13 @@ type Service int
 type Services []Service
 
 const (
-	Dynamo Service = iota
-	S3
-	SNS
-	SQS
+	All    Service = iota // start all services
+	Dynamo                // start DynamoDB service
+	S3                    // start S3 service
+	SNS                   // start SNS service
+	SQS                   // start SQS service
+
+	Except Service = -1 // services following this are not started
 )
 
 const (
@@ -106,10 +109,32 @@ func (o Options) sessionToken() string {
 
 func (o Options) services() map[Service]struct{} {
 	result := make(map[Service]struct{}, len(o.Services))
+	except := false
+	all := Services{Dynamo, S3, SNS, SQS}
 	for _, service := range o.Services {
 		switch service {
+		case All:
+			if !except {
+				for _, s := range all {
+					result[s] = struct{}{}
+				}
+			}
+		case Except:
+			except = true
 		case Dynamo, S3, SNS, SQS:
-			result[service] = struct{}{}
+			if !except {
+				result[service] = struct{}{}
+			} else {
+				delete(result, service)
+			}
+		default:
+			if !except && service < 0 {
+				minusService := -service
+				switch minusService {
+				case Dynamo, S3, SNS, SQS:
+					delete(result, minusService)
+				}
+			}
 		}
 	}
 	return result

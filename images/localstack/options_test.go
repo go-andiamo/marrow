@@ -63,4 +63,34 @@ func TestOptions_Defaults(t *testing.T) {
 		_, ok = svcs[SQS]
 		assert.True(t, ok)
 	})
+	t.Run("services (all/except)", func(t *testing.T) {
+		o := Options{
+			Services: Services{All, Except, S3, S3},
+		}
+		svcs := o.services()
+		assert.Len(t, svcs, 3)
+		_, ok := svcs[Dynamo]
+		assert.True(t, ok)
+		_, ok = svcs[S3]
+		assert.False(t, ok)
+		_, ok = svcs[SNS]
+		assert.True(t, ok)
+		_, ok = svcs[SQS]
+		assert.True(t, ok)
+	})
+	t.Run("services (minus)", func(t *testing.T) {
+		o := Options{
+			Services: Services{All, -S3, -SNS},
+		}
+		svcs := o.services()
+		assert.Len(t, svcs, 2)
+		_, ok := svcs[Dynamo]
+		assert.True(t, ok)
+		_, ok = svcs[S3]
+		assert.False(t, ok)
+		_, ok = svcs[SNS]
+		assert.False(t, ok)
+		_, ok = svcs[SQS]
+		assert.True(t, ok)
+	})
 }
