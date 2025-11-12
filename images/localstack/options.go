@@ -1,10 +1,13 @@
 package localstack
 
 import (
+	"context"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/go-andiamo/marrow/with"
 )
 
 type Options struct {
@@ -21,7 +24,10 @@ type Options struct {
 	S3                  S3Options
 	SNS                 SNSOptions
 	SQS                 SQSOptions
+	CustomServices      CustomServiceBuilders
 }
+
+type CustomServiceBuilders = []func(ctx context.Context, awsCfg aws.Config, host string, mappedPort string) (image with.Image, err error)
 
 type DynamoOptions struct {
 	CreateTables []dynamodb.CreateTableInput
@@ -49,7 +55,11 @@ const (
 	SNS                   // start SNS service
 	SQS                   // start SQS service
 
-	Except Service = -1 // services following this are not started
+	DynamoDB           = Dynamo
+	maxService Service = SQS + 1
+	// Except services following this are not started, e.g.
+	//    Options.Services = Services{All,Except,SQS}
+	Except Service = -1
 )
 
 const (

@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+type SNSService interface {
+	Client() *sns.Client
+}
+
 type snsImage struct {
 	options    Options
 	host       string
@@ -18,6 +22,7 @@ type snsImage struct {
 
 var _ with.Image = (*snsImage)(nil)
 var _ with.ImageResolveEnv = (*snsImage)(nil)
+var _ SNSService = (*snsImage)(nil)
 
 func (i *image) createSnsImage(ctx context.Context, awsCfg aws.Config) (err error) {
 	img := &snsImage{
@@ -47,6 +52,10 @@ func (s *snsImage) createTopics(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (s *snsImage) Client() *sns.Client {
+	return s.client
 }
 
 const snsImageName = "sns"

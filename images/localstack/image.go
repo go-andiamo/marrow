@@ -15,6 +15,7 @@ import (
 	"github.com/go-andiamo/marrow/with"
 	"github.com/testcontainers/testcontainers-go"
 	tcls "github.com/testcontainers/testcontainers-go/modules/localstack"
+	"os"
 	"sync"
 )
 
@@ -36,16 +37,25 @@ const (
 
 func (i *image) Start() (err error) {
 	i.mutex.Lock()
-	defer i.mutex.Unlock()
+	defer func() {
+		i.mutex.Unlock()
+		_ = os.Setenv(envRyukDisable, "false")
+		if err != nil {
+			err = fmt.Errorf("start container: %w", err)
+		}
+	}()
 	if i.container != nil || i.shuttingDown {
 		return errors.New("already started / shutting down")
 	}
 	svcs := i.options.services()
-	if len(svcs) == 0 {
+	if len(svcs) == 0 && len(i.options.CustomServices) == 0 {
 		return errors.New("no services defined")
 	}
 	i.services = make(map[Service]with.Image, len(svcs))
 	ctx := context.Background()
+	if i.options.DisableAutoShutdown {
+		_ = os.Setenv(envRyukDisable, "true")
+	}
 	if i.container, err = tcls.Run(ctx, i.options.useImage()); err == nil {
 		var mp nat.Port
 		if mp, err = i.container.MappedPort(ctx, defaultNatPort); err == nil {
@@ -71,6 +81,16 @@ func (i *image) Start() (err error) {
 							}
 							if err != nil {
 								return err
+							}
+						}
+						for id, csfn := range i.options.CustomServices {
+							if csfn != nil {
+								if img, err := csfn(ctx, cfg, i.host, i.mappedPort); err == nil {
+									svcId := maxService + Service(id)
+									i.services[svcId] = img
+								} else {
+									return err
+								}
 							}
 						}
 					}

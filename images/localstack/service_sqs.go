@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+type SQSService interface {
+	Client() *sqs.Client
+}
+
 type sqsImage struct {
 	options    Options
 	host       string
@@ -18,6 +22,7 @@ type sqsImage struct {
 
 var _ with.Image = (*sqsImage)(nil)
 var _ with.ImageResolveEnv = (*sqsImage)(nil)
+var _ SQSService = (*sqsImage)(nil)
 
 func (i *image) createSqsImage(ctx context.Context, awsCfg aws.Config) (err error) {
 	img := &sqsImage{
@@ -47,6 +52,10 @@ func (s *sqsImage) createQueues(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (s *sqsImage) Client() *sqs.Client {
+	return s.client
 }
 
 const sqsImageName = "sqs"
