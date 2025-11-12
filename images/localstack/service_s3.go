@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+type S3Service interface {
+	Client() *s3.Client
+}
+
 type s3Image struct {
 	options    Options
 	host       string
@@ -17,6 +21,7 @@ type s3Image struct {
 
 var _ with.Image = (*s3Image)(nil)
 var _ with.ImageResolveEnv = (*s3Image)(nil)
+var _ S3Service = (*s3Image)(nil)
 
 func (i *image) createS3Image(ctx context.Context, awsCfg aws.Config) (err error) {
 	img := &s3Image{
@@ -45,6 +50,10 @@ func (s *s3Image) createBuckets(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (s *s3Image) Client() *s3.Client {
+	return s.client
 }
 
 const s3ImageName = "s3"

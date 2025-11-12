@@ -1,8 +1,10 @@
 package localstack
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/go-andiamo/marrow"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
@@ -19,9 +21,12 @@ import (
 func TestWithInit_Mocked(t *testing.T) {
 	w := With(Options{
 		Services: Services{Dynamo, S3, SNS, SQS},
+		CustomServices: CustomServiceBuilders{
+			customServiceBuild,
+		},
 	})
 	init := newMockInit()
-	init.wg.Add(4)
+	init.wg.Add(5)
 
 	err := w.Init(init)
 	require.NoError(t, err)
@@ -35,8 +40,8 @@ func TestWithInit_Mocked(t *testing.T) {
 	init.wg.Wait()
 
 	// check suit init was called
-	assert.Len(t, init.called, 4)
-	assert.Len(t, init.images, 4)
+	assert.Len(t, init.called, 5)
+	assert.Len(t, init.images, 5)
 	_, ok := init.called["AddSupportingImage:dynamo"]
 	assert.True(t, ok)
 	_, ok = init.called["AddSupportingImage:s3"]
@@ -44,6 +49,8 @@ func TestWithInit_Mocked(t *testing.T) {
 	_, ok = init.called["AddSupportingImage:sns"]
 	assert.True(t, ok)
 	_, ok = init.called["AddSupportingImage:sqs"]
+	assert.True(t, ok)
+	_, ok = init.called["AddSupportingImage:custom"]
 	assert.True(t, ok)
 
 	w.Shutdown()()
@@ -56,6 +63,48 @@ func TestWithInit_Suite(t *testing.T) {
 	s := marrow.Suite().Init(w)
 	err := s.Run()
 	require.NoError(t, err)
+}
+
+func customServiceBuild(ctx context.Context, awsCfg aws.Config, host string, mappedPort string) (image with.Image, err error) {
+	return &customService{
+		host:       host,
+		mappedPort: mappedPort,
+	}, nil
+}
+
+type customService struct {
+	host       string
+	mappedPort string
+}
+
+var _ with.Image = (*customService)(nil)
+
+func (c *customService) Name() string {
+	return "custom"
+}
+
+func (c *customService) Host() string {
+	return c.host
+}
+
+func (c *customService) Port() string {
+	return defaultPort
+}
+
+func (c *customService) MappedPort() string {
+	return c.mappedPort
+}
+
+func (c *customService) IsDocker() bool {
+	return true
+}
+
+func (c *customService) Username() string {
+	return ""
+}
+
+func (c *customService) Password() string {
+	return ""
 }
 
 func newMockInit() *mockInit {

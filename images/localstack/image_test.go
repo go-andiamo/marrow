@@ -1,12 +1,10 @@
 package localstack
 
 import (
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/go-andiamo/marrow"
 	"github.com/go-andiamo/marrow/with"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,29 +16,7 @@ func TestImage(t *testing.T) {
 	img := &image{
 		options: Options{
 			Services: Services{Dynamo, S3, SNS, SQS},
-			Dynamo: DynamoOptions{
-				CreateTables: []dynamodb.CreateTableInput{
-					{
-						TableName: aws.String("TestTable"),
-						StreamSpecification: &types.StreamSpecification{
-							StreamEnabled:  aws.Bool(true),
-							StreamViewType: types.StreamViewTypeNewAndOldImages,
-						},
-						AttributeDefinitions: []types.AttributeDefinition{
-							{
-								AttributeName: aws.String("code"),
-								AttributeType: types.ScalarAttributeTypeS,
-							},
-						},
-						KeySchema: []types.KeySchemaElement{
-							{
-								AttributeName: aws.String("code"),
-								KeyType:       types.KeyTypeHash,
-							},
-						},
-					},
-				},
-			},
+			Dynamo:   testDynamoOptions,
 			S3: S3Options{
 				CreateBuckets: []s3.CreateBucketInput{
 					{
@@ -89,4 +65,23 @@ func TestImage(t *testing.T) {
 	assert.NotNil(t, img.S3Client())
 	assert.NotNil(t, img.SNSClient())
 	assert.NotNil(t, img.SQSClient())
+
+	ds := img.services[Dynamo].(DynamoService)
+	err = ds.PutItem("TestTable", marrow.JSON{
+		"code":  "foo",
+		"value": "bar",
+	})
+	require.NoError(t, err)
+	_, err = ds.GetItem("TestTable", "code", "foo")
+	require.NoError(t, err)
+	_, err = ds.GetItem("TestTable", "code", "bar")
+	require.NoError(t, err)
+	count, err := ds.CountItems("TestTable")
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), count)
+	err = ds.DeleteItem("TestTable", "code", "foo")
+	require.NoError(t, err)
+	count, err = ds.CountItems("TestTable")
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), count)
 }
