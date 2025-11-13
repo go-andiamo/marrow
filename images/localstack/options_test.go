@@ -1,6 +1,7 @@
 package localstack
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -48,49 +49,49 @@ func TestOptions_Defaults(t *testing.T) {
 		o = Options{SessionToken: "foo"}
 		assert.Equal(t, "foo", o.sessionToken())
 	})
-	t.Run("services", func(t *testing.T) {
-		o := Options{
-			Services: Services{Dynamo, Dynamo, S3, S3, SNS, SNS, SQS, SQS},
-		}
-		svcs := o.services()
-		assert.Len(t, svcs, 4)
-		_, ok := svcs[Dynamo]
-		assert.True(t, ok)
-		_, ok = svcs[S3]
-		assert.True(t, ok)
-		_, ok = svcs[SNS]
-		assert.True(t, ok)
-		_, ok = svcs[SQS]
-		assert.True(t, ok)
-	})
-	t.Run("services (all/except)", func(t *testing.T) {
-		o := Options{
-			Services: Services{All, Except, S3, S3},
-		}
-		svcs := o.services()
-		assert.Len(t, svcs, 3)
-		_, ok := svcs[Dynamo]
-		assert.True(t, ok)
-		_, ok = svcs[S3]
-		assert.False(t, ok)
-		_, ok = svcs[SNS]
-		assert.True(t, ok)
-		_, ok = svcs[SQS]
-		assert.True(t, ok)
-	})
-	t.Run("services (minus)", func(t *testing.T) {
-		o := Options{
-			Services: Services{All, -S3, -SNS},
-		}
-		svcs := o.services()
-		assert.Len(t, svcs, 2)
-		_, ok := svcs[Dynamo]
-		assert.True(t, ok)
-		_, ok = svcs[S3]
-		assert.False(t, ok)
-		_, ok = svcs[SNS]
-		assert.False(t, ok)
-		_, ok = svcs[SQS]
-		assert.True(t, ok)
-	})
+}
+
+func TestOptions_services(t *testing.T) {
+	testCases := []struct {
+		services Services
+		expected Services
+	}{
+		{
+			services: Services{Dynamo, S3},
+			expected: Services{Dynamo, S3},
+		},
+		{
+			services: Services{Dynamo, S3, S3, -S3},
+			expected: Services{Dynamo},
+		},
+		{
+			services: Services{Dynamo, S3, -S3, S3},
+			expected: Services{Dynamo, S3},
+		},
+		{
+			services: Services{All},
+			expected: Services{Dynamo, S3, SNS, SQS},
+		},
+		{
+			services: Services{All, Except, S3},
+			expected: Services{Dynamo, SNS, SQS},
+		},
+		{
+			services: Services{All, -S3},
+			expected: Services{Dynamo, SNS, SQS},
+		},
+	}
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
+			o := Options{
+				Services: tc.services,
+			}
+			reqd := o.services()
+			assert.Equal(t, len(tc.expected), len(reqd))
+			for _, s := range tc.expected {
+				_, ok := reqd[s]
+				assert.True(t, ok)
+			}
+		})
+	}
 }

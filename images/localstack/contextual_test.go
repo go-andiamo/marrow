@@ -2,6 +2,8 @@ package localstack
 
 import (
 	"bytes"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-andiamo/marrow"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
@@ -21,6 +23,13 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 	options := Options{
 		Services: Services{All},
 		Dynamo:   testDynamoOptions,
+		S3: S3Options{
+			CreateBuckets: []s3.CreateBucketInput{
+				{
+					Bucket: aws.String("my-bucket"),
+				},
+			},
+		},
 	}
 	endpoint := marrow.Endpoint("/api", "",
 		marrow.Method("GET", "").AssertOK().
@@ -32,7 +41,10 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 			AssertGreaterThan(DynamoItemsCount("TestTable"), marrow.Var("initial-count")).
 			Capture(DynamoDeleteItem(marrow.After, "TestTable", "code", "foo")),
 		marrow.Method("GET", "again").AssertOK().
-			AssertEqual(0, DynamoItemsCount("TestTable")),
+			Capture(S3CreateBucket(marrow.Before, "foo-bucket")).
+			AssertEqual(0, DynamoItemsCount("TestTable")).
+			AssertEqual(0, S3ObjectsCount("my-bucket", "")).
+			AssertEqual(0, S3ObjectsCount("foo-bucket", "")),
 	)
 	var cov *coverage.Coverage
 	s := marrow.Suite(endpoint).Init(
