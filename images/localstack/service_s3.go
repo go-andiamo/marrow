@@ -2,14 +2,19 @@ package localstack
 
 import (
 	"context"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/go-andiamo/marrow"
+	"github.com/go-andiamo/marrow/framing"
 	"github.com/go-andiamo/marrow/with"
 	"strings"
 )
 
 type S3Service interface {
 	Client() *s3.Client
+	CountObjects(bucket string, prefix string) (int, error)
+	CreateBucket(bucket string) error
 }
 
 type s3Image struct {
@@ -56,6 +61,29 @@ func (s *s3Image) Client() *s3.Client {
 	return s.client
 }
 
+func (s *s3Image) CountObjects(bucket string, prefix string) (int, error) {
+	total := 0
+	p := s3.NewListObjectVersionsPaginator(s.client, &s3.ListObjectVersionsInput{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(prefix),
+	})
+	for p.HasMorePages() {
+		out, err := p.NextPage(context.Background())
+		if err != nil {
+			return 0, err
+		}
+		total += len(out.Versions)
+	}
+	return total, nil
+}
+
+func (s *s3Image) CreateBucket(bucket string) error {
+	_, err := s.client.CreateBucket(context.Background(), &s3.CreateBucketInput{
+		Bucket: aws.String(bucket),
+	})
+	return err
+}
+
 const s3ImageName = "s3"
 
 func (s *s3Image) Name() string {
@@ -100,4 +128,37 @@ func (s *s3Image) ResolveEnv(tokens ...string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// S3ObjectsCount can be used as a resolvable value (e.g. in marrow.Method .AssertEqual)
+// and resolves to the count of items in an S3 bucket
+//
+//go:noinline
+func S3ObjectsCount(bucket string, prefix string, imgName ...string) marrow.Resolvable {
+	return &resolvable[S3Service]{
+		name:     fmt.Sprintf("S3ObjectsCount(%q, %q)", bucket, prefix),
+		defImage: s3ImageName,
+		imgName:  imgName,
+		run: func(ctx marrow.Context, img S3Service) (result any, err error) {
+			return img.CountObjects(bucket, prefix)
+		},
+		frame: framing.NewFrame(0),
+	}
+}
+
+// S3CreateBucket can be used as a before/after on marrow.Method .Capture
+// and creates an S3 bucket
+//
+//go:noinline
+func S3CreateBucket(when marrow.When, bucket string, imgName ...string) marrow.BeforeAfter {
+	return &capture[S3Service]{
+		name:     fmt.Sprintf("S3CreateBucket(%q)", bucket),
+		when:     when,
+		defImage: s3ImageName,
+		imgName:  imgName,
+		run: func(ctx marrow.Context, img S3Service) error {
+			return img.CreateBucket(bucket)
+		},
+		frame: framing.NewFrame(0),
+	}
 }

@@ -15,7 +15,7 @@ func TestImage(t *testing.T) {
 	testName := "foo"
 	img := &image{
 		options: Options{
-			Services: Services{Dynamo, S3, SNS, SQS},
+			Services: Services{All},
 			Dynamo:   testDynamoOptions,
 			S3: S3Options{
 				CreateBuckets: []s3.CreateBucketInput{
