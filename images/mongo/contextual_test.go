@@ -49,7 +49,9 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 			AssertEqual(1, DocumentsCount("new-db", "new-coll")).
 			AssertEqual("bilbo@example.com", marrow.JsonPath(marrow.Var("doc"), "email")).
 			AssertEqual(1, marrow.JsonPath(Find("new-db", "new-coll", nil, nil), marrow.LEN)).
-			AssertEqual("bilbo@example.com", marrow.JsonTraverse(Find("new-db", "new-coll", nil, nil), 0, "email")),
+			AssertEqual("bilbo@example.com", marrow.JsonTraverse(Find("new-db", "new-coll", nil, nil), 0, "email")).
+			AssertEqual(1, marrow.JsonPath(Query("new-db", `{ "find": "new-coll", "filter": { "email": { "$eq": "bilbo@example.com" } } }`), "LEN")).
+			AssertEqual("bilbo@example.com", marrow.JsonTraverse(Query("new-db", `{ "find": "new-coll", "filter": { "email": { "$eq": "bilbo@example.com" } } }`), 0, "email")),
 		marrow.Method("GET", "again").AssertOK().
 			Capture(ClearCollection(marrow.Before, "new-db", "new-coll")).
 			Capture(DeleteDocuments(marrow.Before, "new-db", "new-coll", nil)).
