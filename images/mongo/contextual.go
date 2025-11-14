@@ -204,6 +204,42 @@ func DeleteDocuments(when marrow.When, dbName string, collName string, filter an
 	}
 }
 
+// Query can be used as a resolvable value (e.g. in marrow.Method .AssertEqual)
+// and resolves to the documents retrieved by the supplied query in the named MongoDB database
+//
+// the query arg is resolved and can be a string, map, etc. - strings are unmarshalled as bson
+//
+//go:noinline
+func Query(dbName string, query any, imgName ...string) marrow.Resolvable {
+	return &resolvable{
+		name:    fmt.Sprintf("Query(%q)", dbName),
+		imgName: imgName,
+		run: func(ctx marrow.Context, img *image) (result any, err error) {
+			var aq any
+			if aq, err = marrow.ResolveValue(query, ctx); err == nil {
+				cmd := aq
+				switch aqt := aq.(type) {
+				case nil:
+					err = errors.New("query is nil")
+				case string:
+					err = bson.UnmarshalExtJSON([]byte(aqt), true, &cmd)
+				}
+				if err == nil {
+					var csr *mongo.Cursor
+					if csr, err = img.client.Database(dbName).RunCommandCursor(context.Background(), cmd); err == nil {
+						lr := []map[string]any{}
+						if err = csr.All(context.Background(), &lr); err == nil {
+							result = lr
+						}
+					}
+				}
+			}
+			return result, err
+		},
+		frame: framing.NewFrame(0),
+	}
+}
+
 type capture struct {
 	name    string
 	when    marrow.When
