@@ -32,6 +32,12 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 				},
 			},
 		},
+		ReplicaSet: "rs0",
+		Watches: map[string]WatchOption{
+			"":                {MaxMessages: 1},
+			"new-db/new-coll": {MaxMessages: 5},
+			"new-db":          {MaxMessages: -1},
+		},
 	}
 	endpoint := marrow.Endpoint("/api", "",
 		marrow.Method("GET", "").AssertOK().
@@ -51,11 +57,21 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 			AssertEqual(1, marrow.JsonPath(Find("new-db", "new-coll", nil, nil), marrow.LEN)).
 			AssertEqual("bilbo@example.com", marrow.JsonTraverse(Find("new-db", "new-coll", nil, nil), 0, "email")).
 			AssertEqual(1, marrow.JsonPath(Query("new-db", `{ "find": "new-coll", "filter": { "email": { "$eq": "bilbo@example.com" } } }`), "LEN")).
-			AssertEqual("bilbo@example.com", marrow.JsonTraverse(Query("new-db", `{ "find": "new-coll", "filter": { "email": { "$eq": "bilbo@example.com" } } }`), 0, "email")),
+			AssertEqual("bilbo@example.com", marrow.JsonTraverse(Query("new-db", `{ "find": "new-coll", "filter": { "email": { "$eq": "bilbo@example.com" } } }`), 0, "email")).
+			AssertEqual(1, ChangesCount("", "")).
+			AssertEqual(1, ChangesCount("new-db", "")).
+			AssertEqual(1, ChangesCount("new-db", "new-coll")),
 		marrow.Method("GET", "again").AssertOK().
 			Capture(ClearCollection(marrow.Before, "new-db", "new-coll")).
 			Capture(DeleteDocuments(marrow.Before, "new-db", "new-coll", nil)).
-			AssertEqual(0, DocumentsCount("new-db", "new-coll")),
+			AssertEqual(0, DocumentsCount("new-db", "new-coll")).
+			AssertEqual(2, ChangesCount("", "")).
+			AssertEqual(2, ChangesCount("new-db", "")).
+			AssertEqual(2, ChangesCount("new-db", "new-coll")).
+			AssertEqual(2, marrow.JsonPath(Changes("new-db", "new-coll", ""), "LEN")).
+			AssertEqual(1, marrow.JsonPath(Changes("new-db", "new-coll", "insert"), "LEN")).
+			AssertEqual(1, marrow.JsonPath(Changes("new-db", "new-coll", "delete"), "LEN")).
+			AssertEqual("bilbo@example.com", marrow.JsonTraverse(Changes("new-db", "new-coll", "insert"), 0, "fullDocument", "email")),
 	)
 	var cov *coverage.Coverage
 	s := marrow.Suite(endpoint).Init(
