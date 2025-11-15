@@ -11,11 +11,29 @@ type Options struct {
 	DisableAutoShutdown bool   // if set, disables container auto (RYUK reaper) shutdown
 	LeaveRunning        bool   // if set, the container is not shutdown
 	CreateIndices       IndexOptions
+	ReplicaSet          string // if empty string - no replica set is used
+	// Watches is a map of dbs/collections to watch for Mongo change streams on
+	//
+	// the keys can be:
+	//   * "" - to watch for changes on entire Mongo
+	//   * "my-db" - to watch for changes on a specific named database
+	//   * "my-db/my-collection" - to watch for changes on a specific named database and collection
+	//
+	// NOTE: Watches can only be used when ReplicaSet is specified - specifying watches without a replica set will cause an error
+	Watches map[string]WatchOption
 }
 
-type IndexOptions map[string]map[string][]mongo.IndexModel
+type WatchOption struct {
+	// MaxMessages is the maximum number of change messages to hold (it does not limit the count of messages)
+	//
+	// set to zero or less to retain no messages (and just keep the count)
+	MaxMessages int
+}
 
-//                    ^ db       ^ coll
+// IndexOptions is a map of indexes to create
+//
+// the first map key is the database name, the second map key is the collection name
+type IndexOptions map[string]map[string][]mongo.IndexModel
 
 const (
 	defaultVersion  = "7"

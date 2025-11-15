@@ -18,7 +18,7 @@ type Image interface {
 
 // With creates a new MongoDB support image for use in marrow.Suite .Init()
 func With(options Options) Image {
-	return &image{options: options}
+	return newImage(options)
 }
 
 var _ with.With = (*image)(nil)

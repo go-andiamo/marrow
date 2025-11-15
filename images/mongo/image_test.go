@@ -10,21 +10,20 @@ import (
 )
 
 func TestImage_Start(t *testing.T) {
-	img := &image{
-		options: Options{
-			DisableAutoShutdown: true,
-			CreateIndices: IndexOptions{
-				"my-db": map[string][]mongo.IndexModel{
-					"my-collection": {
-						{
-							Keys:    bson.D{{Key: "email", Value: 1}},
-							Options: options.Index().SetName("uniq_email").SetUnique(true),
-						},
+	img := newImage(Options{
+		DisableAutoShutdown: true,
+		CreateIndices: IndexOptions{
+			"my-db": map[string][]mongo.IndexModel{
+				"my-collection": {
+					{
+						Keys:    bson.D{{Key: "email", Value: 1}},
+						Options: options.Index().SetName("uniq_email").SetUnique(true),
 					},
 				},
 			},
 		},
-	}
+		ReplicaSet: "rs0",
+	})
 
 	err := img.Start()
 	defer func() {

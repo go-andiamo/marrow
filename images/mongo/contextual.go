@@ -240,6 +240,74 @@ func Query(dbName string, query any, imgName ...string) marrow.Resolvable {
 	}
 }
 
+// ChangesCount can be used as a resolvable value (e.g. in marrow.Method .AssertEqual)
+// and resolves to the number of watch changes on the specified named MongoDB database and collection
+//
+//   - if the dbName arg is "", the count is changes across the entire Mongo
+//   - if the dbName is not "", the count is changes in that specified named database
+//   - if the dbName is not "" and the collectionName is not "", the count is changes in that specified named database and collection
+//
+// Note: if the watches wasn't set in Options.Watches, this will always resolve to -1
+//
+//go:noinline
+func ChangesCount(dbName string, collectionName string, imgName ...string) marrow.Resolvable {
+	return &resolvable{
+		name:    fmt.Sprintf("ChangesCount(%q, %q)", dbName, collectionName),
+		imgName: imgName,
+		run: func(ctx marrow.Context, img *image) (result any, err error) {
+			result = -1
+			key := ""
+			if dbName != "" {
+				key = dbName
+				if collectionName != "" {
+					key += "/" + collectionName
+				}
+			}
+			if w, ok := img.watches[key]; ok {
+				result = w.countChanges()
+			}
+			return result, err
+		},
+		frame: framing.NewFrame(0),
+	}
+}
+
+// Changes can be used as a resolvable value (e.g. in marrow.Method .AssertEqual)
+// and resolves to the changes on the specified named MongoDB database and collection
+//
+//   - if the dbName arg is "", the count is changes across the entire Mongo
+//
+//   - if the dbName is not "", the count is changes in that specified named database
+//
+//   - if the dbName is not "" and the collectionName is not "", the count is changes in that specified named database and collection
+//
+//   - the operation arg matches Mongo operations (e.g. "insert", "delete" etc.) - if this is empty string, all operations are resolved
+//
+// Note: if the appropriate watches wasn't set in Options.Watches, this will always resolve to nil
+//
+//go:noinline
+func Changes(dbName string, collectionName string, operation string, imgName ...string) marrow.Resolvable {
+	return &resolvable{
+		name:    fmt.Sprintf("Changes(%q, %q, %q)", dbName, collectionName, operation),
+		imgName: imgName,
+		run: func(ctx marrow.Context, img *image) (result any, err error) {
+			result = -1
+			key := ""
+			if dbName != "" {
+				key = dbName
+				if collectionName != "" {
+					key += "/" + collectionName
+				}
+			}
+			if w, ok := img.watches[key]; ok {
+				result = w.changedItems(operation)
+			}
+			return result, err
+		},
+		frame: framing.NewFrame(0),
+	}
+}
+
 type capture struct {
 	name    string
 	when    marrow.When
