@@ -1,6 +1,8 @@
 package localstack
 
 import (
+	"fmt"
+	"github.com/go-andiamo/marrow"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -31,4 +33,20 @@ func Test_snsImage(t *testing.T) {
 	assert.Equal(t, defaultSessionToken, s)
 	_, ok = img.ResolveEnv("Foo")
 	assert.False(t, ok)
+}
+
+func TestSNSPublish(t *testing.T) {
+	c := SNSPublish(marrow.After, "my-topic", "foo")
+	assert.Equal(t, marrow.After, c.When())
+	assert.NotNil(t, c.Frame())
+}
+
+func TestSNSMessagesCount(t *testing.T) {
+	c := SNSMessagesCount("my-topic", "foo")
+	assert.Equal(t, "sns.SNSMessagesCount(\"my-topic\")", fmt.Sprintf("%s", c))
+}
+
+func TestSNSMessages(t *testing.T) {
+	c := SNSMessages("my-topic")
+	assert.Equal(t, "sns.SNSMessages(\"my-topic\")", fmt.Sprintf("%s", c))
 }

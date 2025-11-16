@@ -141,6 +141,10 @@ func (i *image) baseEndpoint() *string {
 	return aws.String(fmt.Sprintf("http://%s:%s", i.host, i.mappedPort))
 }
 
+type shutable interface {
+	shutdown()
+}
+
 func (i *image) shutdown() {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
@@ -148,6 +152,11 @@ func (i *image) shutdown() {
 		i.shuttingDown = true
 		if i.container != nil && !i.options.LeaveRunning {
 			_ = i.container.Terminate(context.Background())
+		}
+		for _, svc := range i.services {
+			if ss, ok := svc.(shutable); ok {
+				ss.shutdown()
+			}
 		}
 	}
 	return
