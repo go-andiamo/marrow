@@ -39,6 +39,17 @@ type S3Options struct {
 
 type SNSOptions struct {
 	CreateTopics []sns.CreateTopicInput
+	// TopicsSubscribe if set to true, will subscribe to the created topics
+	//
+	// subscribing means that messages on those topics will be captured and made
+	// available during tests
+	TopicsSubscribe bool
+	// MaxMessages is the maximum number of messages to store (it does not limit the counts)
+	MaxMessages int
+	// Unmarshaler is an optional message unmarshaler
+	Unmarshaler func(msg SnsMessage) any
+	// JsonMessages if set, treats SnsMessage.Message as json
+	JsonMessages bool
 }
 
 type SQSOptions struct {

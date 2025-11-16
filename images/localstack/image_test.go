@@ -56,7 +56,7 @@ func TestImage(t *testing.T) {
 	svc, ok = img.services[SQS]
 	require.True(t, ok)
 	require.NotNil(t, svc)
-	s, ok = svc.(with.ImageResolveEnv).ResolveEnv("arn", testName)
+	s, ok = svc.(with.ImageResolveEnv).ResolveEnv("url", testName)
 	assert.True(t, ok)
 	assert.Contains(t, s, "/"+testName)
 	assert.Contains(t, s, "http://sqs.us-east-1.")
