@@ -20,13 +20,13 @@ import (
 
 func TestWithInit_Mocked(t *testing.T) {
 	w := With(Options{
-		Services: Services{Dynamo, S3, SNS, SQS},
+		Services: Services{All},
 		CustomServices: CustomServiceBuilders{
 			customServiceBuild,
 		},
 	})
 	init := newMockInit()
-	init.wg.Add(5)
+	init.wg.Add(6)
 
 	err := w.Init(init)
 	require.NoError(t, err)
@@ -40,8 +40,8 @@ func TestWithInit_Mocked(t *testing.T) {
 	init.wg.Wait()
 
 	// check suit init was called
-	assert.Len(t, init.called, 5)
-	assert.Len(t, init.images, 5)
+	assert.Len(t, init.called, 6)
+	assert.Len(t, init.images, 6)
 	_, ok := init.called["AddSupportingImage:dynamo"]
 	assert.True(t, ok)
 	_, ok = init.called["AddSupportingImage:s3"]
@@ -49,6 +49,8 @@ func TestWithInit_Mocked(t *testing.T) {
 	_, ok = init.called["AddSupportingImage:sns"]
 	assert.True(t, ok)
 	_, ok = init.called["AddSupportingImage:sqs"]
+	assert.True(t, ok)
+	_, ok = init.called["AddSupportingImage:secrets-service"]
 	assert.True(t, ok)
 	_, ok = init.called["AddSupportingImage:custom"]
 	assert.True(t, ok)

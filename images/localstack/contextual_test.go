@@ -54,6 +54,20 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 				},
 			},
 		},
+		SecretsManager: SecretsManagerOptions{
+			Secrets: map[string]string{
+				"foo": "bar",
+			},
+			JsonSecrets: map[string]any{
+				"db": map[string]any{
+					"name":     "my-db",
+					"user":     "my-user",
+					"password": "my-password",
+				},
+				"foo2": "bar2",
+				"foo3": []byte("bar3"),
+			},
+		},
 	}
 	const (
 		varItem         = Var("item")
@@ -88,7 +102,15 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 			AssertEqual(5, JsonPath(varQueueMsgs, LEN)).
 			SetVar(After, varLastQueueMsg, Jsonify(JsonTraverse(varQueueMsgs, LAST, "Body"))).
 			AssertEqual("bar6", JsonPath(varLastQueueMsg, "foo")).
-			Capture(DynamoDeleteItem(After, "TestTable", "code", "foo")),
+			Capture(DynamoDeleteItem(After, "TestTable", "code", "foo")).
+			Capture(SecretSet(After, "secret-1", "my-secret-1")).
+			Capture(SecretSet(After, "secret-2", []byte(`{"value": "my-secret-2"}`))).
+			Capture(SecretSet(After, "secret-3", map[string]any{"value": "my-secret-3"})).
+			Capture(SecretSet(After, "secret-4", 42)).
+			Capture(SecretSet(After, "secret-5", nil)).
+			AssertEqual("my-secret-1", SecretGet("secret-1")).
+			AssertEqual("my-secret-3", JsonPath(Jsonify(SecretGet("secret-3")), "value")).
+			AssertEqual("my-db", JsonPath(Jsonify(SecretGet("db")), "name")),
 		Method("GET", "again").AssertOK().
 			Capture(S3CreateBucket(Before, "foo-bucket")).
 			AssertEqual(0, DynamoItemsCount("TestTable")).

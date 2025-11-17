@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/go-andiamo/marrow/with"
@@ -18,6 +19,7 @@ type Image interface {
 	S3Client() *s3.Client
 	SNSClient() *sns.Client
 	SQSClient() *sqs.Client
+	SecretsManagerClient() *secretsmanager.Client
 }
 
 // With creates a new localstack support image for use in marrow.Suite .Init()
