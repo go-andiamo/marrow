@@ -345,7 +345,7 @@ type Method_ interface {
 	methodMockService
 
 	// SetVar sets a variable in the current Context
-	SetVar(when When, name string, value any) Method_
+	SetVar(when When, name any, value any) Method_
 	// ClearVars clears all variables in the current Context
 	ClearVars(when When) Method_
 	// DbInsert performs an insert into a database table
@@ -1139,7 +1139,7 @@ func (m *method) RequireOnlyHasProperties(value any, propertyNames ...string) Me
 }
 
 //go:noinline
-func (m *method) SetVar(when When, name string, value any) Method_ {
+func (m *method) SetVar(when When, name any, value any) Method_ {
 	if when == Before {
 		m.preCaptures = append(m.preCaptures, &setVar{
 			name:  name,

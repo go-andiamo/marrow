@@ -15,7 +15,7 @@ type Capture interface {
 }
 
 type setVar struct {
-	name  string
+	name  any
 	value any
 	frame *framing.Frame
 }
@@ -23,15 +23,26 @@ type setVar struct {
 var _ Capture = (*setVar)(nil)
 
 func (c *setVar) Name() string {
-	return c.name
+	return c.nameString()
 }
 
 func (c *setVar) Run(ctx Context) (err error) {
 	var av any
 	if av, err = ResolveValue(c.value, ctx); err == nil {
-		ctx.SetVar(Var(c.name), av)
+		ctx.SetVar(Var(c.nameString()), av)
 	}
 	return wrapCaptureError(err, fmt.Sprintf("cannot set var %q", c.name), c, OperandValue{Original: c.value})
+}
+
+func (c *setVar) nameString() string {
+	switch nt := c.name.(type) {
+	case string:
+		return nt
+	case Var:
+		return string(nt)
+	default:
+		return fmt.Sprintf("%v", c.name)
+	}
 }
 
 func (c *setVar) Frame() *framing.Frame {

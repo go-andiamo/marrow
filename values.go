@@ -2,6 +2,7 @@ package marrow
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/go-andiamo/columbus"
@@ -613,4 +614,57 @@ func (BodyValue) ResolveValue(ctx Context) (any, error) {
 
 func (BodyValue) String() string {
 	return "Body"
+}
+
+type JsonifyValue struct {
+	Value any
+}
+
+// Jsonify resolves to a value using the supplied value and attempts to coerce it to a JSON representation (i.e. map[string]any / []any)
+//
+// if the value does not coerce to JSON, the resolve errors
+//
+// the initial value can be: string, []byte, or any map/slice/struct
+func Jsonify(v any) JsonifyValue {
+	return JsonifyValue{
+		Value: v,
+	}
+}
+
+func (v JsonifyValue) ResolveValue(ctx Context) (av any, err error) {
+	var rv any
+	if rv, err = ResolveValue(v.Value, ctx); err == nil {
+		switch rvt := rv.(type) {
+		case string:
+			var jv any
+			if err = json.Unmarshal([]byte(rvt), &jv); err == nil {
+				av = jv
+			}
+		case []byte:
+			var jv any
+			if err = json.Unmarshal(rvt, &jv); err == nil {
+				av = jv
+			}
+		case map[string]any:
+			av = rvt
+		case []any:
+			av = rvt
+		default:
+			if rv != nil {
+				to := reflect.TypeOf(rv)
+				if to.Kind() == reflect.Slice || to.Kind() == reflect.Map || to.Kind() == reflect.Struct {
+					var data []byte
+					if data, err = json.Marshal(rv); err == nil {
+						var jv any
+						if err = json.Unmarshal(data, &jv); err == nil {
+							av = jv
+						}
+					}
+				} else {
+					err = fmt.Errorf("invalid type for json coerce: %T", rv)
+				}
+			}
+		}
+	}
+	return av, err
 }

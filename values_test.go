@@ -537,6 +537,76 @@ func TestResolveValue(t *testing.T) {
 	}
 }
 
+func TestJsonify(t *testing.T) {
+	testCases := []struct {
+		ctx       Context
+		value     any
+		expect    any
+		expectErr string
+	}{
+		{
+			value:  Jsonify(nil),
+			expect: nil,
+		},
+		{
+			value:  Jsonify(`{"foo": "bar"}`),
+			expect: map[string]any{"foo": "bar"},
+		},
+		{
+			value:     Jsonify(`{"foo": `),
+			expectErr: "unexpected end of JSON input",
+		},
+		{
+			value:  Jsonify(`["foo", "bar"]`),
+			expect: []any{"foo", "bar"},
+		},
+		{
+			value:  Jsonify([]byte(`{"foo": "bar"}`)),
+			expect: map[string]any{"foo": "bar"},
+		},
+		{
+			value:     Jsonify([]byte(`{"foo": `)),
+			expectErr: "unexpected end of JSON input",
+		},
+		{
+			value:  Jsonify([]byte(`["foo", "bar"]`)),
+			expect: []any{"foo", "bar"},
+		},
+		{
+			value:  Jsonify(map[string]any{"foo": "bar"}),
+			expect: map[string]any{"foo": "bar"},
+		},
+		{
+			value:  Jsonify([]any{"foo", "bar"}),
+			expect: []any{"foo", "bar"},
+		},
+		{
+			value:  Jsonify([]string{"foo", "bar"}),
+			expect: []any{"foo", "bar"},
+		},
+		{
+			value:     Jsonify(true),
+			expectErr: "invalid type for json coerce: ",
+		},
+	}
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
+			ctx := tc.ctx
+			if ctx == nil {
+				ctx = newTestContext(map[Var]any{})
+			}
+			av, err := ResolveValue(tc.value, ctx)
+			if tc.expectErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectErr)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.expect, av)
+			}
+		})
+	}
+}
+
 func Test_stringifyValue(t *testing.T) {
 	assert.Equal(t, "<nil>", stringifyValue(nil))
 	assert.Equal(t, `"test"`, stringifyValue("test"))
