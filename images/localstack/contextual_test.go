@@ -6,7 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"github.com/go-andiamo/marrow"
+	. "github.com/go-andiamo/marrow"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
 	"github.com/go-andiamo/marrow/with"
@@ -22,20 +22,25 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 		status: http.StatusOK,
 		body:   []byte(`{"foo":"bar"}`),
 	}
+	const (
+		testBucket = "my-bucket"
+		testTopic  = "my-topic"
+		testQueue  = "my-queue"
+	)
 	options := Options{
 		Services: Services{All},
 		Dynamo:   testDynamoOptions,
 		S3: S3Options{
 			CreateBuckets: []s3.CreateBucketInput{
 				{
-					Bucket: aws.String("my-bucket"),
+					Bucket: aws.String(testBucket),
 				},
 			},
 		},
 		SNS: SNSOptions{
 			CreateTopics: []sns.CreateTopicInput{
 				{
-					Name: aws.String("my-topic"),
+					Name: aws.String(testTopic),
 				},
 			},
 			TopicsSubscribe: true,
@@ -45,46 +50,53 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 		SQS: SQSOptions{
 			CreateQueues: []sqs.CreateQueueInput{
 				{
-					QueueName: aws.String("my-queue"),
+					QueueName: aws.String(testQueue),
 				},
 			},
 		},
 	}
-	endpoint := marrow.Endpoint("/api", "",
-		marrow.Method("GET", "").AssertOK().
-			Capture(SNSPublish(marrow.Before, "my-topic", 42)).
-			Capture(SNSPublish(marrow.Before, "my-topic", &sns.PublishInput{Message: aws.String(`{"foo": "bar"}`)})).
-			Capture(SNSPublish(marrow.Before, "my-topic", `{"foo": "bar"}`)).
-			Capture(SNSPublish(marrow.Before, "my-topic", []byte(`{"foo": "bar"}`))).
-			Capture(SNSPublish(marrow.Before, "my-topic", marrow.JSON{"foo": "bar"})).
-			Capture(SQSSend(marrow.Before, "my-queue", marrow.JSON{"foo": "bar1"})).
-			Capture(SQSPurge(marrow.Before, "my-queue")).
-			Capture(SQSSend(marrow.Before, "my-queue", 42)).
-			Capture(SQSSend(marrow.Before, "my-queue", `{"foo": "bar3"}`)).
-			Capture(SQSSend(marrow.Before, "my-queue", []byte(`{"foo": "bar4"}`))).
-			Capture(SQSSend(marrow.Before, "my-queue", &sqs.SendMessageInput{MessageBody: aws.String(`{"foo": "bar5"}`)})).
-			Capture(SQSSend(marrow.Before, "my-queue", marrow.JSON{"foo": "bar6"})).
-			SetVar(marrow.Before, "initial-count", DynamoItemsCount("TestTable")).
-			Capture(DynamoPutItem(marrow.Before, "TestTable", marrow.JSON{"code": "foo", "value": "bar"})).
-			SetVar(marrow.Before, "item", DynamoGetItem("TestTable", "code", "foo")).
-			AssertEqual("bar", marrow.JsonPath(marrow.Var("item"), "value")).
-			AssertEqual(marrow.Var("initial-count"), 0).
-			AssertGreaterThan(DynamoItemsCount("TestTable"), marrow.Var("initial-count")).
+	const (
+		varItem         = Var("item")
+		varInitialCount = Var("initial-count")
+		varQueueMsgs    = Var("queue-msgs")
+		varLastQueueMsg = Var("last-queue-msg")
+	)
+	endpoint := Endpoint("/api", "",
+		Method("GET", "").AssertOK().
+			Capture(SNSPublish(Before, testTopic, 42)).
+			Capture(SNSPublish(Before, testTopic, &sns.PublishInput{Message: aws.String(`{"foo": "bar"}`)})).
+			Capture(SNSPublish(Before, testTopic, `{"foo": "bar"}`)).
+			Capture(SNSPublish(Before, testTopic, []byte(`{"foo": "bar"}`))).
+			Capture(SNSPublish(Before, testTopic, JSON{"foo": "bar"})).
+			Capture(SQSSend(Before, testQueue, JSON{"foo": "bar1"})).
+			Capture(SQSPurge(Before, testQueue)).
+			Capture(SQSSend(Before, testQueue, 42)).
+			Capture(SQSSend(Before, testQueue, `{"foo": "bar3"}`)).
+			Capture(SQSSend(Before, testQueue, []byte(`{"foo": "bar4"}`))).
+			Capture(SQSSend(Before, testQueue, &sqs.SendMessageInput{MessageBody: aws.String(`{"foo": "bar5"}`)})).
+			Capture(SQSSend(Before, testQueue, JSON{"foo": "bar6"})).
+			SetVar(Before, varInitialCount, DynamoItemsCount("TestTable")).
+			Capture(DynamoPutItem(Before, "TestTable", JSON{"code": "foo", "value": "bar"})).
+			SetVar(Before, varItem, DynamoGetItem("TestTable", "code", "foo")).
+			AssertEqual("bar", JsonPath(varItem, "value")).
+			AssertEqual(varInitialCount, 0).
+			AssertGreaterThan(DynamoItemsCount("TestTable"), varInitialCount).
 			AssertEqual(5, SNSMessagesCount("")).
-			AssertEqual(5, SNSMessagesCount("my-topic")).
-			AssertEqual("bar", marrow.JsonTraverse(SNSMessages("my-topic"), -1, "Message.foo")).
-			SetVar(marrow.After, "queue-msgs", SQSReceiveMessages("my-queue", 10, 0)).
-			AssertEqual(5, marrow.JsonPath(marrow.Var("queue-msgs"), marrow.LEN)).
-			AssertEqual(`{"foo":"bar6"}`, marrow.JsonTraverse(marrow.Var("queue-msgs"), -1, "Body")).
-			Capture(DynamoDeleteItem(marrow.After, "TestTable", "code", "foo")),
-		marrow.Method("GET", "again").AssertOK().
-			Capture(S3CreateBucket(marrow.Before, "foo-bucket")).
+			AssertEqual(5, SNSMessagesCount(testTopic)).
+			AssertEqual("bar", JsonTraverse(SNSMessages(testTopic), -1, "Message.foo")).
+			SetVar(After, varQueueMsgs, SQSReceiveMessages(testQueue, 10, 0)).
+			AssertEqual(5, JsonPath(varQueueMsgs, LEN)).
+			SetVar(After, varLastQueueMsg, Jsonify(JsonTraverse(varQueueMsgs, LAST, "Body"))).
+			AssertEqual("bar6", JsonPath(varLastQueueMsg, "foo")).
+			Capture(DynamoDeleteItem(After, "TestTable", "code", "foo")),
+		Method("GET", "again").AssertOK().
+			Capture(S3CreateBucket(Before, "foo-bucket")).
 			AssertEqual(0, DynamoItemsCount("TestTable")).
-			AssertEqual(0, S3ObjectsCount("my-bucket", "")).
+			AssertEqual(0, S3ObjectsCount(testBucket, "")).
 			AssertEqual(0, S3ObjectsCount("foo-bucket", "")),
 	)
 	var cov *coverage.Coverage
-	s := marrow.Suite(endpoint).Init(
+	s := Suite(endpoint).Init(
 		With(options),
 		with.HttpDo(do),
 		with.ReportCoverage(func(coverage *coverage.Coverage) {

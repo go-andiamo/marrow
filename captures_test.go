@@ -11,18 +11,48 @@ import (
 )
 
 func Test_setVar(t *testing.T) {
-	c := &setVar{
-		name:  "foo",
-		value: "bar",
-		frame: framing.NewFrame(0),
-	}
-	assert.Equal(t, "foo", c.Name())
-	assert.NotNil(t, c.Frame())
+	t.Run("normal string name", func(t *testing.T) {
+		c := &setVar{
+			name:  "foo",
+			value: "bar",
+			frame: framing.NewFrame(0),
+		}
+		assert.Equal(t, "foo", c.Name())
+		assert.NotNil(t, c.Frame())
 
-	ctx := newTestContext(nil)
-	err := c.Run(ctx)
-	require.NoError(t, err)
-	assert.Equal(t, "bar", ctx.vars["foo"])
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "bar", ctx.vars["foo"])
+	})
+	t.Run("var name", func(t *testing.T) {
+		c := &setVar{
+			name:  Var("foo"),
+			value: "bar",
+			frame: framing.NewFrame(0),
+		}
+		assert.Equal(t, "foo", c.Name())
+		assert.NotNil(t, c.Frame())
+
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "bar", ctx.vars["foo"])
+	})
+	t.Run("any name", func(t *testing.T) {
+		c := &setVar{
+			name:  0,
+			value: "bar",
+			frame: framing.NewFrame(0),
+		}
+		assert.Equal(t, "0", c.Name())
+		assert.NotNil(t, c.Frame())
+
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "bar", ctx.vars["0"])
+	})
 }
 
 func Test_clearVars(t *testing.T) {

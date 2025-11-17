@@ -42,7 +42,7 @@ func (b *beforeAfter) Frame() *framing.Frame {
 // SetVar is a before/after operation to set a variable in the current Context
 //
 //go:noinline
-func SetVar(when When, name string, value any) BeforeAfter {
+func SetVar(when When, name any, value any) BeforeAfter {
 	return &beforeAfter{
 		when: when,
 		do: &setVar{
