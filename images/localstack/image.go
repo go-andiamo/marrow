@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/docker/go-connections/nat"
@@ -78,6 +79,8 @@ func (i *image) Start() (err error) {
 								err = i.createSnsImage(ctx, cfg)
 							case SQS:
 								err = i.createSqsImage(ctx, cfg)
+							case SecretsManager:
+								err = i.createSecretsManagerImage(ctx, cfg)
 							}
 							if err != nil {
 								return err
@@ -125,6 +128,13 @@ func (i *image) SNSClient() (client *sns.Client) {
 func (i *image) SQSClient() (client *sqs.Client) {
 	if svc, ok := i.services[SQS]; ok && svc != nil {
 		client = svc.(*sqsImage).client
+	}
+	return client
+}
+
+func (i *image) SecretsManagerClient() (client *secretsmanager.Client) {
+	if svc, ok := i.services[SecretsManager]; ok && svc != nil {
+		client = svc.(*secretsManagerImage).client
 	}
 	return client
 }
