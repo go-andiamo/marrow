@@ -159,7 +159,7 @@ func (m *match) Met(ctx Context) (unmet error, err error) {
 			ov.Coerced = avt
 		default:
 			to := reflect.TypeOf(ov.Resolved)
-			if to.Kind() == reflect.Map || to.Kind() == reflect.Slice {
+			if to.Kind() == reflect.Map || to.Kind() == reflect.Slice || to.Kind() == reflect.Struct {
 				if data, mErr := json.Marshal(ov.Resolved); mErr == nil {
 					ov.Coerced = string(data)
 				} else {
@@ -191,6 +191,62 @@ func (m *match) Met(ctx Context) (unmet error, err error) {
 
 func (m *match) Frame() *framing.Frame {
 	return m.frame
+}
+
+type contains struct {
+	value    any
+	contains string
+	rx       *regexp.Regexp
+	frame    *framing.Frame
+	commonExpectation
+}
+
+var _ Expectation = (*contains)(nil)
+
+func (c *contains) Name() string {
+	return fmt.Sprintf("Expect contains: %q", c.contains)
+}
+
+func (c *contains) Frame() *framing.Frame {
+	return c.frame
+}
+
+func (c *contains) Met(ctx Context) (unmet error, err error) {
+	ov := OperandValue{Original: c.value}
+	if ov.Resolved, err = ResolveValue(c.value, ctx); err == nil {
+		switch avt := ov.Resolved.(type) {
+		case string:
+			ov.Coerced = avt
+		default:
+			to := reflect.TypeOf(ov.Resolved)
+			if to.Kind() == reflect.Map || to.Kind() == reflect.Slice || to.Kind() == reflect.Struct {
+				if data, mErr := json.Marshal(ov.Resolved); mErr == nil {
+					ov.Coerced = string(data)
+				} else {
+					ov.CoercionError = mErr
+					unmet = &unmetError{
+						msg:    fmt.Sprintf("expected contains %q", c.contains),
+						name:   c.Name(),
+						actual: ov,
+						cause:  mErr,
+						frame:  c.frame,
+					}
+					return
+				}
+			} else {
+				ov.Coerced = fmt.Sprintf("%v", ov.Resolved)
+			}
+		}
+		if ok := strings.Contains(ov.Coerced.(string), c.contains); !ok {
+			unmet = &unmetError{
+				msg:    fmt.Sprintf("expected contains %q", c.contains),
+				name:   c.Name(),
+				actual: ov,
+				frame:  c.frame,
+			}
+		}
+	}
+	return
 }
 
 type matchType struct {

@@ -203,6 +203,79 @@ func Test_match(t *testing.T) {
 	})
 }
 
+func Test_contains(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		exp := &contains{
+			value:    "foo",
+			contains: "bar",
+			frame:    framing.NewFrame(0),
+		}
+		assert.Equal(t, "Expect contains: \"bar\"", exp.Name())
+		assert.NotNil(t, exp.Frame())
+	})
+	t.Run("met", func(t *testing.T) {
+		exp := &contains{
+			value:    "foo",
+			contains: "fo",
+			frame:    framing.NewFrame(0),
+		}
+		unmet, err := exp.Met(nil)
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("met (map)", func(t *testing.T) {
+		exp := &contains{
+			value:    map[string]any{"foo": nil},
+			contains: `{"foo"`,
+			frame:    framing.NewFrame(0),
+		}
+		unmet, err := exp.Met(nil)
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("missing var", func(t *testing.T) {
+		exp := &contains{
+			value:    Var("foo"),
+			contains: "bar",
+			frame:    framing.NewFrame(0),
+		}
+		_, err := exp.Met(newTestContext(nil))
+		assert.Error(t, err)
+	})
+	t.Run("unmet (int var)", func(t *testing.T) {
+		exp := &contains{
+			value:    Var("foo"),
+			contains: "99",
+			frame:    framing.NewFrame(0),
+		}
+		unmet, err := exp.Met(newTestContext(map[Var]any{
+			"foo": 42,
+		}))
+		assert.Error(t, unmet)
+		assert.NoError(t, err)
+		umerr, ok := unmet.(UnmetError)
+		assert.True(t, ok)
+		assert.Error(t, umerr)
+		assert.Equal(t, Var("foo"), umerr.Actual().Original)
+		assert.Equal(t, 42, umerr.Actual().Resolved)
+		assert.Equal(t, "42", umerr.Actual().Coerced)
+	})
+	t.Run("unmet (marshal error)", func(t *testing.T) {
+		exp := &contains{
+			value:    map[string]any{"x": &unmarshalable{}},
+			contains: "bar",
+			frame:    framing.NewFrame(0),
+		}
+		unmet, err := exp.Met(nil)
+		assert.Error(t, unmet)
+		assert.NoError(t, err)
+		umerr, ok := unmet.(UnmetError)
+		assert.True(t, ok)
+		assert.Error(t, umerr)
+		assert.Error(t, umerr.Actual().CoercionError)
+	})
+}
+
 func Test_lenCheck(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		exp := &lenCheck{
