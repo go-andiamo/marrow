@@ -220,7 +220,7 @@ func (c *context) DbInsert(dbName string, tableName string, row Columns) (err er
 			}
 		default:
 			to := reflect.TypeOf(v)
-			if to.Kind() == reflect.Map || to.Kind() == reflect.Slice {
+			if to.Kind() == reflect.Map || to.Kind() == reflect.Slice || to.Kind() == reflect.Struct {
 				var data []byte
 				if data, err = json.Marshal(v); err == nil {
 					addMarker(k)

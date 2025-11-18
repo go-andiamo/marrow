@@ -135,6 +135,10 @@ type methodExpectations interface {
 	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
 	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	AssertMatch(value any, regex string) Method_
+	// AssertContains asserts that the value contains a substring
+	//
+	// when attempting to check contains, the value (or resolved value) is "stringified"
+	AssertContains(value any, s string) Method_
 	// AssertType asserts that the value (or resolved value) is of the supplied type
 	AssertType(value any, typ Type_) Method_
 	// AssertNil asserts that the value (or resolved value) is nil
@@ -272,6 +276,10 @@ type methodExpectations interface {
 	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
 	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
 	RequireMatch(value any, regex string) Method_
+	// RequireContains requires that the value contains a substring
+	//
+	// when attempting to check contains, the value (or resolved value) is "stringified"
+	RequireContains(value any, s string) Method_
 	// RequireType requires that the value (or resolved value) is of the supplied type
 	RequireType(value any, typ Type_) Method_
 	// RequireNil requires that the value (or resolved value) is nil
@@ -1008,6 +1016,27 @@ func (m *method) RequireMatch(value any, regex string) Method_ {
 	m.addPostExpectation(&match{
 		value:             value,
 		regex:             regex,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertContains(value any, s string) Method_ {
+	m.addPostExpectation(&contains{
+		value:    value,
+		contains: s,
+		frame:    framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireContains(value any, s string) Method_ {
+	m.addPostExpectation(&contains{
+		value:             value,
+		contains:          s,
 		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})
