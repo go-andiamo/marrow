@@ -361,3 +361,67 @@ func (u *unSetEnv) Run(ctx Context) (err error) {
 func (u *unSetEnv) Frame() *framing.Frame {
 	return u.frame
 }
+
+type conditional struct {
+	condition any
+	ops       []Runnable
+	frame     *framing.Frame
+}
+
+var _ Capture = (*conditional)(nil)
+
+func (c *conditional) Name() string {
+	return "CONDITIONAL"
+}
+
+func (c *conditional) Run(ctx Context) (err error) {
+	do := false
+	if exp, ok := c.condition.(Expectation); ok {
+		var unmet error
+		if unmet, err = exp.Met(ctx); unmet == nil && err == nil {
+			do = true
+		}
+	} else {
+		var av any
+		if av, err = ResolveValue(c.condition, ctx); err == nil {
+			if b, ok := av.(bool); ok {
+				do = b
+			} else {
+				err = fmt.Errorf("invalid condition type: %T", av)
+			}
+		}
+	}
+	if do {
+		for i, o := range c.ops {
+			if o == nil {
+				continue
+			}
+			pass := false
+			if expOp, ok := c.ops[i].(Expectation); ok {
+				var unmet error
+				if unmet, err = expOp.Met(ctx); unmet == nil && err == nil {
+					pass = true
+				} else if err != nil {
+					ctx.reportFailure(err)
+				} else {
+					ctx.reportUnmet(expOp, unmet)
+				}
+			} else if err = o.Run(ctx); err == nil {
+				pass = true
+			}
+			if !pass {
+				for j := i + 1; j < len(c.ops); j++ {
+					if expOp, ok := c.ops[j].(Expectation); ok {
+						ctx.reportSkipped(expOp)
+					}
+				}
+				break
+			}
+		}
+	}
+	return err
+}
+
+func (c *conditional) Frame() *framing.Frame {
+	return c.frame
+}

@@ -74,6 +74,17 @@ func TestMethods(t *testing.T) {
 	})
 }
 
+func TestMethod_If(t *testing.T) {
+	m := Method(GET, "foo")
+	m.If(Before, true, ExpectEqual(0, 0))
+	raw := m.(*method)
+	assert.Len(t, raw.preCaptures, 1)
+	assert.Len(t, raw.postCaptures, 0)
+	m.If(After, true, ExpectEqual(0, 0))
+	assert.Len(t, raw.preCaptures, 1)
+	assert.Len(t, raw.postCaptures, 1)
+}
+
 func TestMethod_WithBeforesAndAfters(t *testing.T) {
 	m := Method(GET, "foo",
 		SetVar(Before, "foo", "bar"),

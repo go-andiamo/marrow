@@ -2,8 +2,10 @@ package marrow
 
 import (
 	"errors"
+	"fmt"
 	"github.com/go-andiamo/marrow/framing"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"
 )
@@ -35,7 +37,6 @@ func TestExpectationFunc(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, "fooey", err.Error())
 	})
-
 }
 
 func Test_expectStatusCode(t *testing.T) {
@@ -112,6 +113,16 @@ func Test_expectStatusCode(t *testing.T) {
 		unmet, err := exp.Met(ctx)
 		assert.Error(t, unmet)
 		assert.NoError(t, err)
+	})
+	t.Run("panic on direct .Run()", func(t *testing.T) {
+		exp := &expectStatusCode{
+			name:   "Expect Status Code",
+			expect: true,
+			frame:  framing.NewFrame(0),
+		}
+		require.Panics(t, func() {
+			_ = exp.Run(newTestContext(nil))
+		})
 	})
 }
 
@@ -669,4 +680,119 @@ func Test_propertiesCheck(t *testing.T) {
 		assert.Contains(t, unmet.Error(), "cannot check properties on ")
 		assert.NoError(t, err)
 	})
+}
+
+func TestFail(t *testing.T) {
+	exp := &failCheck{
+		msg:   "fooey",
+		frame: framing.NewFrame(0),
+	}
+	ctx := newTestContext(nil)
+	unmet, err := exp.Met(ctx)
+	assert.NoError(t, unmet)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "fooey")
+}
+
+func TestExpectationFuncs(t *testing.T) {
+	testCases := []struct {
+		value      Expectation
+		expectName string
+	}{
+		{
+			value:      ExpectOK(),
+			expectName: "Expect OK",
+		},
+		{
+			value:      ExpectCreated(),
+			expectName: "Expect Created",
+		},
+		{
+			value:      ExpectAccepted(),
+			expectName: "Expect Accepted",
+		},
+		{
+			value:      ExpectNoContent(),
+			expectName: "Expect No Content",
+		},
+		{
+			value:      ExpectBadRequest(),
+			expectName: "Expect Bad Request",
+		},
+		{
+			value:      ExpectUnauthorized(),
+			expectName: "Expect Unauthorized",
+		},
+		{
+			value:      ExpectForbidden(),
+			expectName: "Expect Forbidden",
+		},
+		{
+			value:      ExpectNotFound(),
+			expectName: "Expect Not Found",
+		},
+		{
+			value:      ExpectConflict(),
+			expectName: "Expect Conflict",
+		},
+		{
+			value:      ExpectGone(),
+			expectName: "Expect Gone",
+		},
+		{
+			value:      ExpectUnprocessableEntity(),
+			expectName: "Expect Unprocessable Entity",
+		},
+		{
+			value:      ExpectStatus(0),
+			expectName: "Expect Status Code",
+		},
+		{
+			value:      ExpectMatch(nil, "foo"),
+			expectName: "Expect match: \"foo\"",
+		},
+		{
+			value:      ExpectContains(nil, "foo"),
+			expectName: "Expect contains: \"foo\"",
+		},
+		{
+			value:      ExpectType(nil, Type[string]()),
+			expectName: "Expect type: string",
+		},
+		{
+			value:      ExpectNil(nil),
+			expectName: "Expect Nil",
+		},
+		{
+			value:      ExpectNotNil(nil),
+			expectName: "Expect Not Nil",
+		},
+		{
+			value:      ExpectLen(nil, 0),
+			expectName: "Expect Len",
+		},
+		{
+			value:      ExpectMockServiceCalled("svc", "/api", GET),
+			expectName: "EXPECT MOCK SERVICE CALL [svc]: GET /api",
+		},
+		{
+			value:      ExpectHasProperties(nil),
+			expectName: "Expect Properties",
+		},
+		{
+			value:      ExpectOnlyHasProperties(nil),
+			expectName: "Expect Only Properties",
+		},
+		{
+			value:      Fail("fooey"),
+			expectName: "FAIL \"fooey\"",
+		},
+	}
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
+			assert.Equal(t, tc.expectName, tc.value.Name())
+			assert.NotNil(t, tc.value.Frame())
+			assert.False(t, tc.value.IsRequired())
+		})
+	}
 }

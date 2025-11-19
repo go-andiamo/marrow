@@ -305,6 +305,17 @@ type methodExpectations interface {
 	FailFast() Method_
 }
 
+type methodConditional interface {
+	// If runs the operations when the condition arg is met
+	//
+	// Notes:
+	//   * the condition arg can be a bool value (or value that resolves to a bool) or an Expectation (e.g. ExpectEqual, ExpectNotEqual, etc.)
+	//   * if the condition arg is an Expectation, and the expectation is unmet, this does not report a failure or unmet, instead the operations are just not performed
+	//   * any condition that is not a bool or Expectation will cause an error during tests
+	//   * the operations arg can be anything Runnable - any of them that are an Expectation, is run as an expectation (and treated as required) and any unmet or failure errors will be reported
+	If(when When, condition any, operations ...Runnable) Method_
+}
+
 type methodMockService interface {
 	// MockServicesClearAll clears all mock services
 	MockServicesClearAll(when When) Method_
@@ -351,6 +362,7 @@ type Method_ interface {
 
 	methodExpectations
 	methodMockService
+	methodConditional
 
 	// SetVar sets a variable in the current Context
 	SetVar(when When, name any, value any) Method_
@@ -1349,6 +1361,24 @@ func (m *method) Wait(when When, ms int) Method_ {
 		m.addPostCapture(&wait{
 			ms:    ms,
 			frame: framing.NewFrame(0),
+		})
+	}
+	return m
+}
+
+//go:noinline
+func (m *method) If(when When, condition any, ops ...Runnable) Method_ {
+	if when == Before {
+		m.preCaptures = append(m.preCaptures, &conditional{
+			condition: condition,
+			ops:       ops,
+			frame:     framing.NewFrame(0),
+		})
+	} else {
+		m.addPostCapture(&conditional{
+			condition: condition,
+			ops:       ops,
+			frame:     framing.NewFrame(0),
 		})
 	}
 	return m

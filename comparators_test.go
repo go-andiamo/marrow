@@ -504,3 +504,70 @@ func Test_comparator_Met_Values(t *testing.T) {
 		})
 	}
 }
+
+func TestComparatorFunctions(t *testing.T) {
+	testCases := []struct {
+		value      Expectation
+		expectName string
+		expectComp comp
+		expectNot  bool
+	}{
+		{
+			value:      ExpectEqual(0, 0),
+			expectName: "ExpectEqual",
+			expectComp: compEqual,
+			expectNot:  false,
+		},
+		{
+			value:      ExpectNotEqual(0, 0),
+			expectName: "ExpectNotEqual",
+			expectComp: compEqual,
+			expectNot:  true,
+		},
+		{
+			value:      ExpectLessThan(0, 0),
+			expectName: "ExpectLessThan",
+			expectComp: compLessThan,
+			expectNot:  false,
+		},
+		{
+			value:      ExpectLessThanOrEqual(0, 0),
+			expectName: "ExpectLessThanOrEqual",
+			expectComp: compLessOrEqualThan,
+			expectNot:  false,
+		},
+		{
+			value:      ExpectGreaterThan(0, 0),
+			expectName: "ExpectGreaterThan",
+			expectComp: compGreaterThan,
+			expectNot:  false,
+		},
+		{
+			value:      ExpectGreaterThanOrEqual(0, 0),
+			expectName: "ExpectGreaterThanOrEqual",
+			expectComp: compGreaterOrEqualThan,
+			expectNot:  false,
+		},
+		{
+			value:      ExpectNotLessThan(0, 0),
+			expectName: "ExpectNotLessThan",
+			expectComp: compLessThan,
+			expectNot:  true,
+		},
+		{
+			value:      ExpectNotGreaterThan(0, 0),
+			expectName: "ExpectNotGreaterThan",
+			expectComp: compGreaterThan,
+			expectNot:  true,
+		},
+	}
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
+			assert.Equal(t, tc.expectName, tc.value.Name())
+			assert.NotNil(t, tc.value.Frame())
+			assert.False(t, tc.value.IsRequired())
+			assert.Equal(t, tc.expectComp, tc.value.(*comparator).comp)
+			assert.Equal(t, tc.expectNot, tc.value.(*comparator).not)
+		})
+	}
+}
