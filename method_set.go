@@ -6,6 +6,10 @@ import (
 	"github.com/go-andiamo/marrow/framing"
 )
 
+// SetQueryParam is a capture that sets a query param for the current method
+//
+// It can be used anywhere where captures are allowed, but is particularly useful as an operation in Method_.If
+//
 //go:noinline
 func SetQueryParam(name string, values ...any) Capture {
 	return &methodSet{
@@ -22,6 +26,10 @@ func SetQueryParam(name string, values ...any) Capture {
 	}
 }
 
+// SetRequestHeader is a capture that sets a request header for the current method
+//
+// It can be used anywhere where captures are allowed, but is particularly useful as an operation in Method_.If
+//
 //go:noinline
 func SetRequestHeader(name string, value any) Capture {
 	return &methodSet{
@@ -38,6 +46,10 @@ func SetRequestHeader(name string, value any) Capture {
 	}
 }
 
+// SetRequestBody is a capture that sets the request body for the current method
+//
+// It can be used anywhere where captures are allowed, but is particularly useful as an operation in Method_.If
+//
 //go:noinline
 func SetRequestBody(value any) Capture {
 	return &methodSet{
@@ -54,6 +66,10 @@ func SetRequestBody(value any) Capture {
 	}
 }
 
+// SetRequestUseCookie is a capture that sets the name of a cookie to use for the current method
+//
+// It can be used anywhere where captures are allowed, but is particularly useful as an operation in Method_.If
+//
 //go:noinline
 func SetRequestUseCookie(name string) Capture {
 	return &methodSet{
