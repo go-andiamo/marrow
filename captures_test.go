@@ -499,4 +499,28 @@ func Test_conditional(t *testing.T) {
 		assert.Len(t, cov.Common.Failures, 1)
 		assert.Len(t, cov.Common.Skipped, 1)
 	})
+	t.Run("not bool successful", func(t *testing.T) {
+		c := &conditional{
+			condition: false,
+			not:       true,
+			ops:       []Runnable{SetVar(Before, "foo", "bar")},
+			frame:     framing.NewFrame(0),
+		}
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "bar", ctx.vars["foo"])
+	})
+	t.Run("not expectation successful", func(t *testing.T) {
+		c := &conditional{
+			condition: ExpectVarSet(Var("foo")),
+			not:       true,
+			ops:       []Runnable{SetVar(Before, "foo", "bar")},
+			frame:     framing.NewFrame(0),
+		}
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "bar", ctx.vars["foo"])
+	})
 }
