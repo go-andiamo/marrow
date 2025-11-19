@@ -16,8 +16,8 @@ type BeforeAfter interface {
 type When int
 
 const (
-	Before When = iota // an operation to run before primary operations
-	After              // an operation to be run after primary operations
+	Before When = iota // an operation to run before primary operations (e.g. the actual method http request)
+	After              // an operation to be run after primary operations (e.g. the actual method http request)
 )
 
 type beforeAfter struct {

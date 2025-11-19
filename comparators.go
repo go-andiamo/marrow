@@ -34,6 +34,8 @@ type comparator struct {
 
 var _ Expectation = (*comparator)(nil)
 
+//var _ Runnable = (*comparator)(nil)
+
 func (c *comparator) Name() string {
 	if c.name != "" {
 		return c.name
@@ -314,6 +316,126 @@ func (c *comparator) string() string {
 		return "NOT(" + compStrings[c.comp] + ")"
 	}
 	return compStrings[c.comp]
+}
+
+// ExpectEqual asserts that the supplied values are equal
+//
+// values can be any of:
+//   - primitive type of string, bool, int, int64, float64
+//   - decimal.Decimal
+//   - or anything that is resolvable...
+//
+// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+//
+//go:noinline
+func ExpectEqual(v1, v2 any) Expectation {
+	return newComparator(1, "ExpectEqual", v1, v2, compEqual, false, false)
+}
+
+// ExpectNotEqual asserts that the supplied values are not equal
+//
+// values can be any of:
+//   - primitive type of string, bool, int, int64, float64
+//   - decimal.Decimal
+//   - or anything that is resolvable...
+//
+// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+//
+//go:noinline
+func ExpectNotEqual(v1, v2 any) Expectation {
+	return newComparator(1, "ExpectNotEqual", v1, v2, compEqual, true, false)
+}
+
+// ExpectLessThan asserts that v1 is less than v2
+//
+// values can be any of:
+//   - primitive type of string, int, int64, float64
+//   - decimal.Decimal
+//   - or anything that is resolvable...
+//
+// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+//
+//go:noinline
+func ExpectLessThan(v1, v2 any) Expectation {
+	return newComparator(1, "ExpectLessThan", v1, v2, compLessThan, false, false)
+}
+
+// ExpectLessThanOrEqual asserts that v1 is less than or equal to v2
+//
+// values can be any of:
+//   - primitive type of string, int, int64, float64
+//   - decimal.Decimal
+//   - or anything that is resolvable...
+//
+// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+//
+//go:noinline
+func ExpectLessThanOrEqual(v1, v2 any) Expectation {
+	return newComparator(1, "ExpectLessThanOrEqual", v1, v2, compLessOrEqualThan, false, false)
+}
+
+// ExpectGreaterThan asserts that v1 is greater than v2
+//
+// values can be any of:
+//   - primitive type of string, int, int64, float64
+//   - decimal.Decimal
+//   - or anything that is resolvable...
+//
+// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+//
+//go:noinline
+func ExpectGreaterThan(v1, v2 any) Expectation {
+	return newComparator(1, "ExpectGreaterThan", v1, v2, compGreaterThan, false, false)
+}
+
+// ExpectGreaterThanOrEqual asserts that v1 is greater than or equal to v2
+//
+// values can be any of:
+//   - primitive type of string, int, int64, float64
+//   - decimal.Decimal
+//   - or anything that is resolvable...
+//
+// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+//
+//go:noinline
+func ExpectGreaterThanOrEqual(v1, v2 any) Expectation {
+	return newComparator(1, "ExpectGreaterThanOrEqual", v1, v2, compGreaterOrEqualThan, false, false)
+}
+
+// ExpectNotLessThan asserts that v1 is not less than v2
+//
+// values can be any of:
+//   - primitive type of string, int, int64, float64
+//   - decimal.Decimal
+//   - or anything that is resolvable...
+//
+// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+//
+//go:noinline
+func ExpectNotLessThan(v1, v2 any) Expectation {
+	return newComparator(1, "ExpectNotLessThan", v1, v2, compLessThan, true, false)
+}
+
+// ExpectNotGreaterThan asserts that v1 is not greater than v2
+//
+// values can be any of:
+//   - primitive type of string, int, int64, float64
+//   - decimal.Decimal
+//   - or anything that is resolvable...
+//
+// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+//
+//go:noinline
+func ExpectNotGreaterThan(v1, v2 any) Expectation {
+	return newComparator(1, "ExpectNotGreaterThan", v1, v2, compGreaterThan, true, false)
 }
 
 type comp int

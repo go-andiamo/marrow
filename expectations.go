@@ -2,6 +2,7 @@ package marrow
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/framing"
@@ -15,6 +16,7 @@ import (
 
 type Expectation interface {
 	common.Expectation
+	Runnable
 	Met(ctx Context) (unmet error, err error)
 	IsRequired() bool
 }
@@ -25,6 +27,10 @@ type commonExpectation struct {
 
 func (e commonExpectation) IsRequired() bool {
 	return e.required
+}
+
+func (e commonExpectation) Run(ctx Context) error {
+	panic("direct call to .Run() on Expectation")
 }
 
 //go:noinline
@@ -74,6 +80,138 @@ type expectStatusCode struct {
 }
 
 var _ Expectation = (*expectStatusCode)(nil)
+
+// ExpectOK asserts the response status code is 200 "OK"
+//
+//go:noinline
+func ExpectOK() Expectation {
+	return &expectStatusCode{
+		name:   "Expect OK",
+		expect: http.StatusOK,
+		frame:  framing.NewFrame(0),
+	}
+}
+
+// ExpectCreated asserts the response status code is 201 "Created"
+//
+//go:noinline
+func ExpectCreated() Expectation {
+	return &expectStatusCode{
+		name:   "Expect Created",
+		expect: http.StatusCreated,
+		frame:  framing.NewFrame(0),
+	}
+}
+
+// ExpectAccepted asserts the response status code is 202 "Accepted"
+//
+//go:noinline
+func ExpectAccepted() Expectation {
+	return &expectStatusCode{
+		name:   "Expect Accepted",
+		expect: http.StatusAccepted,
+		frame:  framing.NewFrame(0),
+	}
+}
+
+// ExpectNoContent asserts the response status code is 204 "No Content"
+//
+//go:noinline
+func ExpectNoContent() Expectation {
+	return &expectStatusCode{
+		name:   "Expect No Content",
+		expect: http.StatusNoContent,
+		frame:  framing.NewFrame(0),
+	}
+}
+
+// ExpectBadRequest asserts the response status code is 400 "Bad Request"
+//
+//go:noinline
+func ExpectBadRequest() Expectation {
+	return &expectStatusCode{
+		name:   "Expect Bad Request",
+		expect: http.StatusBadRequest,
+		frame:  framing.NewFrame(0),
+	}
+}
+
+// ExpectUnauthorized asserts the response status code is 401 "Unauthorized"
+//
+//go:noinline
+func ExpectUnauthorized() Expectation {
+	return &expectStatusCode{
+		name:   "Expect Unauthorized",
+		expect: http.StatusUnauthorized,
+		frame:  framing.NewFrame(0),
+	}
+}
+
+// ExpectForbidden asserts the response status code is 403 "Forbidden"
+//
+//go:noinline
+func ExpectForbidden() Expectation {
+	return &expectStatusCode{
+		name:   "Expect Forbidden",
+		expect: http.StatusForbidden,
+		frame:  framing.NewFrame(0),
+	}
+}
+
+// ExpectNotFound asserts the response status code is 404 "Not Found"
+//
+//go:noinline
+func ExpectNotFound() Expectation {
+	return &expectStatusCode{
+		name:   "Expect Not Found",
+		expect: http.StatusNotFound,
+		frame:  framing.NewFrame(0),
+	}
+}
+
+// ExpectConflict asserts the response status code is 409 "Conflict"
+//
+//go:noinline
+func ExpectConflict() Expectation {
+	return &expectStatusCode{
+		name:   "Expect Conflict",
+		expect: http.StatusConflict,
+		frame:  framing.NewFrame(0),
+	}
+}
+
+// ExpectGone asserts the response status code is 410 "Gone"
+//
+//go:noinline
+func ExpectGone() Expectation {
+	return &expectStatusCode{
+		name:   "Expect Gone",
+		expect: http.StatusGone,
+		frame:  framing.NewFrame(0),
+	}
+}
+
+// ExpectUnprocessableEntity asserts the response status code is 422 "Unprocessable Entity"
+//
+//go:noinline
+func ExpectUnprocessableEntity() Expectation {
+	return &expectStatusCode{
+		name:   "Expect Unprocessable Entity",
+		expect: http.StatusUnprocessableEntity,
+		frame:  framing.NewFrame(0),
+	}
+}
+
+// ExpectStatus asserts the response status code is the status supplied
+//
+//go:noinline
+func ExpectStatus(status any) Expectation {
+	return &expectStatusCode{
+		name:   "Expect Status Code",
+		expect: status,
+		frame:  framing.NewFrame(0),
+	}
+}
 
 func (e *expectStatusCode) Name() string {
 	return e.name
@@ -142,6 +280,27 @@ type match struct {
 
 var _ Expectation = (*match)(nil)
 
+// ExpectMatch asserts that the value matches the supplied regex
+//
+// when attempting to match against the regex, the value (or resolved value) is "stringified"
+//
+// values can be any of:
+//   - primitive type of string, bool, int, int64, float64
+//   - decimal.Decimal
+//   - or anything that is resolvable...
+//
+// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+//
+//go:noinline
+func ExpectMatch(value any, regex string) Expectation {
+	return &match{
+		value: value,
+		regex: regex,
+		frame: framing.NewFrame(0),
+	}
+}
+
 func (m *match) Name() string {
 	return fmt.Sprintf("Expect match: %q", m.regex)
 }
@@ -203,6 +362,19 @@ type contains struct {
 
 var _ Expectation = (*contains)(nil)
 
+// ExpectContains asserts that the value contains a substring
+//
+// when attempting to check contains, the value (or resolved value) is "stringified"
+//
+//go:noinline
+func ExpectContains(value any, s string) Expectation {
+	return &contains{
+		value:    value,
+		contains: s,
+		frame:    framing.NewFrame(0),
+	}
+}
+
 func (c *contains) Name() string {
 	return fmt.Sprintf("Expect contains: %q", c.contains)
 }
@@ -258,6 +430,17 @@ type matchType struct {
 
 var _ Expectation = (*matchType)(nil)
 
+// ExpectType asserts that the value (or resolved value) is of the supplied type
+//
+//go:noinline
+func ExpectType(value any, typ Type_) Expectation {
+	return &matchType{
+		value: value,
+		typ:   typ,
+		frame: framing.NewFrame(0),
+	}
+}
+
 func (m *matchType) Name() string {
 	return fmt.Sprintf("Expect type: %s", m.typ.Type().String())
 }
@@ -302,6 +485,16 @@ type nilCheck struct {
 
 var _ Expectation = (*nilCheck)(nil)
 
+// ExpectNil asserts that the value (or resolved value) is nil
+//
+//go:noinline
+func ExpectNil(value any) Expectation {
+	return &nilCheck{
+		value: value,
+		frame: framing.NewFrame(0),
+	}
+}
+
 func (n *nilCheck) Name() string {
 	return "Expect Nil"
 }
@@ -332,6 +525,16 @@ type notNilCheck struct {
 }
 
 var _ Expectation = (*notNilCheck)(nil)
+
+// ExpectNotNil asserts that the value (or resolved value) is not nil
+//
+//go:noinline
+func ExpectNotNil(value any) Expectation {
+	return &notNilCheck{
+		value: value,
+		frame: framing.NewFrame(0),
+	}
+}
 
 func (n *notNilCheck) Name() string {
 	return "Expect Not Nil"
@@ -364,6 +567,19 @@ type lenCheck struct {
 }
 
 var _ Expectation = (*lenCheck)(nil)
+
+// ExpectLen asserts that the value (or resolved value) has the supplied length
+//
+// the value (or resolved value) must be a string, map or slice
+//
+//go:noinline
+func ExpectLen(value any, length int) Expectation {
+	return &lenCheck{
+		value:  value,
+		length: length,
+		frame:  framing.NewFrame(0),
+	}
+}
 
 func (l *lenCheck) Name() string {
 	return "Expect Len"
@@ -431,6 +647,18 @@ type expectMockCall struct {
 
 var _ Expectation = (*expectMockCall)(nil)
 
+// ExpectMockServiceCalled asserts that a specific mock service endpoint+method was called
+//
+//go:noinline
+func ExpectMockServiceCalled(svcName string, path string, method MethodName) Expectation {
+	return &expectMockCall{
+		name:   svcName,
+		path:   path,
+		method: strings.ToUpper(string(method)),
+		frame:  framing.NewFrame(0),
+	}
+}
+
 func (e *expectMockCall) Name() string {
 	return "EXPECT MOCK SERVICE CALL [" + e.name + "]: " + e.method + " " + e.path
 }
@@ -467,6 +695,33 @@ type propertiesCheck struct {
 }
 
 var _ Expectation = (*propertiesCheck)(nil)
+
+// ExpectHasProperties asserts that the value (or resolved value) has the supplied properties
+//
+// the value (or resolved value) must be a map
+//
+//go:noinline
+func ExpectHasProperties(value any, propertyNames ...string) Expectation {
+	return &propertiesCheck{
+		value:      value,
+		properties: propertyNames,
+		frame:      framing.NewFrame(0),
+	}
+}
+
+// ExpectOnlyHasProperties asserts that the value (or resolved value) only has the supplied properties
+//
+// the value (or resolved value) must be a map
+//
+//go:noinline
+func ExpectOnlyHasProperties(value any, propertyNames ...string) Expectation {
+	return &propertiesCheck{
+		value:      value,
+		properties: propertyNames,
+		only:       true,
+		frame:      framing.NewFrame(0),
+	}
+}
 
 func (p *propertiesCheck) Name() string {
 	if p.only {
@@ -541,4 +796,75 @@ func (p *propertiesCheck) Met(ctx Context) (unmet error, err error) {
 		}
 	}
 	return
+}
+
+type failCheck struct {
+	msg   string
+	frame *framing.Frame
+	commonExpectation
+}
+
+var _ Expectation = (*failCheck)(nil)
+
+// Fail is an expectation that always fails (not just unmet)
+//
+// can be used in Method.If to cause test fail conditions
+//
+//go:noinline
+func Fail(msg string) Expectation {
+	return &failCheck{
+		msg:   msg,
+		frame: framing.NewFrame(0),
+	}
+}
+
+func (f *failCheck) Name() string {
+	return fmt.Sprintf("FAIL %q", f.msg)
+}
+
+func (f *failCheck) Frame() *framing.Frame {
+	return f.frame
+}
+
+func (f *failCheck) Met(ctx Context) (unmet error, err error) {
+	return nil, errors.New(f.msg)
+}
+
+type varCheck struct {
+	name  Var
+	frame *framing.Frame
+	commonExpectation
+}
+
+var _ Expectation = (*varCheck)(nil)
+
+// ExpectVarSet asserts that a named variable has been set
+//
+//go:noinline
+func ExpectVarSet(v Var) Expectation {
+	return &varCheck{
+		name:  v,
+		frame: framing.NewFrame(0),
+	}
+}
+
+func (v varCheck) Name() string {
+	return fmt.Sprintf("Expect Var(%q) set", string(v.name))
+}
+
+func (v varCheck) Frame() *framing.Frame {
+	return v.frame
+}
+
+func (v varCheck) Met(ctx Context) (unmet error, err error) {
+	if _, ok := ctx.Vars()[v.name]; !ok {
+		unmet = &unmetError{
+			msg:      "expected variable set",
+			name:     v.Name(),
+			expected: OperandValue{Original: v.name, Resolved: true},
+			actual:   OperandValue{Original: false, Resolved: false},
+			frame:    v.frame,
+		}
+	}
+	return unmet, nil
 }

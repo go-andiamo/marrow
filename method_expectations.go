@@ -1,0 +1,889 @@
+package marrow
+
+import (
+	"github.com/go-andiamo/marrow/framing"
+	"net/http"
+	"strings"
+)
+
+type MethodExpectations interface {
+	// Expect adds a new expectation to the Method_
+	Expect(exp Expectation) Method_
+
+	// AssertOK asserts the response status code is 200 "OK"
+	AssertOK() Method_
+	// AssertCreated asserts the response status code is 201 "Created"
+	AssertCreated() Method_
+	// AssertAccepted asserts the response status code is 202 "Accepted"
+	AssertAccepted() Method_
+	// AssertNoContent asserts the response status code is 204 "No Content"
+	AssertNoContent() Method_
+	// AssertBadRequest asserts the response status code is 400 "Bad Request"
+	AssertBadRequest() Method_
+	// AssertUnauthorized asserts the response status code is 401 "Unauthorized"
+	AssertUnauthorized() Method_
+	// AssertForbidden asserts the response status code is 403 "Forbidden"
+	AssertForbidden() Method_
+	// AssertNotFound asserts the response status code is 404 "Not Found"
+	AssertNotFound() Method_
+	// AssertConflict asserts the response status code is 409 "Conflict"
+	AssertConflict() Method_
+	// AssertGone asserts the response status code is 410 "Gone"
+	AssertGone() Method_
+	// AssertUnprocessableEntity asserts the response status code is 422 "Unprocessable Entity"
+	AssertUnprocessableEntity() Method_
+	// AssertStatus asserts the response status code is the status supplied
+	AssertStatus(status any) Method_
+	// AssertFunc asserts that the supplied func is met
+	AssertFunc(fn func(Context) (unmet error, err error)) Method_
+	// AssertEqual asserts that the supplied values are equal
+	//
+	// values can be any of:
+	//  * primitive type of string, bool, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	AssertEqual(v1, v2 any) Method_
+	// AssertNotEqual asserts that the supplied values are not equal
+	//
+	// values can be any of:
+	//  * primitive type of string, bool, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	AssertNotEqual(v1, v2 any) Method_
+	// AssertLessThan asserts that v1 is less than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	AssertLessThan(v1, v2 any) Method_
+	// AssertLessThanOrEqual asserts that v1 is less than or equal to v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	AssertLessThanOrEqual(v1, v2 any) Method_
+	// AssertGreaterThan asserts that v1 is greater than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	AssertGreaterThan(v1, v2 any) Method_
+	// AssertGreaterThanOrEqual asserts that v1 is greater than or equal to v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	AssertGreaterThanOrEqual(v1, v2 any) Method_
+	// AssertNotLessThan asserts that v1 is not less than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	AssertNotLessThan(v1, v2 any) Method_
+	// AssertNotGreaterThan asserts that v1 is not greater than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	AssertNotGreaterThan(v1, v2 any) Method_
+	// AssertMatch asserts that the value matches the supplied regex
+	//
+	// when attempting to match against the regex, the value (or resolved value) is "stringified"
+	//
+	// values can be any of:
+	//  * primitive type of string, bool, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	AssertMatch(value any, regex string) Method_
+	// AssertContains asserts that the value contains a substring
+	//
+	// when attempting to check contains, the value (or resolved value) is "stringified"
+	AssertContains(value any, s string) Method_
+	// AssertType asserts that the value (or resolved value) is of the supplied type
+	AssertType(value any, typ Type_) Method_
+	// AssertNil asserts that the value (or resolved value) is nil
+	AssertNil(value any) Method_
+	// AssertNotNil asserts that the value (or resolved value) is not nil
+	AssertNotNil(value any) Method_
+	// AssertLen asserts that the value (or resolved value) has the supplied length
+	//
+	// the value (or resolved value) must be a string, map or slice
+	AssertLen(value any, length int) Method_
+	// AssertHasProperties asserts that the value (or resolved value) has the supplied properties
+	//
+	// the value (or resolved value) must be a map
+	AssertHasProperties(value any, propertyNames ...string) Method_
+	// AssertOnlyHasProperties asserts that the value (or resolved value) only has the supplied properties
+	//
+	// the value (or resolved value) must be a map
+	AssertOnlyHasProperties(value any, propertyNames ...string) Method_
+
+	// RequireOK requires the response status code is 200 "OK"
+	RequireOK() Method_
+	// RequireCreated requires the response status code is 201 "Created"
+	RequireCreated() Method_
+	// RequireAccepted requires the response status code is 202 "Accepted"
+	RequireAccepted() Method_
+	// RequireNoContent requires the response status code is 204 "No Content"
+	RequireNoContent() Method_
+	// RequireBadRequest requires the response status code is 400 "Bad Request"
+	RequireBadRequest() Method_
+	// RequireUnauthorized requires the response status code is 401 "Unauthorized"
+	RequireUnauthorized() Method_
+	// RequireForbidden requires the response status code is 403 "Forbidden"
+	RequireForbidden() Method_
+	// RequireNotFound requires the response status code is 404 "Not Found"
+	RequireNotFound() Method_
+	// RequireConflict requires the response status code is 409 "Conflict"
+	RequireConflict() Method_
+	// RequireGone requires the response status code is 410 "Gone"
+	RequireGone() Method_
+	// RequireUnprocessableEntity requires the response status code is 422 "Unprocessable Entity"
+	RequireUnprocessableEntity() Method_
+	// RequireStatus requires the response status code is the status supplied
+	RequireStatus(status any) Method_
+	// RequireFunc requires that the supplied func is met
+	RequireFunc(fn func(Context) (unmet error, err error)) Method_
+	// RequireEqual requires that the supplied values are equal
+	//
+	// values can be any of:
+	//  * primitive type of string, bool, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	RequireEqual(v1, v2 any) Method_
+	// RequireNotEqual requires that the supplied values are not equal
+	//
+	// values can be any of:
+	//  * primitive type of string, bool, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	RequireNotEqual(v1, v2 any) Method_
+	// RequireLessThan requires that v1 is less than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	RequireLessThan(v1, v2 any) Method_
+	// RequireLessThanOrEqual requires that v1 is less than or equal to v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	RequireLessThanOrEqual(v1, v2 any) Method_
+	// RequireGreaterThan requires that v1 is greater than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	RequireGreaterThan(v1, v2 any) Method_
+	// RequireGreaterThanOrEqual requires that v1 is greater than or equal to v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	RequireGreaterThanOrEqual(v1, v2 any) Method_
+	// RequireNotLessThan requires that v1 is not less than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	RequireNotLessThan(v1, v2 any) Method_
+	// RequireNotGreaterThan requires that v1 is not greater than v2
+	//
+	// values can be any of:
+	//  * primitive type of string, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	RequireNotGreaterThan(v1, v2 any) Method_
+	// RequireMatch requires that the value matches the supplied regex
+	//
+	// when attempting to match against the regex, the value (or resolved value) is "stringified"
+	//
+	// values can be any of:
+	//  * primitive type of string, bool, int, int64, float64
+	//  * decimal.Decimal
+	//  * or anything that is resolvable...
+	//
+	// examples of resolvable values are: Var, Body, BodyPath, Query, QueryRows, JsonPath, JsonTraverse,
+	// StatusCode, ResponseCookie, ResponseHeader, JSON, JSONArray, TemplateString,
+	RequireMatch(value any, regex string) Method_
+	// RequireContains requires that the value contains a substring
+	//
+	// when attempting to check contains, the value (or resolved value) is "stringified"
+	RequireContains(value any, s string) Method_
+	// RequireType requires that the value (or resolved value) is of the supplied type
+	RequireType(value any, typ Type_) Method_
+	// RequireNil requires that the value (or resolved value) is nil
+	RequireNil(value any) Method_
+	// RequireNotNil requires that the value (or resolved value) is not nil
+	RequireNotNil(value any) Method_
+	// RequireLen requires that the value (or resolved value) has the supplied length
+	//
+	// the value (or resolved value) must be a string, map or slice
+	RequireLen(value any, length int) Method_
+	// RequireHasProperties requires that the value (or resolved value) has the supplied properties
+	//
+	// the value (or resolved value) must be a map
+	RequireHasProperties(value any, propertyNames ...string) Method_
+	// RequireOnlyHasProperties requires that the value (or resolved value) only has the supplied properties
+	//
+	// the value (or resolved value) must be a map
+	RequireOnlyHasProperties(value any, propertyNames ...string) Method_
+
+	// AssertMockServiceCalled asserts that a specific mock service endpoint+method was called
+	AssertMockServiceCalled(svcName string, path string, method MethodName) Method_
+	// RequireMockServiceCalled requires that a specific mock service endpoint+method was called
+	RequireMockServiceCalled(svcName string, path string, method MethodName) Method_
+
+	// AssertVarSet asserts that a named variable has been set
+	AssertVarSet(v Var) Method_
+	// RequireVarSet requires that a named variable has been set
+	RequireVarSet(v Var) Method_
+}
+
+//go:noinline
+func (m *method) AssertOK() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect OK",
+		expect: http.StatusOK,
+		frame:  framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireOK() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect OK",
+		expect:            http.StatusOK,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertCreated() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Created",
+		expect: http.StatusCreated,
+		frame:  framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireCreated() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Created",
+		expect:            http.StatusCreated,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertAccepted() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Accepted",
+		expect: http.StatusAccepted,
+		frame:  framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireAccepted() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Accepted",
+		expect:            http.StatusAccepted,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertNoContent() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect No Content",
+		expect: http.StatusNoContent,
+		frame:  framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireNoContent() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect No Content",
+		expect:            http.StatusNoContent,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertBadRequest() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Bad Request",
+		expect: http.StatusBadRequest,
+		frame:  framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireBadRequest() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Bad Request",
+		expect:            http.StatusBadRequest,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertUnauthorized() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Unauthorized",
+		expect: http.StatusUnauthorized,
+		frame:  framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireUnauthorized() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Unauthorized",
+		expect:            http.StatusUnauthorized,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertForbidden() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Forbidden",
+		expect: http.StatusForbidden,
+		frame:  framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireForbidden() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Forbidden",
+		expect:            http.StatusForbidden,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertNotFound() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Not Found",
+		expect: http.StatusNotFound,
+		frame:  framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireNotFound() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Not Found",
+		expect:            http.StatusNotFound,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertConflict() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Conflict",
+		expect: http.StatusConflict,
+		frame:  framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireConflict() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Conflict",
+		expect:            http.StatusConflict,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertGone() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Gone",
+		expect: http.StatusGone,
+		frame:  framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireGone() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Gone",
+		expect:            http.StatusGone,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertUnprocessableEntity() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Unprocessable Entity",
+		expect: http.StatusUnprocessableEntity,
+		frame:  framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireUnprocessableEntity() Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Unprocessable Entity",
+		expect:            http.StatusUnprocessableEntity,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertStatus(status any) Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:   "Expect Status Code",
+		expect: status,
+		frame:  framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireStatus(status any) Method_ {
+	m.addPostExpectation(&expectStatusCode{
+		name:              "Expect Status Code",
+		expect:            status,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) Expect(exp Expectation) Method_ {
+	m.addPostExpectation(exp)
+	return m
+}
+
+//go:noinline
+func (m *method) AssertFunc(fn func(Context) (unmet error, err error)) Method_ {
+	if fn != nil {
+		m.addPostExpectation(&expectation{
+			fn:    fn,
+			frame: framing.NewFrame(0),
+		})
+	}
+	return m
+}
+
+//go:noinline
+func (m *method) RequireFunc(fn func(Context) (unmet error, err error)) Method_ {
+	if fn != nil {
+		m.addPostExpectation(&expectation{
+			fn:                fn,
+			frame:             framing.NewFrame(0),
+			commonExpectation: commonExpectation{required: true},
+		})
+	}
+	return m
+}
+
+//go:noinline
+func (m *method) AssertEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectEqual", v1, v2, compEqual, false, false))
+	return m
+}
+
+//go:noinline
+func (m *method) RequireEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectEqual", v1, v2, compEqual, false, true))
+	return m
+}
+
+//go:noinline
+func (m *method) AssertNotEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectNotEqual", v1, v2, compEqual, true, false))
+	return m
+}
+
+//go:noinline
+func (m *method) RequireNotEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectNotEqual", v1, v2, compEqual, true, true))
+	return m
+}
+
+//go:noinline
+func (m *method) AssertLessThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectLessThan", v1, v2, compLessThan, false, false))
+	return m
+}
+
+//go:noinline
+func (m *method) RequireLessThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectLessThan", v1, v2, compLessThan, false, true))
+	return m
+}
+
+//go:noinline
+func (m *method) AssertLessThanOrEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectLessThanOrEqual", v1, v2, compLessOrEqualThan, false, false))
+	return m
+}
+
+//go:noinline
+func (m *method) RequireLessThanOrEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectLessThanOrEqual", v1, v2, compLessOrEqualThan, false, true))
+	return m
+}
+
+//go:noinline
+func (m *method) AssertGreaterThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectGreaterThan", v1, v2, compGreaterThan, false, false))
+	return m
+}
+
+//go:noinline
+func (m *method) RequireGreaterThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectGreaterThan", v1, v2, compGreaterThan, false, true))
+	return m
+}
+
+//go:noinline
+func (m *method) AssertGreaterThanOrEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectGreaterThanOrEqual", v1, v2, compGreaterOrEqualThan, false, false))
+	return m
+}
+
+//go:noinline
+func (m *method) RequireGreaterThanOrEqual(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectGreaterThanOrEqual", v1, v2, compGreaterOrEqualThan, false, true))
+	return m
+}
+
+//go:noinline
+func (m *method) AssertNotLessThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectNotLessThan", v1, v2, compLessThan, true, false))
+	return m
+}
+
+//go:noinline
+func (m *method) RequireNotLessThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectNotLessThan", v1, v2, compLessThan, true, true))
+	return m
+}
+
+//go:noinline
+func (m *method) AssertNotGreaterThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectNotGreaterThan", v1, v2, compGreaterThan, true, false))
+	return m
+}
+
+//go:noinline
+func (m *method) RequireNotGreaterThan(v1, v2 any) Method_ {
+	m.addPostExpectation(newComparator(1, "ExpectNotGreaterThan", v1, v2, compGreaterThan, true, true))
+	return m
+}
+
+//go:noinline
+func (m *method) AssertMatch(value any, regex string) Method_ {
+	m.addPostExpectation(&match{
+		value: value,
+		regex: regex,
+		frame: framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireMatch(value any, regex string) Method_ {
+	m.addPostExpectation(&match{
+		value:             value,
+		regex:             regex,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertContains(value any, s string) Method_ {
+	m.addPostExpectation(&contains{
+		value:    value,
+		contains: s,
+		frame:    framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireContains(value any, s string) Method_ {
+	m.addPostExpectation(&contains{
+		value:             value,
+		contains:          s,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertType(value any, typ Type_) Method_ {
+	m.addPostExpectation(&matchType{
+		value: value,
+		typ:   typ,
+		frame: framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireType(value any, typ Type_) Method_ {
+	m.addPostExpectation(&matchType{
+		value:             value,
+		typ:               typ,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertNil(value any) Method_ {
+	m.addPostExpectation(&nilCheck{
+		value: value,
+		frame: framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireNil(value any) Method_ {
+	m.addPostExpectation(&nilCheck{
+		value:             value,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertNotNil(value any) Method_ {
+	m.addPostExpectation(&notNilCheck{
+		value: value,
+		frame: framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireNotNil(value any) Method_ {
+	m.addPostExpectation(&notNilCheck{
+		value:             value,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertLen(value any, length int) Method_ {
+	m.addPostExpectation(&lenCheck{
+		value:  value,
+		length: length,
+		frame:  framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireLen(value any, length int) Method_ {
+	m.addPostExpectation(&lenCheck{
+		value:             value,
+		length:            length,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertHasProperties(value any, propertyNames ...string) Method_ {
+	m.addPostExpectation(&propertiesCheck{
+		value:      value,
+		properties: propertyNames,
+		frame:      framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireHasProperties(value any, propertyNames ...string) Method_ {
+	m.addPostExpectation(&propertiesCheck{
+		value:             value,
+		properties:        propertyNames,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertOnlyHasProperties(value any, propertyNames ...string) Method_ {
+	m.addPostExpectation(&propertiesCheck{
+		value:      value,
+		properties: propertyNames,
+		only:       true,
+		frame:      framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireOnlyHasProperties(value any, propertyNames ...string) Method_ {
+	m.addPostExpectation(&propertiesCheck{
+		value:             value,
+		properties:        propertyNames,
+		frame:             framing.NewFrame(0),
+		only:              true,
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertMockServiceCalled(svcName string, path string, method MethodName) Method_ {
+	m.addPostExpectation(&expectMockCall{
+		name:   svcName,
+		path:   path,
+		method: strings.ToUpper(string(method)),
+		frame:  framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireMockServiceCalled(svcName string, path string, method MethodName) Method_ {
+	m.addPostExpectation(&expectMockCall{
+		name:              svcName,
+		path:              path,
+		method:            strings.ToUpper(string(method)),
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertVarSet(v Var) Method_ {
+	m.addPostExpectation(&varCheck{
+		name:  v,
+		frame: framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireVarSet(v Var) Method_ {
+	m.addPostExpectation(&varCheck{
+		name:              v,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
