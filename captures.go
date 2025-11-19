@@ -372,6 +372,7 @@ func (u *unSetEnv) Frame() *framing.Frame {
 
 type conditional struct {
 	condition any
+	not       bool
 	ops       []Runnable
 	frame     *framing.Frame
 }
@@ -386,7 +387,11 @@ func (c *conditional) Run(ctx Context) (err error) {
 	do := false
 	if exp, ok := c.condition.(Expectation); ok {
 		var unmet error
-		if unmet, err = exp.Met(ctx); unmet == nil && err == nil {
+		if c.not {
+			if unmet, err = exp.Met(ctx); unmet != nil && err == nil {
+				do = true
+			}
+		} else if unmet, err = exp.Met(ctx); unmet == nil && err == nil {
 			do = true
 		}
 	} else {
@@ -394,6 +399,9 @@ func (c *conditional) Run(ctx Context) (err error) {
 		if av, err = ResolveValue(c.condition, ctx); err == nil {
 			if b, ok := av.(bool); ok {
 				do = b
+				if c.not {
+					do = !do
+				}
 			} else {
 				err = fmt.Errorf("invalid condition type: %T", av)
 			}
