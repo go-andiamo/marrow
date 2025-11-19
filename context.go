@@ -300,8 +300,8 @@ func (c *context) setCurrentEndpoint(e Endpoint_) {
 
 func (c *context) setCurrentMethod(m Method_) {
 	c.currMethod = m
+	c.currRequest = nil
 	if m != nil {
-		c.currRequest = nil
 		c.currResponse = nil
 		c.currBody = nil
 	}

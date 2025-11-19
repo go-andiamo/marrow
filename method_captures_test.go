@@ -29,6 +29,18 @@ func TestMethod_Capture(t *testing.T) {
 	assert.Equal(t, 0, raw.postOps[0].index)
 }
 
+func TestMethod_Do(t *testing.T) {
+	m := Method(GET, "").
+		Do(SetVar(Before, "foo", "bar"), nil, SetVar(After, "foo", "bar"))
+	raw, ok := m.(*method)
+	require.True(t, ok)
+	assert.Len(t, raw.preCaptures, 1)
+	assert.Len(t, raw.postCaptures, 1)
+	assert.Len(t, raw.postOps, 1)
+	assert.False(t, raw.postOps[0].isExpectation)
+	assert.Equal(t, 0, raw.postOps[0].index)
+}
+
 func TestMethod_CaptureFunc(t *testing.T) {
 	m := Method(GET, "").
 		CaptureFunc(Before, func(c Context) error {
@@ -44,6 +56,24 @@ func TestMethod_CaptureFunc(t *testing.T) {
 	assert.Len(t, raw.postOps, 1)
 	assert.False(t, raw.postOps[0].isExpectation)
 	assert.Equal(t, 0, raw.postOps[0].index)
+}
+
+func TestMethod_DoFunc(t *testing.T) {
+	fn := func(ctx Context) error {
+		return nil
+	}
+	m := Method(GET, "").
+		DoFunc(Before, fn, nil, fn).
+		DoFunc(After, fn, nil, fn)
+	raw, ok := m.(*method)
+	require.True(t, ok)
+	assert.Len(t, raw.preCaptures, 2)
+	assert.Len(t, raw.postCaptures, 2)
+	assert.Len(t, raw.postOps, 2)
+	assert.False(t, raw.postOps[0].isExpectation)
+	assert.Equal(t, 0, raw.postOps[0].index)
+	assert.False(t, raw.postOps[1].isExpectation)
+	assert.Equal(t, 1, raw.postOps[1].index)
 }
 
 func TestMethod_SetVar(t *testing.T) {
