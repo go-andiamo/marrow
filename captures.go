@@ -160,6 +160,7 @@ type setCookie struct {
 
 var _ Capture = (*setCookie)(nil)
 
+//go:noinline
 func SetCookie(cookie *http.Cookie) Capture {
 	return &setCookie{
 		cookie: cookie,
