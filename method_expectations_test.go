@@ -682,3 +682,25 @@ func TestRequireOnlyHasProperties(t *testing.T) {
 	assert.True(t, raw.postOps[0].isExpectation)
 	assert.Equal(t, 0, raw.postOps[0].index)
 }
+
+func TestAssertVarSet(t *testing.T) {
+	m := Method(GET, "").AssertVarSet(Var("foo"))
+	raw, ok := m.(*method)
+	require.True(t, ok)
+	assert.Len(t, raw.expectations, 1)
+	assert.False(t, raw.expectations[0].IsRequired())
+	assert.Len(t, raw.postOps, 1)
+	assert.True(t, raw.postOps[0].isExpectation)
+	assert.Equal(t, 0, raw.postOps[0].index)
+}
+
+func TestRequireVarSet(t *testing.T) {
+	m := Method(GET, "").RequireVarSet(Var("foo"))
+	raw, ok := m.(*method)
+	require.True(t, ok)
+	assert.Len(t, raw.expectations, 1)
+	assert.True(t, raw.expectations[0].IsRequired())
+	assert.Len(t, raw.postOps, 1)
+	assert.True(t, raw.postOps[0].isExpectation)
+	assert.Equal(t, 0, raw.postOps[0].index)
+}

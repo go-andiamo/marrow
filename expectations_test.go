@@ -694,6 +694,29 @@ func TestFail(t *testing.T) {
 	assert.Contains(t, err.Error(), "fooey")
 }
 
+func TestExpectVarSet(t *testing.T) {
+	t.Run("met", func(t *testing.T) {
+		exp := &varCheck{
+			name:  "foo",
+			frame: framing.NewFrame(0),
+		}
+		ctx := newTestContext(map[Var]any{"foo": nil})
+		unmet, err := exp.Met(ctx)
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("unmet", func(t *testing.T) {
+		exp := &varCheck{
+			name:  "foo",
+			frame: framing.NewFrame(0),
+		}
+		ctx := newTestContext(nil)
+		unmet, err := exp.Met(ctx)
+		assert.Error(t, unmet)
+		assert.NoError(t, err)
+	})
+}
+
 func TestExpectationFuncs(t *testing.T) {
 	testCases := []struct {
 		value      Expectation
@@ -786,6 +809,10 @@ func TestExpectationFuncs(t *testing.T) {
 		{
 			value:      Fail("fooey"),
 			expectName: "FAIL \"fooey\"",
+		},
+		{
+			value:      ExpectVarSet(Var("foo")),
+			expectName: "Expect Var(\"foo\") set",
 		},
 	}
 	for i, tc := range testCases {

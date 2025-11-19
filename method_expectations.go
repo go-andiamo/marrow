@@ -296,6 +296,11 @@ type MethodExpectations interface {
 	AssertMockServiceCalled(svcName string, path string, method MethodName) Method_
 	// RequireMockServiceCalled requires that a specific mock service endpoint+method was called
 	RequireMockServiceCalled(svcName string, path string, method MethodName) Method_
+
+	// AssertVarSet asserts that a named variable has been set
+	AssertVarSet(v Var) Method_
+	// RequireVarSet requires that a named variable has been set
+	RequireVarSet(v Var) Method_
 }
 
 //go:noinline
@@ -858,6 +863,25 @@ func (m *method) RequireMockServiceCalled(svcName string, path string, method Me
 		name:              svcName,
 		path:              path,
 		method:            strings.ToUpper(string(method)),
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertVarSet(v Var) Method_ {
+	m.addPostExpectation(&varCheck{
+		name:  v,
+		frame: framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireVarSet(v Var) Method_ {
+	m.addPostExpectation(&varCheck{
+		name:              v,
 		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})

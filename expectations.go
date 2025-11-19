@@ -829,3 +829,42 @@ func (f *failCheck) Frame() *framing.Frame {
 func (f *failCheck) Met(ctx Context) (unmet error, err error) {
 	return nil, errors.New(f.msg)
 }
+
+type varCheck struct {
+	name  Var
+	frame *framing.Frame
+	commonExpectation
+}
+
+var _ Expectation = (*varCheck)(nil)
+
+// ExpectVarSet asserts that a named variable has been set
+//
+//go:noinline
+func ExpectVarSet(v Var) Expectation {
+	return &varCheck{
+		name:  v,
+		frame: framing.NewFrame(0),
+	}
+}
+
+func (v varCheck) Name() string {
+	return fmt.Sprintf("Expect Var(%q) set", string(v.name))
+}
+
+func (v varCheck) Frame() *framing.Frame {
+	return v.frame
+}
+
+func (v varCheck) Met(ctx Context) (unmet error, err error) {
+	if _, ok := ctx.Vars()[v.name]; !ok {
+		unmet = &unmetError{
+			msg:      "expected variable set",
+			name:     v.Name(),
+			expected: OperandValue{Original: v.name, Resolved: true},
+			actual:   OperandValue{Original: false, Resolved: false},
+			frame:    v.frame,
+		}
+	}
+	return unmet, nil
+}
