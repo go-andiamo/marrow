@@ -156,6 +156,11 @@ func Test_setCookie(t *testing.T) {
 	err := c.Run(ctx)
 	require.NoError(t, err)
 	assert.Len(t, ctx.cookieJar, 1)
+
+	c2 := SetCookie(&http.Cookie{Name: "foo2", Value: "bar"})
+	err = c2.Run(ctx)
+	require.NoError(t, err)
+	assert.Len(t, ctx.cookieJar, 2)
 }
 
 func Test_storeCookie(t *testing.T) {

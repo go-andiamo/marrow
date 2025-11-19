@@ -325,8 +325,8 @@ func TestContext_doRequest(t *testing.T) {
 		cov := coverage.NewCoverage()
 		ctx.coverage = cov
 
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		res, ok := ctx.doRequest(req)
+		ctx.setCurrentRequest(httptest.NewRequest(http.MethodGet, "/", nil))
+		res, ok := ctx.doRequest()
 		require.True(t, ok)
 		assert.Len(t, cov.Timings, 1)
 		assert.Nil(t, cov.Timings[0].Trace)
@@ -347,8 +347,8 @@ func TestContext_doRequest(t *testing.T) {
 		cov := coverage.NewCoverage()
 		ctx.coverage = cov
 
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		_, ok := ctx.doRequest(req)
+		ctx.setCurrentRequest(httptest.NewRequest(http.MethodGet, "/", nil))
+		_, ok := ctx.doRequest()
 		require.True(t, ok)
 		assert.Len(t, cov.Timings, 1)
 		assert.NotNil(t, cov.Timings[0].Trace)
@@ -359,8 +359,8 @@ func TestContext_doRequest(t *testing.T) {
 		cov := coverage.NewCoverage()
 		ctx.coverage = cov
 
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		_, ok := ctx.doRequest(req)
+		ctx.setCurrentRequest(httptest.NewRequest(http.MethodGet, "/", nil))
+		_, ok := ctx.doRequest()
 		require.False(t, ok)
 		assert.Len(t, cov.Failures, 1)
 		assert.Equal(t, `fooey`, cov.Failures[0].Error.Error())

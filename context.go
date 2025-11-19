@@ -80,8 +80,9 @@ type Context interface {
 
 	setCurrentEndpoint(Endpoint_)
 	setCurrentMethod(Method_)
+	setCurrentRequest(*http.Request)
 	setCurrentBody(any)
-	doRequest(*http.Request) (*http.Response, bool)
+	doRequest() (*http.Response, bool)
 	reportFailure(err error)
 	reportUnmet(exp Expectation, err error)
 	reportMet(exp Expectation)
@@ -302,6 +303,7 @@ func (c *context) setCurrentMethod(m Method_) {
 	c.currMethod = m
 	c.currRequest = nil
 	if m != nil {
+		// reset current response and body when starting a new method (otherwise, leave them available)
 		c.currResponse = nil
 		c.currBody = nil
 	}
@@ -311,11 +313,14 @@ func (c *context) setCurrentBody(body any) {
 	c.currBody = body
 }
 
-func (c *context) doRequest(request *http.Request) (*http.Response, bool) {
+func (c *context) setCurrentRequest(request *http.Request) {
 	c.currRequest = request
+}
+
+func (c *context) doRequest() (*http.Response, bool) {
 	var err error
+	var dur time.Duration
 	var tt *coverage.TraceTiming
-	useRequest := request
 	if c.traceTimings {
 		tt = &coverage.TraceTiming{}
 		trace := &httptrace.ClientTrace{
@@ -334,14 +339,15 @@ func (c *context) doRequest(request *http.Request) (*http.Response, bool) {
 				tt.TTFB = tt.FirstByte.Sub(tt.Start)
 			},
 		}
-		useRequest = useRequest.WithContext(httptrace.WithClientTrace(useRequest.Context(), trace))
+		request := c.currRequest.WithContext(httptrace.WithClientTrace(c.currRequest.Context(), trace))
+		tt.Start = time.Now()
+		c.currResponse, err = c.httpDo.Do(request)
+		dur = time.Since(tt.Start)
+	} else {
+		start := time.Now()
+		c.currResponse, err = c.httpDo.Do(c.currRequest)
+		dur = time.Since(start)
 	}
-	start := time.Now()
-	if tt != nil {
-		tt.Start = start
-	}
-	c.currResponse, err = c.httpDo.Do(useRequest)
-	dur := time.Since(start)
 	if err == nil {
 		c.coverage.ReportTiming(c.currEndpoint, c.currMethod, c.currRequest, dur, tt)
 		return c.currResponse, true

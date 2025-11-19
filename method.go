@@ -310,7 +310,8 @@ func (m *method) Run(ctx Context) error {
 	if m.preRun(ctx) {
 		if request, ok := m.buildRequest(ctx); ok {
 			if m.preRequestRun(ctx) {
-				if response, ok := ctx.doRequest(request); ok {
+				ctx.setCurrentRequest(request)
+				if response, ok := ctx.doRequest(); ok {
 					if m.unmarshalResponseBody(ctx, response) {
 						m.postRun(ctx)
 					}

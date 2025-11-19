@@ -160,6 +160,13 @@ type setCookie struct {
 
 var _ Capture = (*setCookie)(nil)
 
+func SetCookie(cookie *http.Cookie) Capture {
+	return &setCookie{
+		cookie: cookie,
+		frame:  framing.NewFrame(0),
+	}
+}
+
 func (c *setCookie) Name() string {
 	return "SET COOKIE " + c.cookie.Name
 }
