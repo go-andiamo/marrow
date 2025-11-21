@@ -11,9 +11,9 @@ type Options struct {
 	// If this is a non-empty string, the database will be created
 	Database            string
 	DefaultPort         string      // is the actual port for Postgres, defaults to "5432"
-	DisableAutoShutdown bool        // if set, disables container auto (RYUK reaper) shutdown
 	LeaveRunning        bool        // if set, the container is not shutdown
 	Migrations          []Migration // is a list of Migration's to be run on the database
+	DisableAutoShutdown bool        // Deprecated: use with.DisableReaperShutdowns instead
 }
 
 // Migration is an individual migration to be run in a database

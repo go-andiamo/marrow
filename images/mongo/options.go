@@ -3,15 +3,14 @@ package mongo
 import "go.mongodb.org/mongo-driver/v2/mongo"
 
 type Options struct {
-	ImageVersion        string // defaults to "7"
-	Image               string // defaults to "mongo"
-	RootUser            string // defaults to "root"
-	RootPassword        string // defaults to "root"
-	DefaultPort         string // is the actual port for Mongo, defaults to "27017"
-	DisableAutoShutdown bool   // if set, disables container auto (RYUK reaper) shutdown
-	LeaveRunning        bool   // if set, the container is not shutdown
-	CreateIndices       IndexOptions
-	ReplicaSet          string // if empty string - no replica set is used
+	ImageVersion  string // defaults to "7"
+	Image         string // defaults to "mongo"
+	RootUser      string // defaults to "root"
+	RootPassword  string // defaults to "root"
+	DefaultPort   string // is the actual port for Mongo, defaults to "27017"
+	LeaveRunning  bool   // if set, the container is not shutdown
+	CreateIndices IndexOptions
+	ReplicaSet    string // if empty string - no replica set is used
 	// Watches is a map of dbs/collections to watch for Mongo change streams on
 	//
 	// the keys can be:
@@ -20,7 +19,8 @@ type Options struct {
 	//   * "my-db/my-collection" - to watch for changes on a specific named database and collection
 	//
 	// NOTE: Watches can only be used when ReplicaSet is specified - specifying watches without a replica set will cause an error
-	Watches map[string]WatchOption
+	Watches             map[string]WatchOption
+	DisableAutoShutdown bool // Deprecated: use with.DisableReaperShutdowns instead
 }
 
 type WatchOption struct {

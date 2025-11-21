@@ -7,7 +7,6 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/kafka"
-	"os"
 	"time"
 )
 
@@ -20,21 +19,15 @@ type image struct {
 	topicListeners map[string]*listener
 }
 
-const envRyukDisable = "TESTCONTAINERS_RYUK_DISABLED"
-
 func (i *image) Start() (err error) {
 	if i.container != nil {
 		return errors.New("already started")
 	}
 	defer func() {
-		_ = os.Setenv(envRyukDisable, "false")
 		if err != nil {
 			err = fmt.Errorf("start container: %w", err)
 		}
 	}()
-	if i.options.DisableAutoShutdown {
-		_ = os.Setenv(envRyukDisable, "true")
-	}
 	ctx := context.Background()
 	port := i.options.defaultPort()
 	natPort := nat.Port(port + "/tcp")

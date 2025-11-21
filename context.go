@@ -77,6 +77,8 @@ type Context interface {
 	ClearMockServices()
 	// GetImage returns the named supporting image
 	GetImage(name string) with.Image
+	// GetApiImage returns the main api (i.e. api under test) image, or nil if not running against an image
+	GetApiImage() with.ImageApi
 
 	setCurrentEndpoint(Endpoint_)
 	setCurrentMethod(Method_)
@@ -99,6 +101,7 @@ type context struct {
 	vars         map[Var]any
 	dbs          namedDatabases
 	images       map[string]with.Image
+	apiImage     with.ImageApi
 	testing      testing.Helper
 	currTesting  []testing.Helper
 	currEndpoint Endpoint_
@@ -289,6 +292,10 @@ func (c *context) ClearMockServices() {
 
 func (c *context) GetImage(name string) with.Image {
 	return c.images[name]
+}
+
+func (c *context) GetApiImage() with.ImageApi {
+	return c.apiImage
 }
 
 func (c *context) setCurrentEndpoint(e Endpoint_) {

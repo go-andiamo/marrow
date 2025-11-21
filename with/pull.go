@@ -13,7 +13,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"io"
-	"os"
 	"strconv"
 )
 
@@ -113,7 +112,6 @@ func (p *pullImage) pull() (err error) {
 
 func (p *pullImage) run(init SuiteInit) (err error) {
 	defer func() {
-		_ = os.Setenv(envRyukDisable, "false")
 		if err != nil {
 			err = fmt.Errorf("start container: %w", err)
 		}
@@ -131,9 +129,6 @@ func (p *pullImage) run(init SuiteInit) (err error) {
 				Env:          actualEnv,
 			},
 			Started: true,
-		}
-		if p.runOptions.LeaveRunning {
-			_ = os.Setenv(envRyukDisable, "true")
 		}
 		if p.container, err = testcontainers.GenericContainer(ctx, req); err == nil {
 			var ir *container.InspectResponse

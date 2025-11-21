@@ -1,12 +1,15 @@
 package marrow
 
 import (
+	"bufio"
+	goctx "context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/go-andiamo/columbus"
 	"github.com/go-andiamo/gopt"
+	"io"
 	"os"
 	"reflect"
 	"strconv"
@@ -667,4 +670,90 @@ func (v JsonifyValue) ResolveValue(ctx Context) (av any, err error) {
 		}
 	}
 	return av, err
+}
+
+type ApiLogsValue struct {
+	Last int
+}
+
+// ApiLogs will resolve to the api logs (as []string) for the current api being tested
+//
+// it will error if the tests are not being run against an api container image
+func ApiLogs(last int) ApiLogsValue {
+	return ApiLogsValue{
+		Last: last,
+	}
+}
+
+func (v ApiLogsValue) ResolveValue(ctx Context) (av any, err error) {
+	if api := ctx.GetApiImage(); api != nil && api.Container() != nil {
+		var r io.ReadCloser
+		if r, err = api.Container().Logs(goctx.Background()); err == nil {
+			defer func() {
+				_ = r.Close()
+			}()
+			lines := make([]string, 0)
+			scanner := bufio.NewScanner(r)
+			for scanner.Scan() {
+				lines = append(lines, scanner.Text())
+			}
+			if err = scanner.Err(); err != nil {
+				err = fmt.Errorf("failed to read api logs: %w", err)
+			} else {
+				if v.Last > 0 {
+					if len(lines) > v.Last {
+						lines = lines[len(lines)-v.Last:]
+					}
+				}
+				av = lines
+			}
+		}
+	} else {
+		err = errors.New("no api image for logs")
+	}
+	return av, err
+}
+
+func (v ApiLogsValue) String() string {
+	return fmt.Sprintf("ApiLogs(%d)", v.Last)
+}
+
+type LenValue struct {
+	Value any
+}
+
+// Len resolves to the length of the value (or resolved value)
+//
+// if the value (or resolved value) is not a string, map or slice - this always resolves to -1
+func Len(value any) LenValue {
+	return LenValue{
+		Value: value,
+	}
+}
+
+func (v LenValue) ResolveValue(ctx Context) (av any, err error) {
+	av = -1
+	var rv any
+	if rv, err = ResolveValue(v.Value, ctx); err == nil {
+		switch rvt := rv.(type) {
+		case string:
+			av = len(rvt)
+		case map[string]any:
+			av = len(rvt)
+		case []any:
+			av = len(rvt)
+		default:
+			if rv != nil {
+				to := reflect.ValueOf(rv)
+				if to.Kind() == reflect.Slice || to.Kind() == reflect.Map {
+					av = to.Len()
+				}
+			}
+		}
+	}
+	return av, err
+}
+
+func (v LenValue) String() string {
+	return fmt.Sprintf("Len(%v)", v.Value)
 }

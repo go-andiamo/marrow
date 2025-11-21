@@ -379,6 +379,25 @@ type conditional struct {
 
 var _ Capture = (*conditional)(nil)
 
+//go:noinline
+func If(condition any, ops ...Runnable) Capture {
+	return &conditional{
+		condition: condition,
+		ops:       ops,
+		frame:     framing.NewFrame(0),
+	}
+}
+
+//go:noinline
+func IfNot(condition any, ops ...Runnable) Capture {
+	return &conditional{
+		condition: condition,
+		not:       true,
+		ops:       ops,
+		frame:     framing.NewFrame(0),
+	}
+}
+
 func (c *conditional) Name() string {
 	return "CONDITIONAL"
 }

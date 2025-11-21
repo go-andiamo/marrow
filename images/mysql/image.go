@@ -10,7 +10,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"os"
 )
 
 type image struct {
@@ -67,18 +66,12 @@ func (i *image) dsn(host string, dbName string) string {
 		i.options.rootUsername(), i.options.rootPassword(), host, i.mappedPort, dbName)
 }
 
-const envRyukDisable = "TESTCONTAINERS_RYUK_DISABLED"
-
 func (i *image) startContainer() (err error) {
 	defer func() {
-		_ = os.Setenv(envRyukDisable, "false")
 		if err != nil {
 			err = fmt.Errorf("start container: %w", err)
 		}
 	}()
-	if i.options.DisableAutoShutdown {
-		_ = os.Setenv(envRyukDisable, "true")
-	}
 	ctx := context.Background()
 	dbPort := i.options.defaultPort()
 	natPort := nat.Port(dbPort + "/tcp")

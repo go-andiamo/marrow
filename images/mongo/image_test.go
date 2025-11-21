@@ -11,7 +11,6 @@ import (
 
 func TestImage_Start(t *testing.T) {
 	img := newImage(Options{
-		DisableAutoShutdown: true,
 		CreateIndices: IndexOptions{
 			"my-db": map[string][]mongo.IndexModel{
 				"my-collection": {

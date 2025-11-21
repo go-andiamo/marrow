@@ -2,10 +2,14 @@ module app
 
 go 1.24.4
 
+replace github.com/go-andiamo/marrow => ../..
+
+replace github.com/go-andiamo/marrow/images/mysql => ../../images/mysql
+
 require (
 	github.com/go-andiamo/cfgenv v1.4.0
 	github.com/go-andiamo/columbus v1.2.0
-	github.com/go-andiamo/marrow/images/mysql v0.0.0-20251111114122-89b547ac68d9
+	github.com/go-andiamo/marrow/images/mysql v0.0.0
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/gofrs/uuid v4.4.0+incompatible
@@ -31,7 +35,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-andiamo/chioas v1.19.0 // indirect
 	github.com/go-andiamo/gopt v1.6.1 // indirect
-	github.com/go-andiamo/marrow v1.2.2 // indirect
+	github.com/go-andiamo/marrow v0.0.0 // indirect
 	github.com/go-andiamo/splitter v1.2.5 // indirect
 	github.com/go-andiamo/urit v1.2.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect

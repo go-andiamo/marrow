@@ -16,7 +16,6 @@ import (
 	"github.com/go-andiamo/marrow/with"
 	"github.com/testcontainers/testcontainers-go"
 	tcls "github.com/testcontainers/testcontainers-go/modules/localstack"
-	"os"
 	"sync"
 )
 
@@ -33,14 +32,12 @@ type image struct {
 const (
 	defaultPort             = "4566"
 	defaultNatPort nat.Port = defaultPort + "/tcp"
-	envRyukDisable          = "TESTCONTAINERS_RYUK_DISABLED"
 )
 
 func (i *image) Start() (err error) {
 	i.mutex.Lock()
 	defer func() {
 		i.mutex.Unlock()
-		_ = os.Setenv(envRyukDisable, "false")
 		if err != nil {
 			err = fmt.Errorf("start container: %w", err)
 		}
@@ -54,9 +51,6 @@ func (i *image) Start() (err error) {
 	}
 	i.services = make(map[Service]with.Image, len(svcs))
 	ctx := context.Background()
-	if i.options.DisableAutoShutdown {
-		_ = os.Setenv(envRyukDisable, "true")
-	}
 	if i.container, err = tcls.Run(ctx, i.options.useImage()); err == nil {
 		var mp nat.Port
 		if mp, err = i.container.MappedPort(ctx, defaultNatPort); err == nil {

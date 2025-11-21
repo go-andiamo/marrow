@@ -12,6 +12,7 @@ import (
 	"github.com/go-andiamo/marrow/with"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
 	"io"
 	"net/http"
 	"net/http/httptrace"
@@ -403,6 +404,7 @@ func TestAddSupportingImage(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, raw.shutdowns, 2)
 		assert.Len(t, raw.images, 2)
+		assert.Nil(t, raw.apiImage)
 		_, ok = raw.images["mock"]
 		assert.True(t, ok)
 		_, ok = raw.images["mock-2"]
@@ -417,6 +419,17 @@ func TestAddSupportingImage(t *testing.T) {
 		require.Error(t, err)
 		assert.Len(t, raw.shutdowns, 0)
 		assert.True(t, img.shutdown)
+	})
+	t.Run("with api image", func(t *testing.T) {
+		img := &mockApiImage{}
+		s := Suite().Init(img)
+		raw, ok := s.(*suite)
+		require.True(t, ok)
+		err := raw.runInits()
+		require.NoError(t, err)
+		assert.Len(t, raw.shutdowns, 1)
+		assert.Len(t, raw.images, 0)
+		assert.NotNil(t, raw.apiImage)
 	})
 }
 
@@ -634,6 +647,34 @@ func (m *mockImage) Password() string {
 func (m *mockImage) ResolveEnv(tokens ...string) (string, bool) {
 	s, ok := m.envs[strings.Join(tokens, ":")]
 	return s, ok
+}
+
+type mockApiImage struct {
+	mockImage
+}
+
+var _ with.ImageApi = (*mockApiImage)(nil)
+
+func (m *mockApiImage) Init(init with.SuiteInit) error {
+	init.SetApiHost("localhost", 8080)
+	init.AddSupportingImage(m)
+	return m.err
+}
+
+func (m *mockApiImage) Name() string {
+	return "api"
+}
+
+func (m *mockApiImage) Stage() with.Stage {
+	return with.Final
+}
+
+func (m *mockApiImage) Container() testcontainers.Container {
+	return nil
+}
+
+func (m *mockApiImage) IsApi() bool {
+	return true
 }
 
 type mockService struct{}

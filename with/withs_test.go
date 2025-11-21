@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
+	"os"
 	"testing"
 )
 
@@ -27,8 +28,11 @@ func TestWith_Initials(t *testing.T) {
 		Repeats(0, false),
 		Logging(nil, nil),
 		TraceTimings(),
+		DisableReaperShutdowns(false),
+		DisableReaperShutdowns(true),
 	}
 	mock := newMockInit()
+	_ = os.Unsetenv("TESTCONTAINERS_RYUK_DISABLED")
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
 			w, ok := tc.(With)
@@ -39,8 +43,11 @@ func TestWith_Initials(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
-	assert.Len(t, mock.called, len(testCases))
+	assert.Len(t, mock.called, len(testCases)-2)
 	assert.Len(t, mock.called, 12)
+	v, ok := os.LookupEnv("TESTCONTAINERS_RYUK_DISABLED")
+	assert.True(t, ok)
+	assert.Equal(t, "true", v)
 }
 
 func newMockInit() *mockInit {

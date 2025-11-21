@@ -6,13 +6,12 @@ import (
 )
 
 type Options struct {
-	ImageVersion        string // defaults to "7.5.0"
-	Image               string // defaults to "confluentinc/confluent-local"
-	DefaultPort         string // is the actual port for kafka, defaults to "9093"
-	ClusterId           string // defaults to "kraftCluster"
-	GroupId             string // defaults to "test-group"
-	DisableAutoShutdown bool   // if set, disables container auto (RYUK reaper) shutdown
-	LeaveRunning        bool   // if set, the container is not shutdown
+	ImageVersion string // defaults to "7.5.0"
+	Image        string // defaults to "confluentinc/confluent-local"
+	DefaultPort  string // is the actual port for kafka, defaults to "9093"
+	ClusterId    string // defaults to "kraftCluster"
+	GroupId      string // defaults to "test-group"
+	LeaveRunning bool   // if set, the container is not shutdown
 	// Subscribers is a map of the topic subscribers to setup - where the key is the topic name
 	//
 	// information from subscribers can be captured in tests
@@ -22,6 +21,7 @@ type Options struct {
 	Wait time.Duration
 	// InitialOffsetOldest if set, instructs consumer group to use initial offset oldest (otherwise, offset newest is used)
 	InitialOffsetOldest bool
+	DisableAutoShutdown bool // Deprecated: use with.DisableReaperShutdowns instead
 }
 
 type Subscribers map[string]Subscriber
