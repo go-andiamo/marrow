@@ -13,8 +13,7 @@ var migrationFiles embed.FS
 func TestImage_start(t *testing.T) {
 	img := &image{
 		options: Options{
-			Database:            "foo",
-			DisableAutoShutdown: true,
+			Database: "foo",
 			Migrations: []Migration{
 				{
 					Filesystem: migrationFiles,

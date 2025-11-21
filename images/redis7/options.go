@@ -1,11 +1,10 @@
 package redis7
 
 type Options struct {
-	ImageVersion        string // defaults to "v7.2.5"
-	Image               string // defaults to "redis"
-	DefaultPort         string // is the actual port for redis, defaults to "6379"
-	DisableAutoShutdown bool   // if set, disables container auto (RYUK reaper) shutdown
-	LeaveRunning        bool   // if set, the container is not shutdown
+	ImageVersion string // defaults to "v7.2.5"
+	Image        string // defaults to "redis"
+	DefaultPort  string // is the actual port for redis, defaults to "6379"
+	LeaveRunning bool   // if set, the container is not shutdown
 	// Subscribers is a map of the topic subscribers to setup - where the key is the topic name
 	//
 	// information from subscribers can be captured in tests
@@ -13,7 +12,8 @@ type Options struct {
 	// Consumers is a map of the queue consumers to setup - where the key is the queue name
 	//
 	// information from consumers can be captured in tests
-	Consumers Receivers
+	Consumers           Receivers
+	DisableAutoShutdown bool // Deprecated: use with.DisableReaperShutdowns instead
 }
 
 type Receivers map[string]Receiver

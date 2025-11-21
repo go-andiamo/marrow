@@ -9,7 +9,6 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/mongodb"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
-	"os"
 	"strings"
 )
 
@@ -37,14 +36,10 @@ func (i *image) Start() (err error) {
 		return errors.New("already started")
 	}
 	defer func() {
-		_ = os.Setenv(envRyukDisable, "false")
 		if err != nil {
 			err = fmt.Errorf("start container: %w", err)
 		}
 	}()
-	if i.options.DisableAutoShutdown {
-		_ = os.Setenv(envRyukDisable, "true")
-	}
 	ctx := context.Background()
 	port := i.options.defaultPort()
 	natPort := nat.Port(port + "/tcp")
@@ -134,8 +129,7 @@ func (i *image) Container() testcontainers.Container {
 }
 
 const (
-	imageName      = "mongo"
-	envRyukDisable = "TESTCONTAINERS_RYUK_DISABLED"
+	imageName = "mongo"
 )
 
 func (i *image) Name() string {

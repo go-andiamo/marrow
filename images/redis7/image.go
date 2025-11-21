@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/go-redis/redis/v7"
@@ -23,21 +21,15 @@ type image struct {
 	queueListeners map[string]*listener
 }
 
-const envRyukDisable = "TESTCONTAINERS_RYUK_DISABLED"
-
 func (i *image) Start() (err error) {
 	if i.container != nil {
 		return errors.New("already started")
 	}
 	defer func() {
-		_ = os.Setenv(envRyukDisable, "false")
 		if err != nil {
 			err = fmt.Errorf("start container: %w", err)
 		}
 	}()
-	if i.options.DisableAutoShutdown {
-		_ = os.Setenv(envRyukDisable, "true")
-	}
 	ctx := context.Background()
 	port := i.options.defaultPort()
 	natPort := nat.Port(port + "/tcp")

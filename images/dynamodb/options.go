@@ -3,14 +3,14 @@ package dynamodb
 import "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 
 type Options struct {
-	ImageVersion        string // defaults to "latest"
-	Image               string // defaults to "localstack/localstack"
-	DefaultPort         string // is the actual port for dynamodb, defaults to "4566"
-	DisableAutoShutdown bool   // if set, disables container auto (RYUK reaper) shutdown
-	LeaveRunning        bool   // if set, the container is not shutdown
-	Region              string // defaults to "us-east-1"
+	ImageVersion string // defaults to "latest"
+	Image        string // defaults to "localstack/localstack"
+	DefaultPort  string // is the actual port for dynamodb, defaults to "4566"
+	LeaveRunning bool   // if set, the container is not shutdown
+	Region       string // defaults to "us-east-1"
 	// CreateTables is a list of tables to be created in DynamoDB
-	CreateTables []dynamodb.CreateTableInput
+	CreateTables        []dynamodb.CreateTableInput
+	DisableAutoShutdown bool // Deprecated: use with.DisableReaperShutdowns instead
 }
 
 const (

@@ -84,6 +84,13 @@ func TestContext_GetImage(t *testing.T) {
 	assert.NotNil(t, i)
 }
 
+func TestContext_GetApiImage(t *testing.T) {
+	ctx := newContext()
+	ctx.apiImage = &mockApiImage{}
+	i := ctx.GetApiImage()
+	assert.NotNil(t, i)
+}
+
 func TestContext_Db(t *testing.T) {
 	ctx := newContext()
 	assert.Nil(t, ctx.Db(""))

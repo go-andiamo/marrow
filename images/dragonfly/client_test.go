@@ -9,9 +9,7 @@ import (
 
 func TestImage_Client(t *testing.T) {
 	img := &image{
-		options: Options{
-			DisableAutoShutdown: true,
-		},
+		options: Options{},
 	}
 
 	err := img.Start()

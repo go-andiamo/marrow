@@ -523,4 +523,25 @@ func Test_conditional(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "bar", ctx.vars["foo"])
 	})
+	t.Run("If func", func(t *testing.T) {
+		c := If(true, SetVar(Before, "foo", "bar"))
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "bar", ctx.vars["foo"])
+	})
+	t.Run("IfNot func", func(t *testing.T) {
+		c := IfNot(false, SetVar(Before, "foo", "bar"))
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "bar", ctx.vars["foo"])
+	})
+	t.Run("If func - nested", func(t *testing.T) {
+		c := If(true, If(true, If(true, SetVar(Before, "foo", "bar"))))
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "bar", ctx.vars["foo"])
+	})
 }

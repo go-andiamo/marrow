@@ -6,6 +6,7 @@ import (
 	"github.com/go-andiamo/marrow/coverage"
 	"io"
 	"net/http"
+	"os"
 	"testing"
 )
 
@@ -128,6 +129,20 @@ func Logging(stdout io.Writer, stderr io.Writer) With {
 func TraceTimings() With {
 	return withFn(func(init SuiteInit) {
 		init.SetTraceTimings(true)
+	})
+}
+
+// DisableReaperShutdowns initialises a marrow.Suite to disable/enable container auto-shutdowns (RYUK)
+//
+// it sets the os env var "TESTCONTAINERS_RYUK_DISABLED"
+func DisableReaperShutdowns(disable bool) With {
+	const envRyukDisable = "TESTCONTAINERS_RYUK_DISABLED"
+	return withFn(func(init SuiteInit) {
+		if disable {
+			_ = os.Setenv(envRyukDisable, "true")
+		} else {
+			_ = os.Setenv(envRyukDisable, "false")
+		}
 	})
 }
 

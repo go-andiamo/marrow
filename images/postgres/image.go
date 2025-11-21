@@ -10,7 +10,6 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"os"
 )
 
 type image struct {
@@ -33,8 +32,6 @@ func (i *image) Start() (err error) {
 	return err
 }
 
-const envRyukDisable = "TESTCONTAINERS_RYUK_DISABLED"
-
 func (i *image) openDatabase() (err error) {
 	defer func() {
 		if err != nil {
@@ -52,14 +49,10 @@ func (i *image) openDatabase() (err error) {
 
 func (i *image) startContainer() (err error) {
 	defer func() {
-		_ = os.Setenv(envRyukDisable, "false")
 		if err != nil {
 			err = fmt.Errorf("start container: %w", err)
 		}
 	}()
-	if i.options.DisableAutoShutdown {
-		_ = os.Setenv(envRyukDisable, "true")
-	}
 	ctx := context.Background()
 	dbPort := i.options.defaultPort()
 	natPort := nat.Port(dbPort + "/tcp")

@@ -13,7 +13,6 @@ import (
 type Options struct {
 	ImageVersion        string // defaults to "latest"
 	Image               string // defaults to "localstack/localstack"
-	DisableAutoShutdown bool   // if set, disables container auto (RYUK reaper) shutdown
 	LeaveRunning        bool   // if set, the container is not shutdown
 	Region              string // defaults to "us-east-1"
 	AccessKey           string // defaults to "dummy"
@@ -26,6 +25,7 @@ type Options struct {
 	SQS                 SQSOptions
 	SecretsManager      SecretsManagerOptions
 	CustomServices      CustomServiceBuilders
+	DisableAutoShutdown bool // Deprecated: use with.DisableReaperShutdowns instead
 }
 
 type CustomServiceBuilders = []func(ctx context.Context, awsCfg aws.Config, host string, mappedPort string) (image with.Image, err error)

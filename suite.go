@@ -71,6 +71,7 @@ type suite struct {
 	shutdowns     []func()
 	mockServices  map[string]service.MockedService
 	images        map[string]with.Image
+	apiImage      with.ImageApi
 	mutex         sync.RWMutex
 }
 
@@ -162,6 +163,11 @@ func (s *suite) AddMockService(mock service.MockedService) {
 func (s *suite) AddSupportingImage(info with.Image) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	if api, ok := info.(with.ImageApi); ok && api.IsApi() {
+		s.apiImage = api
+		// don't add api image to named images...
+		return
+	}
 	name := info.Name()
 	if _, ok := s.images[name]; ok {
 		for idx := 2; ; idx++ {
@@ -469,6 +475,7 @@ func (s *suite) initContext(cov coverage.Collector, t htesting.Helper) *context 
 	result.host = fmt.Sprintf("http://%s:%d", host, s.port)
 	result.dbs = maps.Clone(s.dbs)
 	result.images = maps.Clone(s.images)
+	result.apiImage = s.apiImage
 	result.testing = t
 	result.mockServices = maps.Clone(s.mockServices)
 	for k, v := range s.vars {

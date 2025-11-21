@@ -7,7 +7,6 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"os"
 	"strconv"
 )
 
@@ -43,8 +42,8 @@ func ApiImage(imageName string, tag string, port int, env map[string]any, leaveR
 type ImageApi interface {
 	With
 	Image
-	MappedPort() string
 	Container() testcontainers.Container
+	IsApi() bool
 }
 
 type apiImage struct {
@@ -95,6 +94,7 @@ func (a *apiImage) Init(init SuiteInit) error {
 	}
 	port, _ := strconv.ParseInt(a.mappedPort, 10, 64)
 	init.SetApiHost(a.Host(), int(port))
+	init.AddSupportingImage(a)
 	return nil
 }
 
@@ -108,15 +108,16 @@ func (a *apiImage) Shutdown() func() {
 	}
 }
 
+func (a *apiImage) IsApi() bool {
+	return true
+}
+
 func (a *apiImage) Name() string {
 	return a.imageName + ":" + a.tag
 }
 
-const envRyukDisable = "TESTCONTAINERS_RYUK_DISABLED"
-
 func (a *apiImage) start(init SuiteInit) (err error) {
 	defer func() {
-		_ = os.Setenv(envRyukDisable, "false")
 		if err != nil {
 			err = fmt.Errorf("start container: %w", err)
 		}
@@ -134,9 +135,6 @@ func (a *apiImage) start(init SuiteInit) (err error) {
 				Env:          actualEnv,
 			},
 			Started: true,
-		}
-		if a.leaveRunning {
-			_ = os.Setenv(envRyukDisable, "true")
 		}
 		if a.container, err = testcontainers.GenericContainer(ctx, req); err == nil {
 			var ir *container.InspectResponse

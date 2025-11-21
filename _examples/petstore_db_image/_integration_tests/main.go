@@ -14,7 +14,8 @@ var endpoints = []Endpoint_{
 	Endpoint("/api", "Root",
 		Method(GET, "Get root").
 			AssertOK().
-			AssertEqual(JsonPath(Body, "hello"), "world"),
+			AssertEqual(JsonPath(Body, "hello"), "world").
+			If(After, Var("api-logs"), ExpectGreaterThan(Len(ApiLogs(-1)), 0)),
 		Endpoint("/pets", "Pets",
 			Method(GET, "Get pets (empty)").
 				AssertOK().
@@ -80,13 +81,14 @@ func main() {
 	}
 	s := Suite(endpoints...)
 	s = s.Init(
+		//with.DisableReaperShutdowns(true),
+		with.Var("api-logs", true),
 		with.Var("non-uuid", "00000000-0000-485c-0000-000000000000"),
 		with.Make(with.Supporting, absPath("./Makefile"), 0, false),
 		with.ApiImage("petstore", "latest", 8080, apiEnv, false),
 		mysql.With("mysql", mysql.Options{
 			Database: "petstore",
-			//DisableAutoShutdown: true,
-			//LeaveRunning:        true,
+			//LeaveRunning: true,
 			Migrations: []mysql.Migration{
 				{
 					Filesystem: schema.Migrations,

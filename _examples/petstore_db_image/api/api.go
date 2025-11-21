@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"net/http"
 	"os"
 )
@@ -34,6 +35,10 @@ func (a *api) Start() {
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	})
+	router.Use(middleware.RequestID)
+	router.Use(middleware.RealIP)
+	router.Use(middleware.Recoverer)
+	router.Use(slogMiddleware())
 
 	router.Get("/api", a.getRoot)
 	router.Post("/api/pets", a.postPets)

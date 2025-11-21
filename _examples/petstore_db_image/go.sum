@@ -49,10 +49,6 @@ github.com/go-andiamo/columbus v1.2.0 h1:XkujSySpDisdyoqQSNSL8504v+RVreEQdZ4ok5u
 github.com/go-andiamo/columbus v1.2.0/go.mod h1:g7y1ObSVHUYpyzpAzd8Cv/0BPnddDFNrQm3Y7pP6NRY=
 github.com/go-andiamo/gopt v1.6.1 h1:9tazB4QNFQDltScXrLFGXqfXWFKoS7Mr9P8cjWOQ70A=
 github.com/go-andiamo/gopt v1.6.1/go.mod h1:jBDKwaf2c/xc7wy5pqnqjFGZE2tz6jagoczq/Hj8eFg=
-github.com/go-andiamo/marrow v1.2.2 h1:Lq4gC8BVR6hu+tZ++nCbvApr4GSjPJ+kgfdmXRXgaNE=
-github.com/go-andiamo/marrow v1.2.2/go.mod h1:xwG9o5N+DBNtQefCyWdA0NKQU9g3Ud85SKHbI5kKU7A=
-github.com/go-andiamo/marrow/images/mysql v0.0.0-20251111114122-89b547ac68d9 h1:27xfdOLdO2pu8xfWq5PA5K9/aXyTLRhd0ELnQtXHfo0=
-github.com/go-andiamo/marrow/images/mysql v0.0.0-20251111114122-89b547ac68d9/go.mod h1:MCBcVSHsDzmbTgQE8a2pT8ghe3JL8l67efQ3Y/JI5Js=
 github.com/go-andiamo/splitter v1.2.5 h1:P3NovWMY2V14TJJSolXBvlOmGSZo3Uz+LtTl2bsV/eY=
 github.com/go-andiamo/splitter v1.2.5/go.mod h1:8WHU24t9hcMKU5FXDQb1hysSEC/GPuivIp0uKY1J8gw=
 github.com/go-andiamo/urit v1.2.1 h1:5JHJb+TuzuGvXw9Y/LK/lQltCL2gpgHkCznI2vv9ZeY=

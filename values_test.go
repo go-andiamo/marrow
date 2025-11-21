@@ -23,6 +23,7 @@ func TestResolveValue(t *testing.T) {
 		expect         any
 		expectErr      string
 		setup          func(t *testing.T) func()
+		setupCtx       func(ctx *context)
 	}{
 		{
 			value: BodyReader(func(body any) (any, error) {
@@ -499,12 +500,46 @@ func TestResolveValue(t *testing.T) {
 			},
 			expect: "test",
 		},
+		{
+			value:  Len("foo"),
+			expect: 3,
+		},
+		{
+			value:  Len(map[string]any{"foo": 42}),
+			expect: 1,
+		},
+		{
+			value:  Len([]any{"foo", 42}),
+			expect: 2,
+		},
+		{
+			value:  Len([]string{"foo", "bar"}),
+			expect: 2,
+		},
+		{
+			value:  Len(true),
+			expect: -1,
+		},
+		{
+			value:     ApiLogs(10),
+			expectErr: "no api image for logs",
+		},
+		{
+			value: ApiLogs(10),
+			setupCtx: func(ctx *context) {
+				ctx.apiImage = &mockApiImage{}
+			},
+			expectErr: "no api image for logs",
+		},
 	}
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
 			ctx := tc.ctx
 			if ctx == nil {
 				ctx = newTestContext(nil)
+			}
+			if tc.setupCtx != nil {
+				tc.setupCtx(ctx)
 			}
 			ctx.currResponse = tc.response
 			ctx.currBody = tc.body
@@ -616,4 +651,6 @@ func Test_stringifyValue(t *testing.T) {
 	assert.Equal(t, `JsonPath(Var(test), ".")`, stringifyValue(JsonPathValue{Value: Var("test"), Path: "."}))
 	assert.Equal(t, "Body", stringifyValue(Body))
 	assert.Equal(t, `Env(TEST_ENV)`, stringifyValue(Env("TEST_ENV")))
+	assert.Equal(t, `ApiLogs(10)`, stringifyValue(ApiLogs(10)))
+	assert.Equal(t, `Len(Var(foo))`, stringifyValue(Len(Var("foo"))))
 }
