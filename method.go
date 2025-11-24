@@ -63,6 +63,13 @@ type Method_ interface {
 	//   * any condition that is not a bool or Expectation will cause an error during tests
 	//   * the operations arg can be anything Runnable - any of them that are an Expectation, is run as an expectation (and treated as required) and any unmet or failure errors will be reported
 	IfNot(when When, condition any, operations ...Runnable) Method_
+	// ForEach iterates over the value (or resolved value)
+	//
+	// if the value (or resolved value) is not a slice - an error occurs
+	//
+	// on each iteration a var is set - use the iterVar arg to set the name of this variable (if the iterVar arg is nil - a var name of "." is used)
+	ForEach(when When, value any, iterVar any, ops ...Runnable) Method_
+
 	// FailFast instructs the method to fail on unmet assertions
 	//
 	// i.e. treat all `Assert...()` as `Require...()`
@@ -328,6 +335,26 @@ func (m *method) IfNot(when When, condition any, ops ...Runnable) Method_ {
 			not:       true,
 			ops:       ops,
 			frame:     framing.NewFrame(0),
+		})
+	}
+	return m
+}
+
+//go:noinline
+func (m *method) ForEach(when When, value any, iterVar any, ops ...Runnable) Method_ {
+	if when == Before {
+		m.preCaptures = append(m.preCaptures, &forEach{
+			value:   value,
+			varName: iterVar,
+			ops:     ops,
+			frame:   framing.NewFrame(0),
+		})
+	} else {
+		m.addPostCapture(&forEach{
+			value:   value,
+			varName: iterVar,
+			ops:     ops,
+			frame:   framing.NewFrame(0),
 		})
 	}
 	return m

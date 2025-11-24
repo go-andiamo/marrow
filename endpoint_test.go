@@ -49,20 +49,16 @@ func TestNewEndpoint(t *testing.T) {
 	})
 	t.Run("with before/after", func(t *testing.T) {
 		e := Endpoint("/api/foos/{id}", "Foos",
-			SetVar(Before, "foo", nil), SetVar(After, "foo", nil))
+			DoBefore(SetVar("foo", nil)), DoAfter(SetVar("foo", nil)), nil)
 		require.NotNil(t, e)
 		raw, ok := e.(*endpoint)
 		require.True(t, ok)
 		assert.Len(t, raw.befores, 1)
 		assert.Len(t, raw.afters, 1)
 	})
-	t.Run("with befores/afters", func(t *testing.T) {
-		bas := []BeforeAfter{
-			SetVar(Before, "foo", nil),
-			SetVar(After, "foo", nil),
-			nil,
-		}
-		e := Endpoint("/api/foos/{id}", "Foos", bas)
+	t.Run("with before/after slice", func(t *testing.T) {
+		e := Endpoint("/api/foos/{id}", "Foos",
+			[]BeforeAfter{DoBefore(SetVar("foo", nil)), DoAfter(SetVar("foo", nil)), nil})
 		require.NotNil(t, e)
 		raw, ok := e.(*endpoint)
 		require.True(t, ok)
@@ -90,8 +86,8 @@ func TestNewEndpoint(t *testing.T) {
 	})
 	t.Run("with mixed", func(t *testing.T) {
 		ops := []any{
-			SetVar(Before, "foo", nil),
-			SetVar(After, "foo", nil),
+			DoBefore(SetVar("foo", nil)),
+			DoAfter(SetVar("foo", nil)),
 			nil,
 			Method(GET, ""),
 			Endpoint("/{id}", ""),
@@ -129,8 +125,8 @@ func TestEndpoint_Url_WithAncestors(t *testing.T) {
 
 func TestEndpoint_Run(t *testing.T) {
 	e := Endpoint("/api", "",
-		SetVar(Before, "foo", nil),
-		SetVar(After, "foo", nil),
+		DoBefore(SetVar("foo", nil)),
+		DoAfter(SetVar("foo", nil)),
 		Method(GET, ""),
 		Endpoint("/foos", "",
 			Method(GET, ""),
@@ -151,10 +147,10 @@ func TestEndpoint_Run(t *testing.T) {
 func TestEndpoint_Run_WithFailures(t *testing.T) {
 	t.Run("before fails", func(t *testing.T) {
 		e := Endpoint("/api", "",
-			SetVar(Before, "foo", Var("bar")),
+			DoBefore(SetVar("foo", Var("bar"))),
 			Method(GET, "").SetVar(Before, "foo", Var("bar")),
-			Endpoint("/foos", "", SetVar(Before, "foo", Var("bar"))),
-			SetVar(After, "foo", Var("bar")),
+			Endpoint("/foos", "", DoBefore(SetVar("foo", Var("bar")))),
+			DoAfter(SetVar("foo", Var("bar"))),
 		)
 		ctx := newTestContext(nil)
 		cov := coverage.NewCoverage()
@@ -168,8 +164,8 @@ func TestEndpoint_Run_WithFailures(t *testing.T) {
 	t.Run("method fails", func(t *testing.T) {
 		e := Endpoint("/api", "",
 			Method(GET, "").SetVar(Before, "foo", Var("bar")),
-			Endpoint("/foos", "", SetVar(Before, "foo", Var("bar"))),
-			SetVar(After, "foo", Var("bar")),
+			Endpoint("/foos", "", DoBefore(SetVar("foo", Var("bar")))),
+			DoAfter(SetVar("foo", Var("bar"))),
 		)
 		ctx := newTestContext(nil)
 		cov := coverage.NewCoverage()
@@ -182,8 +178,8 @@ func TestEndpoint_Run_WithFailures(t *testing.T) {
 	})
 	t.Run("sub-endpoint fails", func(t *testing.T) {
 		e := Endpoint("/api", "",
-			Endpoint("/foos", "", SetVar(Before, "foo", Var("bar"))),
-			SetVar(After, "foo", Var("bar")),
+			Endpoint("/foos", "", DoBefore(SetVar("foo", Var("bar")))),
+			DoAfter(SetVar("foo", Var("bar"))),
 		)
 		ctx := newTestContext(nil)
 		cov := coverage.NewCoverage()
@@ -196,7 +192,7 @@ func TestEndpoint_Run_WithFailures(t *testing.T) {
 	})
 	t.Run("after fails", func(t *testing.T) {
 		e := Endpoint("/api", "",
-			SetVar(After, "foo", Var("bar")),
+			DoAfter(SetVar("foo", Var("bar"))),
 		)
 		ctx := newTestContext(nil)
 		cov := coverage.NewCoverage()

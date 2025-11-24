@@ -55,31 +55,31 @@ func TestCapturesAndListeners(t *testing.T) {
 	}
 	endpoint := marrow.Endpoint("/api", "",
 		marrow.Method("GET", "").AssertOK().
-			Capture(SendMessage(marrow.Before, "some_queue", "")).
-			Capture(SendMessage(marrow.Before, "queue_foo", `{"foo":"bar1"}`)).
-			Capture(SendMessage(marrow.Before, "queue_bar", `{"foo":"bar2"}`)).
-			Capture(SendMessage(marrow.Before, "queue_bar", `{"foo":"bar3"}`)).
-			Capture(SendMessage(marrow.Before, "queue_bar", `{"foo":"bar4"}`)).
-			Capture(SendMessage(marrow.Before, "queue_bar", `{"foo":"bar5"}`)).
-			Capture(SendMessage(marrow.Before, "queue_bar", "")).
-			Capture(SendMessage(marrow.Before, "queue_baz", `{"foo":"bar6"}`)).
-			Capture(PublishMessage(marrow.Before, "topic_foo", `{"foo":"bar7"}`)).
-			Capture(SetKey(marrow.Before, "foo", marrow.JSON{"foo": "bar"}, 0)).
+			Do(SendMessage(marrow.Before, "some_queue", "")).
+			Do(SendMessage(marrow.Before, "queue_foo", `{"foo":"bar1"}`)).
+			Do(SendMessage(marrow.Before, "queue_bar", `{"foo":"bar2"}`)).
+			Do(SendMessage(marrow.Before, "queue_bar", `{"foo":"bar3"}`)).
+			Do(SendMessage(marrow.Before, "queue_bar", `{"foo":"bar4"}`)).
+			Do(SendMessage(marrow.Before, "queue_bar", `{"foo":"bar5"}`)).
+			Do(SendMessage(marrow.Before, "queue_bar", "")).
+			Do(SendMessage(marrow.Before, "queue_baz", `{"foo":"bar6"}`)).
+			Do(PublishMessage(marrow.Before, "topic_foo", `{"foo":"bar7"}`)).
+			Do(SetKey(marrow.Before, "foo", marrow.JSON{"foo": "bar"}, 0)).
 			Wait(marrow.Before, 1000).
 			AssertEqual(KeyExists("foo"), true).
 			AssertEqual(Key("foo"), `{"foo":"bar"}`).
 			AssertEqual(KeyExists("bar"), false).
-			Capture(SetKey(marrow.After, "bar", "kv", 0)).
+			Do(SetKey(marrow.After, "bar", "kv", 0)).
 			AssertEqual(Key("bar"), "kv").
-			Capture(SetKey(marrow.After, "bar", []byte("kv2"), 0)).
+			Do(SetKey(marrow.After, "bar", []byte("kv2"), 0)).
 			AssertEqual(Key("bar"), "kv2").
-			Capture(SetKey(marrow.After, "bar", []any{"foo", "bar"}, 0)).
+			Do(SetKey(marrow.After, "bar", []any{"foo", "bar"}, 0)).
 			AssertEqual(Key("bar"), `["foo","bar"]`).
-			Capture(SetKey(marrow.After, "bar", 42, 0)).
+			Do(SetKey(marrow.After, "bar", 42, 0)).
 			AssertEqual(Key("bar"), "42").
-			Capture(SetKey(marrow.After, "bar", []int{42, 43}, 0)).
+			Do(SetKey(marrow.After, "bar", []int{42, 43}, 0)).
 			AssertEqual(Key("bar"), "[42,43]").
-			Capture(DeleteKey(marrow.After, "bar")).
+			Do(DeleteKey(marrow.After, "bar")).
 			AssertEqual(KeyExists("bar"), false).
 			AssertEqual(QueueLen("some_queue"), 1).
 			AssertEqual(1, ReceivedQueueMessages("queue_foo")).
@@ -108,7 +108,7 @@ func TestCapturesAndListeners(t *testing.T) {
 				_, _ = marrow.ResolveValue(ReceivedTopicMessage("not_listened_topic", 0), ctx)
 				return nil
 			}).
-			Capture(PublishMessage(marrow.After, "topic_foo", "", "not-redis")),
+			Do(PublishMessage(marrow.After, "topic_foo", "", "not-redis")),
 	)
 	var cov *coverage.Coverage
 	s := marrow.Suite(endpoint).Init(

@@ -133,6 +133,50 @@ func TestStatus_stringify(t *testing.T) {
 	assert.Equal(t, `999`, sc.stringify())
 }
 
+func Test_expectStatusCodeIn(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		exp := ExpectStatusCodeIn(http.StatusNotFound, http.StatusOK)
+		assert.Equal(t, `Expect Status Code in (404 "Not Found", 200 "OK")`, exp.Name())
+		assert.NotNil(t, exp.Frame())
+		assert.False(t, exp.IsRequired())
+	})
+	t.Run("met", func(t *testing.T) {
+		exp := ExpectStatusCodeIn(nil, "404", int64(404), Var("foo"), http.StatusNotFound, http.StatusOK)
+		assert.Equal(t, `Expect Status Code in ("404", 404 "Not Found", Var(foo), 404 "Not Found", 200 "OK")`, exp.Name())
+		ctx := newTestContext(map[Var]any{"foo": int64(422)})
+		ctx.currResponse = &http.Response{StatusCode: http.StatusOK}
+		unmet, err := exp.Met(ctx)
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("unmet", func(t *testing.T) {
+		exp := ExpectStatusCodeIn(http.StatusOK)
+		ctx := newTestContext(nil)
+		ctx.currResponse = &http.Response{StatusCode: http.StatusNotFound}
+		unmet, err := exp.Met(ctx)
+		assert.Error(t, unmet)
+		umerr := unmet.(UnmetError)
+		assert.NoError(t, umerr.Expected().CoercionError)
+		assert.NoError(t, err)
+	})
+	t.Run("unmet - bad type", func(t *testing.T) {
+		exp := ExpectStatusCodeIn(true)
+		ctx := newTestContext(nil)
+		unmet, err := exp.Met(ctx)
+		assert.Error(t, unmet)
+		umerr := unmet.(UnmetError)
+		assert.Error(t, umerr.Expected().CoercionError)
+		assert.NoError(t, err)
+	})
+	t.Run("resolve error", func(t *testing.T) {
+		exp := ExpectStatusCodeIn(Var("foo"))
+		ctx := newTestContext(nil)
+		unmet, err := exp.Met(ctx)
+		assert.NoError(t, unmet)
+		assert.Error(t, err)
+	})
+}
+
 func Test_match(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		exp := &match{
@@ -717,6 +761,72 @@ func TestExpectVarSet(t *testing.T) {
 	})
 }
 
+func TestExpectTrueFalse(t *testing.T) {
+	t.Run("true met bool", func(t *testing.T) {
+		exp := ExpectTrue(true)
+		ctx := newTestContext(nil)
+		unmet, err := exp.Met(ctx)
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("false met bool", func(t *testing.T) {
+		exp := ExpectFalse(false)
+		ctx := newTestContext(nil)
+		unmet, err := exp.Met(ctx)
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("true unmet bool", func(t *testing.T) {
+		exp := ExpectTrue(false)
+		ctx := newTestContext(nil)
+		unmet, err := exp.Met(ctx)
+		assert.Error(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("false unmet bool", func(t *testing.T) {
+		exp := ExpectFalse(true)
+		ctx := newTestContext(nil)
+		unmet, err := exp.Met(ctx)
+		assert.Error(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("unmet not a bool", func(t *testing.T) {
+		exp := ExpectTrue("not a bool")
+		ctx := newTestContext(nil)
+		unmet, err := exp.Met(ctx)
+		assert.Error(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("true expectation met", func(t *testing.T) {
+		exp := ExpectTrue(ExpectEqual(0, 0))
+		ctx := newTestContext(nil)
+		unmet, err := exp.Met(ctx)
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("true expectation unmet", func(t *testing.T) {
+		exp := ExpectTrue(ExpectEqual(1, 0))
+		ctx := newTestContext(nil)
+		unmet, err := exp.Met(ctx)
+		assert.Error(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("false expectation unmet", func(t *testing.T) {
+		exp := ExpectFalse(ExpectEqual(1, 0))
+		ctx := newTestContext(nil)
+		unmet, err := exp.Met(ctx)
+		assert.NoError(t, unmet)
+		assert.NoError(t, err)
+	})
+	t.Run("false expectation met", func(t *testing.T) {
+		exp := ExpectFalse(ExpectEqual(0, 0))
+		ctx := newTestContext(nil)
+		unmet, err := exp.Met(ctx)
+		assert.Error(t, unmet)
+		assert.NoError(t, err)
+	})
+}
+
 func TestExpectationFuncs(t *testing.T) {
 	testCases := []struct {
 		value      Expectation
@@ -813,6 +923,22 @@ func TestExpectationFuncs(t *testing.T) {
 		{
 			value:      ExpectVarSet(Var("foo")),
 			expectName: "Expect Var(\"foo\") set",
+		},
+		{
+			value:      ExpectTrue(Var("foo")),
+			expectName: "Expect True(Var(foo))",
+		},
+		{
+			value:      ExpectTrue(ExpectEqual(0, 1)),
+			expectName: "Expect True(ExpectEqual)",
+		},
+		{
+			value:      ExpectFalse(Var("foo")),
+			expectName: "Expect False(Var(foo))",
+		},
+		{
+			value:      ExpectFalse(ExpectEqual(0, 1)),
+			expectName: "Expect False(ExpectEqual)",
 		},
 	}
 	for i, tc := range testCases {

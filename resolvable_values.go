@@ -268,6 +268,43 @@ func (v Var) String() string {
 	return "Var(" + string(v) + ")"
 }
 
+type DefaultVarValue struct {
+	Var   Var
+	Value any
+}
+
+func (v DefaultVarValue) ResolveValue(ctx Context) (av any, err error) {
+	var ok bool
+	if av, ok = ctx.Vars()[v.Var]; !ok {
+		av = v.Value
+		ctx.SetVar(v.Var, av)
+	}
+	return av, err
+}
+
+func (v DefaultVarValue) String() string {
+	return fmt.Sprintf("DefaultVar(%s, %v)", string(v.Var), v.Value)
+}
+
+// DefaultVar resolves to the named var
+//
+// if the named var is not set, it resolves to the value provided (and the var is also set to that value)
+func DefaultVar(name any, value any) DefaultVarValue {
+	var varName Var
+	switch nt := name.(type) {
+	case Var:
+		varName = nt
+	case string:
+		varName = Var(nt)
+	default:
+		varName = Var(fmt.Sprintf("%v", name))
+	}
+	return DefaultVarValue{
+		Var:   varName,
+		Value: value,
+	}
+}
+
 // Env is the name of an environment variable
 //
 // when resolved, the value is the current environment variable of the name
@@ -756,4 +793,255 @@ func (v LenValue) ResolveValue(ctx Context) (av any, err error) {
 
 func (v LenValue) String() string {
 	return fmt.Sprintf("Len(%v)", v.Value)
+}
+
+type FirstValue struct {
+	Value any
+}
+
+// First resolves to the first item (element) of the value (or resolved value)
+//
+// if the value (or resolved value) is not a slice (or an empty slice) - this always resolves to nil
+func First(value any) FirstValue {
+	return FirstValue{
+		Value: value,
+	}
+}
+
+func (v FirstValue) ResolveValue(ctx Context) (av any, err error) {
+	var rv any
+	if rv, err = ResolveValue(v.Value, ctx); err == nil {
+		switch rvt := rv.(type) {
+		case []any:
+			if len(rvt) > 0 {
+				av = rvt[0]
+			}
+		default:
+			if rv != nil {
+				to := reflect.ValueOf(rv)
+				if to.Kind() == reflect.Slice && to.Len() > 0 {
+					av = to.Index(0).Interface()
+				}
+			}
+		}
+	}
+	return av, err
+}
+
+func (v FirstValue) String() string {
+	return fmt.Sprintf("First(%v)", v.Value)
+}
+
+type LastValue struct {
+	Value any
+}
+
+// Last resolves to the last item (element) of the value (or resolved value)
+//
+// if the value (or resolved value) is not a slice (or an empty slice) - this always resolves to nil
+func Last(value any) LastValue {
+	return LastValue{
+		Value: value,
+	}
+}
+
+func (v LastValue) ResolveValue(ctx Context) (av any, err error) {
+	var rv any
+	if rv, err = ResolveValue(v.Value, ctx); err == nil {
+		switch rvt := rv.(type) {
+		case []any:
+			if len(rvt) > 0 {
+				av = rvt[len(rvt)-1]
+			}
+		default:
+			if rv != nil {
+				to := reflect.ValueOf(rv)
+				if to.Kind() == reflect.Slice && to.Len() > 0 {
+					av = to.Index(to.Len() - 1).Interface()
+				}
+			}
+		}
+	}
+	return av, err
+}
+
+func (v LastValue) String() string {
+	return fmt.Sprintf("Last(%v)", v.Value)
+}
+
+type NthValue struct {
+	Value any
+	Index int
+}
+
+// Nth resolves to the nth item (element) of the value (or resolved value)
+//
+// if the value (or resolved value) is not a slice, an empty slice or the index is out-of-bounds - this always resolves to nil
+func Nth(value any, index int) NthValue {
+	return NthValue{
+		Value: value,
+		Index: index,
+	}
+}
+
+func (v NthValue) ResolveValue(ctx Context) (av any, err error) {
+	var rv any
+	if rv, err = ResolveValue(v.Value, ctx); err == nil {
+		switch rvt := rv.(type) {
+		case []any:
+			if l := len(rvt); l > 0 {
+				i := v.Index
+				if i < 0 {
+					i = l + i
+				}
+				if i >= 0 && i < l {
+					av = rvt[i]
+				}
+			}
+		default:
+			if rv != nil {
+				to := reflect.ValueOf(rv)
+				if to.Kind() == reflect.Slice {
+					if l := to.Len(); l > 0 {
+						i := v.Index
+						if i < 0 {
+							i = l + i
+						}
+						if i >= 0 && i < l {
+							av = to.Index(i).Interface()
+						}
+					}
+				}
+			}
+		}
+	}
+	return av, err
+}
+
+func (v NthValue) String() string {
+	return fmt.Sprintf("Nth(%v, %d)", v.Value, v.Index)
+}
+
+type AndValue struct {
+	Values []any
+}
+
+// And is a resolvable value
+//
+// it resolves by boolean ANDing all the supplied values (or their resolved value)
+//
+// Notes:
+//   - if any of the values is not a bool, it errors
+//   - short-circuits on first false
+//   - if a value is an Expectation, the boolean is deduced from whether the expectation was met
+//   - nil values are ignored
+func And(values ...any) AndValue {
+	return AndValue{
+		Values: values,
+	}
+}
+
+func (v AndValue) ResolveValue(ctx Context) (av any, err error) {
+	bv := false
+	for _, value := range v.Values {
+		if value == nil {
+			continue
+		}
+		if exp, ok := value.(Expectation); ok {
+			var unmet error
+			if unmet, err = exp.Met(ctx); err == nil {
+				bv = unmet == nil
+			}
+		} else if av, err = ResolveValue(value, ctx); err == nil {
+			if b, ok := av.(bool); ok {
+				bv = b
+			} else {
+				err = fmt.Errorf("and value expects boolean - got type %T", av)
+			}
+		}
+		if !bv || err != nil {
+			break
+		}
+	}
+	av = bv
+	return av, err
+}
+
+func (v AndValue) String() string {
+	var b strings.Builder
+	for _, value := range v.Values {
+		if value != nil {
+			if b.Len() > 0 {
+				b.WriteString(", ")
+			}
+			if exp, ok := value.(Expectation); ok {
+				b.WriteString(exp.Name())
+			} else {
+				b.WriteString(fmt.Sprintf("%v", value))
+			}
+		}
+	}
+	return "And(" + b.String() + ")"
+}
+
+type OrValue struct {
+	Values []any
+}
+
+// Or is a resolvable value
+//
+// it resolves by boolean ORing all the supplied values (or their resolved value)
+//
+// Notes:
+//   - if any of the values is not a bool, it errors
+//   - short-circuits on first true
+//   - if a value is an Expectation, the boolean is deduced from whether the expectation was met
+//   - nil values are ignored
+func Or(values ...any) OrValue {
+	return OrValue{
+		Values: values,
+	}
+}
+
+func (v OrValue) ResolveValue(ctx Context) (av any, err error) {
+	bv := false
+	for _, value := range v.Values {
+		if value == nil {
+			continue
+		}
+		if exp, ok := value.(Expectation); ok {
+			var unmet error
+			if unmet, err = exp.Met(ctx); err == nil {
+				bv = unmet == nil
+			}
+		} else if av, err = ResolveValue(value, ctx); err == nil {
+			if b, ok := av.(bool); ok {
+				bv = b
+			} else {
+				err = fmt.Errorf("or value expects boolean - got type %T", av)
+			}
+		}
+		if bv || err != nil {
+			break
+		}
+	}
+	av = bv
+	return av, err
+}
+
+func (v OrValue) String() string {
+	var b strings.Builder
+	for _, value := range v.Values {
+		if value != nil {
+			if b.Len() > 0 {
+				b.WriteString(", ")
+			}
+			if exp, ok := value.(Expectation); ok {
+				b.WriteString(exp.Name())
+			} else {
+				b.WriteString(fmt.Sprintf("%v", value))
+			}
+		}
+	}
+	return "Or(" + b.String() + ")"
 }

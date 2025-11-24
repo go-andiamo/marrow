@@ -26,14 +26,12 @@ type MethodCaptures interface {
 	//
 	// Note: the wait time is not included in the coverage timings
 	Wait(when When, ms int) Method_
-	// Capture adds a before/after operation
-	Capture(op BeforeAfter) Method_
 	// Do adds before/after operations
 	Do(ops ...BeforeAfter) Method_
-	// CaptureFunc adds the provided func as a before/after operation
-	CaptureFunc(when When, fn func(Context) error) Method_
-	// DoFunc adds the provided funcs as a before/after operation
-	DoFunc(when When, fns ...func(Context) error) Method_
+	// Capture adds a before/after operations
+	Capture(when When, ops ...Runnable) Method_
+	// CaptureFunc adds the provided func(s) as a before/after operation
+	CaptureFunc(when When, fns ...func(Context) error) Method_
 
 	// MockServicesClearAll clears all mock services
 	MockServicesClearAll(when When) Method_
@@ -154,11 +152,19 @@ func (m *method) Wait(when When, ms int) Method_ {
 }
 
 //go:noinline
-func (m *method) Capture(op BeforeAfter) Method_ {
-	if op != nil {
-		if op.When() == Before {
+func (m *method) Capture(when When, ops ...Runnable) Method_ {
+	if when == Before {
+		for _, op := range ops {
+			if op == nil {
+				continue
+			}
 			m.preCaptures = append(m.preCaptures, op)
-		} else {
+		}
+	} else {
+		for _, op := range ops {
+			if op == nil {
+				continue
+			}
 			m.addPostCapture(op)
 		}
 	}
@@ -180,38 +186,26 @@ func (m *method) Do(ops ...BeforeAfter) Method_ {
 }
 
 //go:noinline
-func (m *method) CaptureFunc(when When, fn func(ctx Context) error) Method_ {
-	if fn != nil {
-		if when == Before {
+func (m *method) CaptureFunc(when When, fns ...func(ctx Context) error) Method_ {
+	if when == Before {
+		for _, fn := range fns {
+			if fn == nil {
+				continue
+			}
 			m.preCaptures = append(m.preCaptures, &userDefinedCapture{
 				fn:    fn,
 				frame: framing.NewFrame(0),
 			})
-		} else {
+		}
+	} else {
+		for _, fn := range fns {
+			if fn == nil {
+				continue
+			}
 			m.addPostCapture(&userDefinedCapture{
 				fn:    fn,
 				frame: framing.NewFrame(0),
 			})
-		}
-	}
-	return m
-}
-
-//go:noinline
-func (m *method) DoFunc(when When, fns ...func(ctx Context) error) Method_ {
-	for _, fn := range fns {
-		if fn != nil {
-			if when == Before {
-				m.preCaptures = append(m.preCaptures, &userDefinedCapture{
-					fn:    fn,
-					frame: framing.NewFrame(0),
-				})
-			} else {
-				m.addPostCapture(&userDefinedCapture{
-					fn:    fn,
-					frame: framing.NewFrame(0),
-				})
-			}
 		}
 	}
 	return m

@@ -4,8 +4,6 @@ import (
 	"app/api"
 	"app/config"
 	"app/repository"
-	"app/repository/schema"
-	"app/repository/schema/seeds"
 	. "github.com/go-andiamo/marrow"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/images/mysql"
@@ -17,18 +15,7 @@ import (
 // enabling the ability to debug
 func TestApi(t *testing.T) {
 	// spin up supporting db as docker container...
-	img := mysql.With("", mysql.Options{
-		Database: "petstore",
-		Migrations: []mysql.Migration{
-			{
-				Filesystem: schema.Migrations,
-			},
-			{
-				Filesystem: seeds.Migrations,
-				TableName:  "schema_migrations_seeds",
-			},
-		},
-	})
+	img := mysql.With("", dbOptions)
 	if err := img.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +28,7 @@ func TestApi(t *testing.T) {
 
 	// now run the suite...
 	err := Suite(endpoints...).Init(
-		with.Var("non-uuid", "00000000-0000-485c-0000-000000000000"),
+		with.Var(string(nonExistentId), "00000000-0000-485c-0000-000000000000"),
 		with.Database("", img.Database(), common.DatabaseArgs{Style: common.PositionalDbArgs}),
 		with.ApiHost("localhost", 8080),
 		with.Testing(t),

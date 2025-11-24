@@ -96,10 +96,21 @@ func TestMethod_IfNot(t *testing.T) {
 	assert.Len(t, raw.postCaptures, 1)
 }
 
+func TestMethod_ForEach(t *testing.T) {
+	m := Method(GET, "foo")
+	m.ForEach(Before, []any{}, nil)
+	raw := m.(*method)
+	assert.Len(t, raw.preCaptures, 1)
+	assert.Len(t, raw.postCaptures, 0)
+	m.ForEach(After, []any{}, nil)
+	assert.Len(t, raw.preCaptures, 1)
+	assert.Len(t, raw.postCaptures, 1)
+}
+
 func TestMethod_WithBeforesAndAfters(t *testing.T) {
 	m := Method(GET, "foo",
-		SetVar(Before, "foo", "bar"),
-		ClearVars(After),
+		DoBefore(SetVar("foo", "bar")),
+		DoAfter(ClearVars()),
 	).AssertOK().SetVar(After, "bar", 42).ClearVars(Before).AssertEqual("foo", "bar")
 	raw := m.(*method)
 	assert.Len(t, raw.preCaptures, 2)
@@ -429,7 +440,7 @@ func TestMethod_Run(t *testing.T) {
 			return nil
 		}
 		m := Method(GET, "",
-			SetVar(Before, "id", 123),
+			DoBefore(SetVar("id", 123)),
 		).PathParam(Var("id")).
 			Authorize(authFn).
 			AssertOK().
@@ -458,7 +469,7 @@ func TestMethod_Run(t *testing.T) {
 		ctx.currEndpoint = Endpoint("/foos", "")
 		cov := coverage.NewCoverage()
 		ctx.coverage = cov
-		m := Method(GET, "", SetVar(Before, "id", Var("missing")))
+		m := Method(GET, "", DoBefore(SetVar("id", Var("missing"))))
 		err := m.Run(ctx)
 		require.NoError(t, err)
 		require.True(t, ctx.failed)

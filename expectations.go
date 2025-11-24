@@ -270,6 +270,102 @@ func (e *expectStatusCode) Frame() *framing.Frame {
 	return e.frame
 }
 
+type expectStatusCodeIn struct {
+	expect []any
+	frame  *framing.Frame
+	commonExpectation
+}
+
+var _ Expectation = (*expectStatusCodeIn)(nil)
+
+// ExpectStatusCodeIn asserts the response status code is in one of the supplied values
+//
+//go:noinline
+func ExpectStatusCodeIn(statuses ...any) Expectation {
+	return &expectStatusCodeIn{
+		expect: statuses,
+		frame:  framing.NewFrame(0),
+	}
+}
+
+func (e *expectStatusCodeIn) Name() string {
+	var b strings.Builder
+	for _, exp := range e.expect {
+		if exp == nil {
+			continue
+		}
+		if b.Len() > 0 {
+			b.WriteString(", ")
+		}
+		switch texp := exp.(type) {
+		case string:
+			b.WriteString(strconv.Quote(texp))
+		case int:
+			b.WriteString(Status(texp).stringify())
+		case int64:
+			b.WriteString(Status(texp).stringify())
+		case fmt.Stringer:
+			b.WriteString(texp.String())
+		default:
+			b.WriteString(fmt.Sprintf("%v", exp))
+		}
+	}
+	return "Expect Status Code in (" + b.String() + ")"
+}
+
+func (e *expectStatusCodeIn) Frame() *framing.Frame {
+	return e.frame
+}
+
+func (e *expectStatusCodeIn) Met(ctx Context) (unmet error, err error) {
+	sc := -1
+	if response := ctx.CurrentResponse(); response != nil {
+		sc = response.StatusCode
+	}
+	for _, v := range e.expect {
+		if v == nil {
+			continue
+		}
+		ev := OperandValue{Original: v}
+		if ev.Resolved, err = ResolveValue(ev.Original, ctx); err == nil {
+			switch evt := ev.Resolved.(type) {
+			case string:
+				ev.Coerced, ev.CoercionError = strconv.Atoi(evt)
+			case int:
+				ev.Coerced = evt
+			case int64:
+				ev.Coerced = int(evt)
+			default:
+				ev.CoercionError = fmt.Errorf("cannot coerce %T to %T", ev.Resolved, 0)
+			}
+			if ev.CoercionError != nil {
+				unmet = &unmetError{
+					msg:      "expected status code in",
+					name:     e.Name(),
+					actual:   OperandValue{Original: sc, Resolved: Status(sc)},
+					expected: ev,
+					frame:    e.frame,
+				}
+			} else if sc == ev.Coerced.(int) {
+				return nil, nil
+			}
+		}
+		if unmet != nil || err != nil {
+			break
+		}
+	}
+	if unmet == nil && err == nil {
+		unmet = &unmetError{
+			msg:      "expected status code in",
+			name:     e.Name(),
+			actual:   OperandValue{Original: sc, Resolved: Status(sc)},
+			expected: OperandValue{Original: e.expect, Resolved: e.expect},
+			frame:    e.frame,
+		}
+	}
+	return unmet, err
+}
+
 type match struct {
 	value any
 	regex string
@@ -848,15 +944,15 @@ func ExpectVarSet(v Var) Expectation {
 	}
 }
 
-func (v varCheck) Name() string {
+func (v *varCheck) Name() string {
 	return fmt.Sprintf("Expect Var(%q) set", string(v.name))
 }
 
-func (v varCheck) Frame() *framing.Frame {
+func (v *varCheck) Frame() *framing.Frame {
 	return v.frame
 }
 
-func (v varCheck) Met(ctx Context) (unmet error, err error) {
+func (v *varCheck) Met(ctx Context) (unmet error, err error) {
 	if _, ok := ctx.Vars()[v.name]; !ok {
 		unmet = &unmetError{
 			msg:      "expected variable set",
@@ -867,4 +963,87 @@ func (v varCheck) Met(ctx Context) (unmet error, err error) {
 		}
 	}
 	return unmet, nil
+}
+
+type expectBool struct {
+	value any
+	not   bool
+	frame *framing.Frame
+	commonExpectation
+}
+
+var _ Expectation = (*expectBool)(nil)
+
+//go:noinline
+func ExpectTrue(value any) Expectation {
+	return &expectBool{
+		value: value,
+		frame: framing.NewFrame(0),
+	}
+}
+
+//go:noinline
+func ExpectFalse(value any) Expectation {
+	return &expectBool{
+		value: value,
+		not:   true,
+		frame: framing.NewFrame(0),
+	}
+}
+
+func (e *expectBool) Name() string {
+	if exp, ok := e.value.(Expectation); ok {
+		if e.not {
+			return fmt.Sprintf("Expect False(%s)", exp.Name())
+		}
+		return fmt.Sprintf("Expect True(%s)", exp.Name())
+	}
+	if e.not {
+		return fmt.Sprintf("Expect False(%v)", e.value)
+	}
+	return fmt.Sprintf("Expect True(%v)", e.value)
+}
+
+func (e *expectBool) Frame() *framing.Frame {
+	return e.frame
+}
+
+func (e *expectBool) Met(ctx Context) (unmet error, err error) {
+	var av any
+	if exp, ok := e.value.(Expectation); ok {
+		var expum error
+		if expum, err = exp.Met(ctx); err == nil {
+			if (!e.not && expum != nil) || (e.not && expum == nil) {
+				unmet = &unmetError{
+					msg:      fmt.Sprintf("expected %t", !e.not),
+					name:     e.Name(),
+					expected: OperandValue{Original: !e.not, Resolved: !e.not},
+					actual:   OperandValue{Original: e.value},
+					cause:    expum,
+					frame:    e.frame,
+				}
+			}
+		}
+	} else if av, err = ResolveValue(e.value, ctx); err == nil {
+		if b, ok := av.(bool); ok {
+			if (b && e.not) || (!b && !e.not) {
+				unmet = &unmetError{
+					msg:      fmt.Sprintf("expected %t", !e.not),
+					name:     e.Name(),
+					expected: OperandValue{Original: !e.not, Resolved: !e.not},
+					actual:   OperandValue{Original: e.value, Resolved: av},
+					frame:    e.frame,
+				}
+			}
+		} else {
+			unmet = &unmetError{
+				msg:      fmt.Sprintf("cannot check %t on %T", !e.not, av),
+				name:     e.Name(),
+				expected: OperandValue{Original: !e.not, Resolved: !e.not},
+				actual:   OperandValue{Original: e.value, Resolved: av},
+				frame:    e.frame,
+			}
+		}
+	}
+	return unmet, err
 }

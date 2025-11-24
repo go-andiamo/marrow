@@ -18,8 +18,8 @@ func TestMethod_Authorize(t *testing.T) {
 
 func TestMethod_Capture(t *testing.T) {
 	m := Method(GET, "").
-		Capture(SetVar(Before, "foo", "bar")).
-		Capture(SetVar(After, "foo", "bar"))
+		Capture(Before, SetVar("foo", "bar"), nil).
+		Capture(After, SetVar("foo", "bar"), nil)
 	raw, ok := m.(*method)
 	require.True(t, ok)
 	assert.Len(t, raw.preCaptures, 1)
@@ -31,7 +31,7 @@ func TestMethod_Capture(t *testing.T) {
 
 func TestMethod_Do(t *testing.T) {
 	m := Method(GET, "").
-		Do(SetVar(Before, "foo", "bar"), nil, SetVar(After, "foo", "bar"))
+		Do(DoBefore(SetVar("foo", "bar")), nil, DoAfter(SetVar("foo", "bar")))
 	raw, ok := m.(*method)
 	require.True(t, ok)
 	assert.Len(t, raw.preCaptures, 1)
@@ -42,29 +42,12 @@ func TestMethod_Do(t *testing.T) {
 }
 
 func TestMethod_CaptureFunc(t *testing.T) {
-	m := Method(GET, "").
-		CaptureFunc(Before, func(c Context) error {
-			return nil
-		}).
-		CaptureFunc(After, func(ctx Context) error {
-			return nil
-		})
-	raw, ok := m.(*method)
-	require.True(t, ok)
-	assert.Len(t, raw.preCaptures, 1)
-	assert.Len(t, raw.postCaptures, 1)
-	assert.Len(t, raw.postOps, 1)
-	assert.False(t, raw.postOps[0].isExpectation)
-	assert.Equal(t, 0, raw.postOps[0].index)
-}
-
-func TestMethod_DoFunc(t *testing.T) {
 	fn := func(ctx Context) error {
 		return nil
 	}
 	m := Method(GET, "").
-		DoFunc(Before, fn, nil, fn).
-		DoFunc(After, fn, nil, fn)
+		CaptureFunc(Before, fn, nil, fn).
+		CaptureFunc(After, fn, nil, fn)
 	raw, ok := m.(*method)
 	require.True(t, ok)
 	assert.Len(t, raw.preCaptures, 2)

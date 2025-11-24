@@ -7,8 +7,8 @@ import (
 )
 
 type MethodExpectations interface {
-	// Expect adds a new expectation to the Method_
-	Expect(exp Expectation) Method_
+	// Expect adds expectations to the Method_
+	Expect(expectations ...Expectation) Method_
 
 	// AssertOK asserts the response status code is 200 "OK"
 	AssertOK() Method_
@@ -301,6 +301,35 @@ type MethodExpectations interface {
 	AssertVarSet(v Var) Method_
 	// RequireVarSet requires that a named variable has been set
 	RequireVarSet(v Var) Method_
+
+	// AssertTrue asserts that the value is true
+	//
+	// the value (or resolved value) must be a bool, otherwise this fails
+	//
+	// the value can also be an Expectation (e.g. ExpectEqual) - in which case the boolean is evaluated based on that
+	// expectation being met
+	AssertTrue(value any) Method_
+	// RequireTrue requires that the value is true
+	//
+	// the value (or resolved value) must be a bool, otherwise this fails
+	//
+	// the value can also be an Expectation (e.g. ExpectEqual) - in which case the boolean is evaluated based on that
+	// expectation being met
+	RequireTrue(value any) Method_
+	// AssertFalse asserts that the value is false
+	//
+	// the value (or resolved value) must be a bool, otherwise this fails
+	//
+	// the value can also be an Expectation (e.g. ExpectEqual) - in which case the boolean is evaluated based on that
+	// expectation being unmet
+	AssertFalse(value any) Method_
+	// RequireFalse requires that the value is false
+	//
+	// the value (or resolved value) must be a bool, otherwise this fails
+	//
+	// the value can also be an Expectation (e.g. ExpectEqual) - in which case the boolean is evaluated based on that
+	// expectation being unmet
+	RequireFalse(value any) Method_
 }
 
 //go:noinline
@@ -556,8 +585,12 @@ func (m *method) RequireStatus(status any) Method_ {
 }
 
 //go:noinline
-func (m *method) Expect(exp Expectation) Method_ {
-	m.addPostExpectation(exp)
+func (m *method) Expect(expectations ...Expectation) Method_ {
+	for _, exp := range expectations {
+		if exp != nil {
+			m.addPostExpectation(exp)
+		}
+	}
 	return m
 }
 
@@ -882,6 +915,46 @@ func (m *method) AssertVarSet(v Var) Method_ {
 func (m *method) RequireVarSet(v Var) Method_ {
 	m.addPostExpectation(&varCheck{
 		name:              v,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertTrue(value any) Method_ {
+	m.addPostExpectation(&expectBool{
+		value: value,
+		frame: framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireTrue(value any) Method_ {
+	m.addPostExpectation(&expectBool{
+		value:             value,
+		frame:             framing.NewFrame(0),
+		commonExpectation: commonExpectation{required: true},
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) AssertFalse(value any) Method_ {
+	m.addPostExpectation(&expectBool{
+		value: value,
+		not:   true,
+		frame: framing.NewFrame(0),
+	})
+	return m
+}
+
+//go:noinline
+func (m *method) RequireFalse(value any) Method_ {
+	m.addPostExpectation(&expectBool{
+		value:             value,
+		not:               true,
 		frame:             framing.NewFrame(0),
 		commonExpectation: commonExpectation{required: true},
 	})

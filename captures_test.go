@@ -8,16 +8,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
+	"os"
 	"testing"
 )
 
-func Test_setVar(t *testing.T) {
+func TestSetVar(t *testing.T) {
 	t.Run("normal string name", func(t *testing.T) {
-		c := &setVar{
-			name:  "foo",
-			value: "bar",
-			frame: framing.NewFrame(0),
-		}
+		c := SetVar("foo", "bar")
 		assert.Equal(t, "foo", c.Name())
 		assert.NotNil(t, c.Frame())
 
@@ -27,11 +24,7 @@ func Test_setVar(t *testing.T) {
 		assert.Equal(t, "bar", ctx.vars["foo"])
 	})
 	t.Run("var name", func(t *testing.T) {
-		c := &setVar{
-			name:  Var("foo"),
-			value: "bar",
-			frame: framing.NewFrame(0),
-		}
+		c := SetVar(Var("foo"), "bar")
 		assert.Equal(t, "foo", c.Name())
 		assert.NotNil(t, c.Frame())
 
@@ -41,11 +34,7 @@ func Test_setVar(t *testing.T) {
 		assert.Equal(t, "bar", ctx.vars["foo"])
 	})
 	t.Run("any name", func(t *testing.T) {
-		c := &setVar{
-			name:  0,
-			value: "bar",
-			frame: framing.NewFrame(0),
-		}
+		c := SetVar(0, "bar")
 		assert.Equal(t, "0", c.Name())
 		assert.NotNil(t, c.Frame())
 
@@ -54,12 +43,17 @@ func Test_setVar(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "bar", ctx.vars["0"])
 	})
+	t.Run("func", func(t *testing.T) {
+		c := SetVar("foo", "bar")
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "bar", ctx.vars["foo"])
+	})
 }
 
-func Test_clearVars(t *testing.T) {
-	c := &clearVars{
-		frame: framing.NewFrame(0),
-	}
+func TestClearVars(t *testing.T) {
+	c := ClearVars()
 	assert.Equal(t, "CLEAR VARS", c.Name())
 	assert.NotNil(t, c.Frame())
 
@@ -69,12 +63,8 @@ func Test_clearVars(t *testing.T) {
 	assert.Empty(t, ctx.vars)
 }
 
-func Test_dbInsert(t *testing.T) {
-	c := &dbInsert{
-		tableName: "table",
-		row:       Columns{"foo": "bar"},
-		frame:     framing.NewFrame(0),
-	}
+func TestDbInsert(t *testing.T) {
+	c := DbInsert("", "table", Columns{"foo": "bar"})
 	assert.Equal(t, "INSERT table", c.Name())
 	assert.NotNil(t, c.Frame())
 
@@ -88,11 +78,8 @@ func Test_dbInsert(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_dbExec(t *testing.T) {
-	c := &dbExec{
-		query: "DELETE FROM table",
-		frame: framing.NewFrame(0),
-	}
+func TestDbExec(t *testing.T) {
+	c := DbExec("", "DELETE FROM table")
 	assert.Equal(t, "EXEC DELETE FROM table", c.Name())
 	assert.NotNil(t, c.Frame())
 
@@ -106,11 +93,8 @@ func Test_dbExec(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_dbClearTable(t *testing.T) {
-	c := &dbClearTable{
-		tableName: "table",
-		frame:     framing.NewFrame(0),
-	}
+func TestDbClearTable(t *testing.T) {
+	c := DbClearTable("", "table")
 	assert.Equal(t, "DELETE FROM table", c.Name())
 	assert.NotNil(t, c.Frame())
 
@@ -144,11 +128,8 @@ func Test_userDefinedCapture(t *testing.T) {
 	assert.Equal(t, "set foo", c.Name())
 }
 
-func Test_setCookie(t *testing.T) {
-	c := &setCookie{
-		cookie: &http.Cookie{Name: "foo", Value: "bar"},
-		frame:  framing.NewFrame(0),
-	}
+func TestSetCookie(t *testing.T) {
+	c := SetCookie(&http.Cookie{Name: "foo", Value: "bar"})
 	assert.Equal(t, "SET COOKIE foo", c.Name())
 	assert.NotNil(t, c.Frame())
 
@@ -190,10 +171,8 @@ func Test_storeCookie(t *testing.T) {
 	require.Error(t, err)
 }
 
-func Test_mockServicesClearAll(t *testing.T) {
-	c := &mockServicesClearAll{
-		frame: framing.NewFrame(0),
-	}
+func TestMockServicesClearAll(t *testing.T) {
+	c := MockServicesClearAll()
 	assert.Equal(t, "CLEAR ALL MOCK SERVICES", c.Name())
 	assert.NotNil(t, c.Frame())
 
@@ -205,11 +184,8 @@ func Test_mockServicesClearAll(t *testing.T) {
 	assert.True(t, ms.cleared)
 }
 
-func Test_mockServiceClear(t *testing.T) {
-	c := &mockServiceClear{
-		name:  "mock",
-		frame: framing.NewFrame(0),
-	}
+func TestMockServiceClear(t *testing.T) {
+	c := MockServiceClear("mock")
 	assert.Equal(t, "CLEAR MOCK SERVICE [mock]", c.Name())
 	assert.NotNil(t, c.Frame())
 
@@ -229,19 +205,17 @@ func Test_mockServiceClear(t *testing.T) {
 	assert.Contains(t, err.Error(), "unknown mock service ")
 }
 
-func Test_mockServiceCall(t *testing.T) {
+func TestMockServiceCall(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
-		c := &mockServiceCall{
-			name:           "mock",
-			path:           "/foos/{$id}",
-			method:         http.MethodGet,
-			responseStatus: 200,
-			responseBody: map[string]any{
+		c := MockServiceCall(
+			"mock",
+			"/foos/{$id}",
+			http.MethodGet,
+			200,
+			map[string]any{
 				"foo": Var("foo"),
 			},
-			headers: []any{"X-Hdr-Bar", Var("bar")},
-			frame:   framing.NewFrame(0),
-		}
+			"X-Hdr-Bar", Var("bar"))
 
 		ctx := newTestContext(map[Var]any{
 			"id":  "123",
@@ -254,17 +228,15 @@ func Test_mockServiceCall(t *testing.T) {
 		require.NoError(t, err)
 	})
 	t.Run("missing var in path", func(t *testing.T) {
-		c := &mockServiceCall{
-			name:           "mock",
-			path:           "/foos/{$id}",
-			method:         http.MethodGet,
-			responseStatus: 200,
-			responseBody: map[string]any{
+		c := MockServiceCall(
+			"mock",
+			"/foos/{$id}",
+			http.MethodGet,
+			200,
+			map[string]any{
 				"foo": Var("foo"),
 			},
-			headers: []any{"X-Hdr-Bar", Var("bar")},
-			frame:   framing.NewFrame(0),
-		}
+			[]any{"X-Hdr-Bar", Var("bar")})
 
 		ctx := newTestContext(map[Var]any{
 			"foo": "foo-value",
@@ -277,17 +249,15 @@ func Test_mockServiceCall(t *testing.T) {
 		assert.Contains(t, err.Error(), "unresolved variables in string ")
 	})
 	t.Run("missing var in body", func(t *testing.T) {
-		c := &mockServiceCall{
-			name:           "mock",
-			path:           "/foos/{$id}",
-			method:         http.MethodGet,
-			responseStatus: 200,
-			responseBody: map[string]any{
+		c := MockServiceCall(
+			"mock",
+			"/foos/{$id}",
+			http.MethodGet,
+			200,
+			map[string]any{
 				"foo": Var("foo"),
 			},
-			headers: []any{"X-Hdr-Bar", Var("bar")},
-			frame:   framing.NewFrame(0),
-		}
+			[]any{"X-Hdr-Bar", Var("bar")})
 
 		ctx := newTestContext(map[Var]any{
 			"id":  "123",
@@ -300,17 +270,15 @@ func Test_mockServiceCall(t *testing.T) {
 		assert.Contains(t, err.Error(), "unknown variable")
 	})
 	t.Run("missing var in headers", func(t *testing.T) {
-		c := &mockServiceCall{
-			name:           "mock",
-			path:           "/foos/{$id}",
-			method:         http.MethodGet,
-			responseStatus: 200,
-			responseBody: map[string]any{
+		c := MockServiceCall(
+			"mock",
+			"/foos/{$id}",
+			http.MethodGet,
+			200,
+			map[string]any{
 				"foo": Var("foo"),
 			},
-			headers: []any{"X-Hdr-Bar", Var("bar")},
-			frame:   framing.NewFrame(0),
-		}
+			"X-Hdr-Bar", Var("bar"))
 
 		ctx := newTestContext(map[Var]any{
 			"id":  "123",
@@ -323,13 +291,11 @@ func Test_mockServiceCall(t *testing.T) {
 		assert.Contains(t, err.Error(), "unknown variable")
 	})
 	t.Run("unknown mock", func(t *testing.T) {
-		c := &mockServiceCall{
-			name:           "mock",
-			path:           "/foos",
-			method:         http.MethodGet,
-			responseStatus: 200,
-			frame:          framing.NewFrame(0),
-		}
+		c := MockServiceCall(
+			"mock",
+			"/foos",
+			http.MethodGet,
+			200, nil)
 
 		ctx := newTestContext(nil)
 		err := c.Run(ctx)
@@ -338,32 +304,45 @@ func Test_mockServiceCall(t *testing.T) {
 	})
 }
 
-func Test_wait(t *testing.T) {
-	c := &wait{
-		ms:    10,
-		frame: framing.NewFrame(0),
-	}
+func TestWait(t *testing.T) {
+	c := Wait(10)
 	assert.Equal(t, "WAIT 10ms", c.Name())
 	assert.NotNil(t, c.Frame())
+	require.NoError(t, c.Run(nil))
 }
 
-func Test_setEnv(t *testing.T) {
-	c := &setEnv{
-		name:  "TEST_ENV",
-		value: "foo",
-		frame: framing.NewFrame(0),
-	}
+func TestSetEnv(t *testing.T) {
+	c := SetEnv("TEST_ENV", "foo")
 	assert.Equal(t, "SET ENV: \"TEST_ENV\"", c.Name())
 	assert.NotNil(t, c.Frame())
+	_ = os.Unsetenv("TEST_ENV")
+	err := c.Run(nil)
+	require.NoError(t, err)
+	s, ok := os.LookupEnv("TEST_ENV")
+	assert.True(t, ok)
+	assert.Equal(t, "foo", s)
+
+	c = SetEnv("TEST_ENV", 42)
+	err = c.Run(nil)
+	require.NoError(t, err)
+	s, ok = os.LookupEnv("TEST_ENV")
+	assert.True(t, ok)
+	assert.Equal(t, "42", s)
 }
 
-func Test_unSetEnv(t *testing.T) {
-	c := &unSetEnv{
-		names: []string{"TEST_ENV", "TEST_ENV2"},
-		frame: framing.NewFrame(0),
-	}
+func TestUnSetEnv(t *testing.T) {
+	c := UnSetEnv("TEST_ENV", "TEST_ENV2")
 	assert.Equal(t, "UNSET ENV: \"TEST_ENV\", \"TEST_ENV2\"", c.Name())
 	assert.NotNil(t, c.Frame())
+
+	_ = os.Setenv("TEST_ENV", "foo")
+	_ = os.Unsetenv("TEST_ENV2")
+	err := c.Run(nil)
+	require.NoError(t, err)
+	_, ok := os.LookupEnv("TEST_ENV")
+	assert.False(t, ok)
+	_, ok = os.LookupEnv("TEST_ENV2")
+	assert.False(t, ok)
 }
 
 func Test_conditional(t *testing.T) {
@@ -426,7 +405,7 @@ func Test_conditional(t *testing.T) {
 			condition: true,
 			ops: []Runnable{
 				nil,
-				SetVar(Before, "foo", "bar"),
+				SetVar("foo", "bar"),
 			},
 			frame: framing.NewFrame(0),
 		}
@@ -451,7 +430,7 @@ func Test_conditional(t *testing.T) {
 		c := &conditional{
 			condition: ExpectEqual(1, 0),
 			ops: []Runnable{
-				SetVar(Before, "foo", "bar"),
+				SetVar("foo", "bar"),
 			},
 			frame: framing.NewFrame(0),
 		}
@@ -478,6 +457,7 @@ func Test_conditional(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, ctx.coverage.HasFailures())
 		cov := ctx.coverage.(*coverage.Coverage)
+		assert.Len(t, cov.Common.Met, 0)
 		assert.Len(t, cov.Common.Unmet, 1)
 		assert.Len(t, cov.Common.Skipped, 1)
 	})
@@ -496,6 +476,8 @@ func Test_conditional(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, ctx.coverage.HasFailures())
 		cov := ctx.coverage.(*coverage.Coverage)
+		assert.Len(t, cov.Common.Met, 0)
+		assert.Len(t, cov.Common.Unmet, 0)
 		assert.Len(t, cov.Common.Failures, 1)
 		assert.Len(t, cov.Common.Skipped, 1)
 	})
@@ -503,7 +485,7 @@ func Test_conditional(t *testing.T) {
 		c := &conditional{
 			condition: false,
 			not:       true,
-			ops:       []Runnable{SetVar(Before, "foo", "bar")},
+			ops:       []Runnable{SetVar("foo", "bar")},
 			frame:     framing.NewFrame(0),
 		}
 		ctx := newTestContext(nil)
@@ -515,7 +497,7 @@ func Test_conditional(t *testing.T) {
 		c := &conditional{
 			condition: ExpectVarSet(Var("foo")),
 			not:       true,
-			ops:       []Runnable{SetVar(Before, "foo", "bar")},
+			ops:       []Runnable{SetVar("foo", "bar")},
 			frame:     framing.NewFrame(0),
 		}
 		ctx := newTestContext(nil)
@@ -524,24 +506,115 @@ func Test_conditional(t *testing.T) {
 		assert.Equal(t, "bar", ctx.vars["foo"])
 	})
 	t.Run("If func", func(t *testing.T) {
-		c := If(true, SetVar(Before, "foo", "bar"))
+		c := If(true, SetVar("foo", "bar"))
 		ctx := newTestContext(nil)
 		err := c.Run(ctx)
 		require.NoError(t, err)
 		assert.Equal(t, "bar", ctx.vars["foo"])
 	})
 	t.Run("IfNot func", func(t *testing.T) {
-		c := IfNot(false, SetVar(Before, "foo", "bar"))
+		c := IfNot(false, SetVar("foo", "bar"))
 		ctx := newTestContext(nil)
 		err := c.Run(ctx)
 		require.NoError(t, err)
 		assert.Equal(t, "bar", ctx.vars["foo"])
 	})
 	t.Run("If func - nested", func(t *testing.T) {
-		c := If(true, If(true, If(true, SetVar(Before, "foo", "bar"))))
+		c := If(true, If(true, If(true, SetVar("foo", "bar"))))
 		ctx := newTestContext(nil)
 		err := c.Run(ctx)
 		require.NoError(t, err)
 		assert.Equal(t, "bar", ctx.vars["foo"])
+	})
+}
+
+func Test_forEach(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		c := &forEach{
+			value: JsonPath(Var("foo"), "."),
+			frame: framing.NewFrame(0),
+		}
+		assert.Equal(t, `ForEach(JsonPath(Var(foo), "."))`, c.Name())
+		assert.NotNil(t, c.Frame())
+	})
+	t.Run("errors with invalid value", func(t *testing.T) {
+		c := ForEach("", "")
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.Error(t, err)
+	})
+	t.Run("successful expect ops", func(t *testing.T) {
+		c := ForEach(Var("foo"), ".",
+			nil,
+			ExpectEqual(Var("."), 0),
+			ExpectNotEqual(Var("."), 1),
+			SetVar("last", Var(".")))
+		ctx := newTestContext(map[Var]any{"foo": []any{0, 0, 0}})
+		cov := coverage.NewCoverage()
+		ctx.coverage = cov
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, 0, ctx.vars["last"])
+		assert.False(t, cov.HasFailures())
+		assert.Len(t, cov.Met, 6)
+		assert.Len(t, cov.Unmet, 0)
+		assert.Len(t, cov.Failures, 0)
+	})
+	t.Run("ops unmet", func(t *testing.T) {
+		c := ForEach(Var("foo"), ".",
+			ExpectEqual(Var("."), 0))
+		ctx := newTestContext(map[Var]any{"foo": []any{0, 1, 2}})
+		cov := coverage.NewCoverage()
+		ctx.coverage = cov
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.True(t, cov.HasFailures())
+		assert.Len(t, cov.Met, 1)
+		assert.Len(t, cov.Unmet, 2)
+		assert.Len(t, cov.Failures, 0)
+		assert.Len(t, cov.Skipped, 0)
+	})
+	t.Run("ops failure", func(t *testing.T) {
+		c := ForEach(Var("foo"), ".",
+			ExpectEqual(Var("unknown"), 0),
+			ExpectEqual(Var("."), 0))
+		ctx := newTestContext(map[Var]any{"foo": []any{0, 1, 2}})
+		cov := coverage.NewCoverage()
+		ctx.coverage = cov
+		err := c.Run(ctx)
+		require.Error(t, err)
+		assert.True(t, cov.HasFailures())
+		assert.Len(t, cov.Met, 0)
+		assert.Len(t, cov.Unmet, 0)
+		assert.Len(t, cov.Failures, 3)
+		assert.Len(t, cov.Skipped, 3)
+	})
+	t.Run("other slice type", func(t *testing.T) {
+		c := ForEach(Var("foo"), ".", SetVar("last", Var(".")))
+		ctx := newTestContext(map[Var]any{"foo": []string{"foo", "bar", "baz"}})
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "baz", ctx.vars["last"])
+	})
+	t.Run("other iter var type", func(t *testing.T) {
+		c := ForEach(Var("foo"), 42, SetVar("last", Var("42")))
+		ctx := newTestContext(map[Var]any{"foo": []string{"foo", "bar", "baz"}})
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "baz", ctx.vars["last"])
+	})
+	t.Run("other iter var type - var", func(t *testing.T) {
+		c := ForEach(Var("foo"), Var("."), SetVar("last", Var(".")))
+		ctx := newTestContext(map[Var]any{"foo": []string{"foo", "bar", "baz"}})
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "baz", ctx.vars["last"])
+	})
+	t.Run("other iter var type - nil", func(t *testing.T) {
+		c := ForEach(Var("foo"), nil, SetVar("last", Var(".")))
+		ctx := newTestContext(map[Var]any{"foo": []string{"foo", "bar", "baz"}})
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "baz", ctx.vars["last"])
 	})
 }

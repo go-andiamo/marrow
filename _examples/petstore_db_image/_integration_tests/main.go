@@ -10,12 +10,18 @@ import (
 	"path/filepath"
 )
 
+const (
+	nonExistentId = Var("non-uuid")
+	apiLogs       = Var("api-logs")
+)
+
 var endpoints = []Endpoint_{
 	Endpoint("/api", "Root",
 		Method(GET, "Get root").
 			AssertOK().
 			AssertEqual(JsonPath(Body, "hello"), "world").
-			If(After, Var("api-logs"), ExpectGreaterThan(Len(ApiLogs(-1)), 0)),
+			// only try to read api logs if running api as image...
+			If(After, DefaultVar(apiLogs, false), ExpectGreaterThan(Len(ApiLogs(-1)), 0)),
 		Endpoint("/pets", "Pets",
 			Method(GET, "Get pets (empty)").
 				AssertOK().
@@ -36,14 +42,14 @@ var endpoints = []Endpoint_{
 				AssertLen(Body, 1),
 			Endpoint("/{petId}", "Pet",
 				Method(GET, "Get pet (not found)").
-					PathParam(Var("non-uuid")).
+					PathParam(nonExistentId).
 					AssertNotFound(),
 				Method(GET, "Get pet").
 					PathParam(Var("created-pet-id")).
 					AssertOK().
 					AssertOnlyHasProperties(Body, "id", "name", "dob", "category", "$ref"),
 				Method(DELETE, "Delete pet (not found)").
-					PathParam(Var("non-uuid")).
+					PathParam(nonExistentId).
 					AssertNotFound(),
 				Method(DELETE, "Delete pet successful").
 					SetVar(Before, "before-count", Query("", "SELECT COUNT(*) FROM pets")).
@@ -59,7 +65,7 @@ var endpoints = []Endpoint_{
 			Endpoint("/{categoryId}", "Category",
 				Method(GET, "Get category (not found)").
 					SetVar(Before, "categoryId", Query("", "SELECT id FROM categories")).
-					PathParam(Var("non-uuid")).
+					PathParam(nonExistentId).
 					AssertNotFound(),
 				Method(GET, "Get category (found)").
 					PathParam(Var("categoryId")).
@@ -68,6 +74,19 @@ var endpoints = []Endpoint_{
 			),
 		),
 	),
+}
+
+var dbOptions = mysql.Options{
+	Database: "petstore",
+	Migrations: []mysql.Migration{
+		{
+			Filesystem: schema.Migrations,
+		},
+		{
+			Filesystem: seeds.Migrations,
+			TableName:  "schema_migrations_seeds",
+		},
+	},
 }
 
 func main() {
@@ -82,23 +101,12 @@ func main() {
 	s := Suite(endpoints...)
 	s = s.Init(
 		//with.DisableReaperShutdowns(true),
-		with.Var("api-logs", true),
-		with.Var("non-uuid", "00000000-0000-485c-0000-000000000000"),
+		// tell the tests we want to read api logs...
+		with.Var(string(apiLogs), true),
+		with.Var(string(nonExistentId), "00000000-0000-485c-0000-000000000000"),
 		with.Make(with.Supporting, absPath("./Makefile"), 0, false),
 		with.ApiImage("petstore", "latest", 8080, apiEnv, false),
-		mysql.With("mysql", mysql.Options{
-			Database: "petstore",
-			//LeaveRunning: true,
-			Migrations: []mysql.Migration{
-				{
-					Filesystem: schema.Migrations,
-				},
-				{
-					Filesystem: seeds.Migrations,
-					TableName:  "schema_migrations_seeds",
-				},
-			},
-		}))
+		mysql.With("mysql", dbOptions))
 	err := s.Run()
 	if err != nil {
 		panic(err)

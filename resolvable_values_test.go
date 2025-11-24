@@ -119,6 +119,27 @@ func TestResolveValue(t *testing.T) {
 			expect: 42,
 		},
 		{
+			value: DefaultVar("foo", Var("bar")),
+			ctx: newTestContext(map[Var]any{
+				"bar": 42,
+			}),
+			expect: 42,
+		},
+		{
+			value: DefaultVar(Var("foo"), Var("bar")),
+			ctx: newTestContext(map[Var]any{
+				"bar": 42,
+			}),
+			expect: 42,
+		},
+		{
+			value: DefaultVar(0, false),
+			ctx: newTestContext(map[Var]any{
+				"0": true,
+			}),
+			expect: true,
+		},
+		{
 			value:     BodyPath("."),
 			expectErr: "body is nil",
 		},
@@ -475,6 +496,10 @@ func TestResolveValue(t *testing.T) {
 		{
 			value:  Env("TEST_ENV"),
 			expect: "",
+			setup: func(t *testing.T) func() {
+				_ = os.Unsetenv("TEST_ENV")
+				return func() {}
+			},
 		},
 		{
 			value: Env("TEST_ENV"),
@@ -623,6 +648,124 @@ func TestJsonify(t *testing.T) {
 			value:     Jsonify(true),
 			expectErr: "invalid type for json coerce: ",
 		},
+		{
+			value:  First([]any{1, 2, 3}),
+			expect: 1,
+		},
+		{
+			value:  First([]any{}),
+			expect: nil,
+		},
+		{
+			value:  First([]string{"foo", "bar"}),
+			expect: "foo",
+		},
+		{
+			value:  First([]string{}),
+			expect: nil,
+		},
+		{
+			value:  Last([]any{1, 2, 3}),
+			expect: 3,
+		},
+		{
+			value:  Last([]any{}),
+			expect: nil,
+		},
+		{
+			value:  Last([]string{"foo", "bar"}),
+			expect: "bar",
+		},
+		{
+			value:  Last([]string{}),
+			expect: nil,
+		},
+		{
+			value:  Nth([]any{1, 2, 3}, 1),
+			expect: 2,
+		},
+		{
+			value:  Nth([]any{1, 2, 3}, -2),
+			expect: 2,
+		},
+		{
+			value:  Nth([]string{"foo", "bar", "baz"}, 1),
+			expect: "bar",
+		},
+		{
+			value:  Nth([]string{"foo", "bar", "baz"}, -2),
+			expect: "bar",
+		},
+		{
+			value:  And(true),
+			expect: true,
+		},
+		{
+			value:  And(true, false),
+			expect: false,
+		},
+		{
+			value:     And("not a bool"),
+			expectErr: "and value expects boolean - got type ",
+		},
+		{
+			value:  And(nil, Var("foo")),
+			ctx:    newTestContext(map[Var]any{"foo": true}),
+			expect: true,
+		},
+		{
+			value:  And(Var("foo"), ExpectEqual(0, 1)),
+			ctx:    newTestContext(map[Var]any{"foo": true}),
+			expect: false,
+		},
+		{
+			value:  And(Var("foo"), ExpectEqual(0, 0)),
+			ctx:    newTestContext(map[Var]any{"foo": true}),
+			expect: true,
+		},
+		{
+			value:     And(nil, Var("foo")),
+			expectErr: "unknown variable ",
+		},
+		{
+			value:     And(true, ExpectEqual(0, Var("foo"))),
+			expectErr: "unknown variable ",
+		},
+		{
+			value:  Or(false),
+			expect: false,
+		},
+		{
+			value:  Or(false, true),
+			expect: true,
+		},
+		{
+			value:     Or("not a bool"),
+			expectErr: "or value expects boolean - got type ",
+		},
+		{
+			value:  Or(nil, Var("foo")),
+			ctx:    newTestContext(map[Var]any{"foo": true}),
+			expect: true,
+		},
+		{
+			value:  Or(Var("foo"), ExpectEqual(0, 0)),
+			ctx:    newTestContext(map[Var]any{"foo": false}),
+			expect: true,
+		},
+		{
+			value:  Or(Var("foo"), ExpectEqual(1, 0)),
+			ctx:    newTestContext(map[Var]any{"foo": false}),
+			expect: false,
+		},
+		{
+			value:     Or(nil, Var("foo")),
+			expectErr: "unknown variable ",
+		},
+		{
+			value:     Or(false, ExpectEqual(0, Var("foo"))),
+			expectErr: "unknown variable ",
+		},
 	}
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
@@ -643,14 +786,78 @@ func TestJsonify(t *testing.T) {
 }
 
 func Test_stringifyValue(t *testing.T) {
-	assert.Equal(t, "<nil>", stringifyValue(nil))
-	assert.Equal(t, `"test"`, stringifyValue("test"))
-	assert.Equal(t, `Var(test)`, stringifyValue(Var("test")))
-	assert.Equal(t, "42", stringifyValue(42))
-	assert.Equal(t, `Query("SELECT *", "foo")`, stringifyValue(QueryValue{Query: "SELECT *", Args: []any{"foo"}}))
-	assert.Equal(t, `JsonPath(Var(test), ".")`, stringifyValue(JsonPathValue{Value: Var("test"), Path: "."}))
-	assert.Equal(t, "Body", stringifyValue(Body))
-	assert.Equal(t, `Env(TEST_ENV)`, stringifyValue(Env("TEST_ENV")))
-	assert.Equal(t, `ApiLogs(10)`, stringifyValue(ApiLogs(10)))
-	assert.Equal(t, `Len(Var(foo))`, stringifyValue(Len(Var("foo"))))
+	testCases := []struct {
+		value  any
+		expect string
+	}{
+		{
+			value:  nil,
+			expect: "<nil>",
+		},
+		{
+			value:  "foo",
+			expect: `"foo"`,
+		},
+		{
+			value:  42,
+			expect: "42",
+		},
+		{
+			value:  Var("foo"),
+			expect: `Var(foo)`,
+		},
+		{
+			value:  DefaultVar("foo", Var("bar")),
+			expect: `DefaultVar(foo, Var(bar))`,
+		},
+		{
+			value:  Body,
+			expect: `Body`,
+		},
+		{
+			value:  Env("TEST_ENV"),
+			expect: `Env(TEST_ENV)`,
+		},
+		{
+			value:  QueryValue{Query: "SELECT *", Args: []any{"foo"}},
+			expect: `Query("SELECT *", "foo")`,
+		},
+		{
+			value:  JsonPathValue{Value: Var("test"), Path: "."},
+			expect: `JsonPath(Var(test), ".")`,
+		},
+		{
+			value:  ApiLogs(10),
+			expect: `ApiLogs(10)`,
+		},
+		{
+			value:  Len(Var("foo")),
+			expect: `Len(Var(foo))`,
+		},
+		{
+			value:  First(Var("foo")),
+			expect: `First(Var(foo))`,
+		},
+		{
+			value:  Last(Var("foo")),
+			expect: `Last(Var(foo))`,
+		},
+		{
+			value:  Nth(Var("foo"), -1),
+			expect: `Nth(Var(foo), -1)`,
+		},
+		{
+			value:  And(Var("foo"), ExpectEqual(0, 0)),
+			expect: `And(Var(foo), ExpectEqual)`,
+		},
+		{
+			value:  Or(Var("foo"), ExpectEqual(0, 0)),
+			expect: `Or(Var(foo), ExpectEqual)`,
+		},
+	}
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
+			assert.Equal(t, tc.expect, stringifyValue(tc.value))
+		})
+	}
 }
