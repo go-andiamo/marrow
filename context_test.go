@@ -606,26 +606,6 @@ func TestContext_run(t *testing.T) {
 	})
 }
 
-type mockRunnable struct {
-	err       error
-	reportErr error
-}
-
-var _ Runnable = (*mockRunnable)(nil)
-
-func (m *mockRunnable) Run(ctx Context) error {
-	if m.err != nil {
-		return m.err
-	} else if m.reportErr != nil {
-		ctx.reportFailure(m.reportErr)
-	}
-	return nil
-}
-
-func (m *mockRunnable) Frame() *framing.Frame {
-	return framing.NewFrame(0)
-}
-
 func newTestContext(vars map[Var]any) *context {
 	result := &context{
 		coverage:     coverage.NewNullCoverage(),

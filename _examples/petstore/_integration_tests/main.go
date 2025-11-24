@@ -9,6 +9,10 @@ import (
 	"petstore/api"
 )
 
+const (
+	nonExistentId = Var("non-uuid")
+)
+
 var endpoints = []Endpoint_{
 	Endpoint("/api", "Root",
 		Method(GET, "Get root").
@@ -36,10 +40,10 @@ var endpoints = []Endpoint_{
 				SetVar(After, "created-pet-id", JsonPath(Body, "id")),
 			Endpoint("/{petId}", "Pet",
 				Method(GET, "Get pet (not found)").
-					PathParam(Var("non-uuid")).
+					PathParam(nonExistentId).
 					AssertNotFound(),
 				Method(PUT, "Update pet (not found)").
-					PathParam(Var("non-uuid")).
+					PathParam(nonExistentId).
 					AssertNotFound(),
 				Method(PUT, "Update pet successful").
 					PathParam(Var("created-pet-id")).
@@ -52,7 +56,7 @@ var endpoints = []Endpoint_{
 					}).
 					AssertOK(),
 				Method(DELETE, "Delete pet (not found)").
-					PathParam(Var("non-uuid")).
+					PathParam(nonExistentId).
 					AssertNotFound(),
 				Method(DELETE, "Delete pet successful").
 					PathParam(Var("created-pet-id")).
@@ -65,7 +69,7 @@ var endpoints = []Endpoint_{
 				AssertGreaterThan(JsonPath(Body, LEN), 0),
 			Endpoint("/{categoryId}", "Category",
 				Method(GET, "Get category (not found)").
-					PathParam(Var("non-uuid")).
+					PathParam(nonExistentId).
 					AssertNotFound(),
 				Method(GET, "Get category (found)").
 					PathParam(Var("category-id")).
@@ -99,7 +103,7 @@ func main() {
 		with.OAS(spec),
 		with.Repeats(10, true),
 		with.Logging(os.Stdout, os.Stdout),
-		with.Var("non-uuid", "00000000-0000-485c-0000-000000000000"),
+		with.Var(string(nonExistentId), "00000000-0000-485c-0000-000000000000"),
 		with.TraceTimings(),
 	)
 

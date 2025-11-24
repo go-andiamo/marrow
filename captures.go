@@ -5,6 +5,7 @@ import (
 	"github.com/go-andiamo/marrow/framing"
 	"net/http"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -21,6 +22,17 @@ type setVar struct {
 }
 
 var _ Capture = (*setVar)(nil)
+
+// SetVar sets a variable in the current Context
+//
+//go:noinline
+func SetVar(name any, value any) Capture {
+	return &setVar{
+		name:  name,
+		value: value,
+		frame: framing.NewFrame(0),
+	}
+}
 
 func (c *setVar) Name() string {
 	return c.nameString()
@@ -53,6 +65,17 @@ type clearVars struct {
 	frame *framing.Frame
 }
 
+var _ Capture = (*clearVars)(nil)
+
+// ClearVars clears all variables in the current Context
+//
+//go:noinline
+func ClearVars() Capture {
+	return &clearVars{
+		frame: framing.NewFrame(0),
+	}
+}
+
 func (c *clearVars) Name() string {
 	return "CLEAR VARS"
 }
@@ -66,8 +89,6 @@ func (c *clearVars) Frame() *framing.Frame {
 	return c.frame
 }
 
-var _ Capture = (*clearVars)(nil)
-
 type dbInsert struct {
 	dbName    string
 	tableName string
@@ -76,6 +97,20 @@ type dbInsert struct {
 }
 
 var _ Capture = (*dbInsert)(nil)
+
+// DbInsert is used to insert into a database table
+//
+// Note: when only one database is used by tests, the dbName can be ""
+//
+//go:noinline
+func DbInsert(dbName string, tableName string, row Columns) Capture {
+	return &dbInsert{
+		dbName:    dbName,
+		tableName: tableName,
+		row:       row,
+		frame:     framing.NewFrame(0),
+	}
+}
 
 func (c *dbInsert) Name() string {
 	return "INSERT " + c.tableName
@@ -98,6 +133,20 @@ type dbExec struct {
 
 var _ Capture = (*dbExec)(nil)
 
+// DbExec is used to execute a statement on a database
+//
+// Note: when only one database is used by tests, the dbName can be ""
+//
+//go:noinline
+func DbExec(dbName string, query string, args ...any) Capture {
+	return &dbExec{
+		dbName: dbName,
+		query:  query,
+		args:   args,
+		frame:  framing.NewFrame(0),
+	}
+}
+
 func (c *dbExec) Name() string {
 	return "EXEC " + c.query
 }
@@ -117,6 +166,19 @@ type dbClearTable struct {
 }
 
 var _ Capture = (*dbClearTable)(nil)
+
+// DbClearTable is used to clear a table in a database
+//
+// Note: when only one database is used by tests, the dbName can be ""
+//
+//go:noinline
+func DbClearTable(dbName string, tableName string) Capture {
+	return &dbClearTable{
+		dbName:    dbName,
+		tableName: tableName,
+		frame:     framing.NewFrame(0),
+	}
+}
 
 func (c *dbClearTable) Name() string {
 	return "DELETE FROM " + c.tableName
@@ -160,6 +222,8 @@ type setCookie struct {
 
 var _ Capture = (*setCookie)(nil)
 
+// SetCookie sets a cookie in the current Context
+//
 //go:noinline
 func SetCookie(cookie *http.Cookie) Capture {
 	return &setCookie{
@@ -216,6 +280,15 @@ type mockServicesClearAll struct {
 
 var _ Capture = (*mockServicesClearAll)(nil)
 
+// MockServicesClearAll is used to clear all mock services
+//
+//go:noinline
+func MockServicesClearAll() Capture {
+	return &mockServicesClearAll{
+		frame: framing.NewFrame(0),
+	}
+}
+
 func (m *mockServicesClearAll) Name() string {
 	return "CLEAR ALL MOCK SERVICES"
 }
@@ -235,6 +308,16 @@ type mockServiceClear struct {
 }
 
 var _ Capture = (*mockServiceClear)(nil)
+
+// MockServiceClear is used to clear a specific named mock service
+//
+//go:noinline
+func MockServiceClear(svcName string) Capture {
+	return &mockServiceClear{
+		name:  svcName,
+		frame: framing.NewFrame(0),
+	}
+}
 
 func (m *mockServiceClear) Name() string {
 	return "CLEAR MOCK SERVICE [" + m.name + "]"
@@ -263,6 +346,21 @@ type mockServiceCall struct {
 }
 
 var _ Capture = (*mockServiceCall)(nil)
+
+// MockServiceCall is used to set up a mock response on a specific named mock service
+//
+//go:noinline
+func MockServiceCall(svcName string, path string, method MethodName, responseStatus int, responseBody any, headers ...any) Capture {
+	return &mockServiceCall{
+		name:           svcName,
+		path:           path,
+		method:         strings.ToUpper(string(method)),
+		responseStatus: responseStatus,
+		responseBody:   responseBody,
+		headers:        headers,
+		frame:          framing.NewFrame(0),
+	}
+}
 
 func (m *mockServiceCall) Name() string {
 	return "MOCK SERVICE CALL [" + m.name + "]: " + m.method + " " + m.path
@@ -304,6 +402,18 @@ type wait struct {
 
 var _ Capture = (*wait)(nil)
 
+// Wait is used to wait a specified milliseconds
+//
+// Note: the wait time is not included in the coverage timings
+//
+//go:noinline
+func Wait(ms int) Capture {
+	return &wait{
+		ms:    ms,
+		frame: framing.NewFrame(0),
+	}
+}
+
 func (w *wait) Name() string {
 	return fmt.Sprintf("WAIT %s", time.Duration(w.ms)*time.Millisecond)
 }
@@ -324,6 +434,17 @@ type setEnv struct {
 }
 
 var _ Capture = (*setEnv)(nil)
+
+// SetEnv is used to set an environment variable
+//
+//go:noinline
+func SetEnv(name string, value any) Capture {
+	return &setEnv{
+		name:  name,
+		value: value,
+		frame: framing.NewFrame(0),
+	}
+}
 
 func (s *setEnv) Name() string {
 	return fmt.Sprintf("SET ENV: %q", s.name)
@@ -355,6 +476,16 @@ type unSetEnv struct {
 
 var _ Capture = (*unSetEnv)(nil)
 
+// UnSetEnv is used to unset an environment variable
+//
+//go:noinline
+func UnSetEnv(names ...string) Capture {
+	return &unSetEnv{
+		names: names,
+		frame: framing.NewFrame(0),
+	}
+}
+
 func (u *unSetEnv) Name() string {
 	return `UNSET ENV: "` + strings.Join(u.names, `", "`) + `"`
 }
@@ -379,6 +510,14 @@ type conditional struct {
 
 var _ Capture = (*conditional)(nil)
 
+// If runs the operations when the condition arg is met
+//
+// Notes:
+//   - the condition arg can be a bool value (or value that resolves to a bool) or an Expectation (e.g. ExpectEqual, ExpectNotEqual, etc.)
+//   - if the condition arg is an Expectation, and the expectation is unmet, this does not report a failure or unmet, instead the operations are just not performed
+//   - any condition that is not a bool or Expectation will cause an error during tests
+//   - the operations arg can be anything Runnable - any of them that are an Expectation, is run as an expectation (and treated as required) and any unmet or failure errors will be reported
+//
 //go:noinline
 func If(condition any, ops ...Runnable) Capture {
 	return &conditional{
@@ -388,6 +527,14 @@ func If(condition any, ops ...Runnable) Capture {
 	}
 }
 
+// IfNot runs the operations when the condition arg is not met
+//
+// Notes:
+//   - the condition arg can be a bool value (or value that resolves to a bool) or an Expectation (e.g. ExpectEqual, ExpectNotEqual, etc.)
+//   - if the condition arg is an Expectation, and the expectation is unmet, this does not report a failure or unmet, instead the operations are just not performed
+//   - any condition that is not a bool or Expectation will cause an error during tests
+//   - the operations arg can be anything Runnable - any of them that are an Expectation, is run as an expectation (and treated as required) and any unmet or failure errors will be reported
+//
 //go:noinline
 func IfNot(condition any, ops ...Runnable) Capture {
 	return &conditional{
@@ -435,6 +582,7 @@ func (c *conditional) Run(ctx Context) (err error) {
 			if expOp, ok := c.ops[i].(Expectation); ok {
 				var unmet error
 				if unmet, err = expOp.Met(ctx); unmet == nil && err == nil {
+					ctx.reportMet(expOp)
 					pass = true
 				} else if err != nil {
 					ctx.reportFailure(err)
@@ -459,4 +607,106 @@ func (c *conditional) Run(ctx Context) (err error) {
 
 func (c *conditional) Frame() *framing.Frame {
 	return c.frame
+}
+
+type forEach struct {
+	value   any
+	varName any
+	ops     []Runnable
+	frame   *framing.Frame
+}
+
+var _ Capture = (*forEach)(nil)
+
+// ForEach iterates over the value (or resolved value)
+//
+// if the value (or resolved value) is not a slice - an error occurs
+//
+// on each iteration a var is set - use the iterVar arg to set the name of this variable (if the iterVar arg is nil - a var name of "." is used)
+//
+//go:noinline
+func ForEach(value any, iterVar any, ops ...Runnable) Capture {
+	return &forEach{
+		value:   value,
+		varName: iterVar,
+		ops:     ops,
+		frame:   framing.NewFrame(0),
+	}
+}
+
+func (c *forEach) Name() string {
+	return fmt.Sprintf("ForEach(%v)", c.value)
+}
+
+func (c *forEach) Run(ctx Context) (err error) {
+	var av any
+	if av, err = ResolveValue(c.value, ctx); err == nil {
+		var items []any
+		switch avt := av.(type) {
+		case []any:
+			items = avt
+		default:
+			if av != nil {
+				to := reflect.ValueOf(av)
+				if to.Kind() == reflect.Slice {
+					l := to.Len()
+					items = make([]any, l)
+					for i := 0; i < l; i++ {
+						items[i] = to.Index(i).Interface()
+					}
+				} else {
+					return fmt.Errorf("invalid ForEach value type: %T", av)
+				}
+			}
+		}
+		varName := c.useVarName()
+		for _, item := range items {
+			ctx.SetVar(varName, item)
+			for i, o := range c.ops {
+				if o == nil {
+					continue
+				}
+				pass := false
+				if expOp, ok := c.ops[i].(Expectation); ok {
+					var unmet error
+					if unmet, err = expOp.Met(ctx); unmet == nil && err == nil {
+						ctx.reportMet(expOp)
+						pass = true
+					} else if err != nil {
+						ctx.reportFailure(err)
+					} else {
+						ctx.reportUnmet(expOp, unmet)
+					}
+				} else if err = o.Run(ctx); err == nil {
+					pass = true
+				}
+				if !pass {
+					for j := i + 1; j < len(c.ops); j++ {
+						if expOp, ok := c.ops[j].(Expectation); ok {
+							ctx.reportSkipped(expOp)
+						}
+					}
+					break
+				}
+			}
+		}
+	}
+	return err
+}
+
+func (c *forEach) Frame() *framing.Frame {
+	return c.frame
+}
+
+func (c *forEach) useVarName() Var {
+	switch nt := c.varName.(type) {
+	case nil:
+		return "."
+	case string:
+		return Var(nt)
+	case Var:
+		return nt
+	default:
+		return Var(fmt.Sprintf("%v", c.varName))
+	}
 }

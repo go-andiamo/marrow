@@ -77,20 +77,20 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 	)
 	endpoint := Endpoint("/api", "",
 		Method("GET", "").AssertOK().
-			Capture(SNSPublish(Before, testTopic, 42)).
-			Capture(SNSPublish(Before, testTopic, &sns.PublishInput{Message: aws.String(`{"foo": "bar"}`)})).
-			Capture(SNSPublish(Before, testTopic, `{"foo": "bar"}`)).
-			Capture(SNSPublish(Before, testTopic, []byte(`{"foo": "bar"}`))).
-			Capture(SNSPublish(Before, testTopic, JSON{"foo": "bar"})).
-			Capture(SQSSend(Before, testQueue, JSON{"foo": "bar1"})).
-			Capture(SQSPurge(Before, testQueue)).
-			Capture(SQSSend(Before, testQueue, 42)).
-			Capture(SQSSend(Before, testQueue, `{"foo": "bar3"}`)).
-			Capture(SQSSend(Before, testQueue, []byte(`{"foo": "bar4"}`))).
-			Capture(SQSSend(Before, testQueue, &sqs.SendMessageInput{MessageBody: aws.String(`{"foo": "bar5"}`)})).
-			Capture(SQSSend(Before, testQueue, JSON{"foo": "bar6"})).
+			Do(SNSPublish(Before, testTopic, 42)).
+			Do(SNSPublish(Before, testTopic, &sns.PublishInput{Message: aws.String(`{"foo": "bar"}`)})).
+			Do(SNSPublish(Before, testTopic, `{"foo": "bar"}`)).
+			Do(SNSPublish(Before, testTopic, []byte(`{"foo": "bar"}`))).
+			Do(SNSPublish(Before, testTopic, JSON{"foo": "bar"})).
+			Do(SQSSend(Before, testQueue, JSON{"foo": "bar1"})).
+			Do(SQSPurge(Before, testQueue)).
+			Do(SQSSend(Before, testQueue, 42)).
+			Do(SQSSend(Before, testQueue, `{"foo": "bar3"}`)).
+			Do(SQSSend(Before, testQueue, []byte(`{"foo": "bar4"}`))).
+			Do(SQSSend(Before, testQueue, &sqs.SendMessageInput{MessageBody: aws.String(`{"foo": "bar5"}`)})).
+			Do(SQSSend(Before, testQueue, JSON{"foo": "bar6"})).
 			SetVar(Before, varInitialCount, DynamoItemsCount("TestTable")).
-			Capture(DynamoPutItem(Before, "TestTable", JSON{"code": "foo", "value": "bar"})).
+			Do(DynamoPutItem(Before, "TestTable", JSON{"code": "foo", "value": "bar"})).
 			SetVar(Before, varItem, DynamoGetItem("TestTable", "code", "foo")).
 			AssertEqual("bar", JsonPath(varItem, "value")).
 			AssertEqual(varInitialCount, 0).
@@ -102,17 +102,17 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 			AssertEqual(5, JsonPath(varQueueMsgs, LEN)).
 			SetVar(After, varLastQueueMsg, Jsonify(JsonTraverse(varQueueMsgs, LAST, "Body"))).
 			AssertEqual("bar6", JsonPath(varLastQueueMsg, "foo")).
-			Capture(DynamoDeleteItem(After, "TestTable", "code", "foo")).
-			Capture(SecretSet(After, "secret-1", "my-secret-1")).
-			Capture(SecretSet(After, "secret-2", []byte(`{"value": "my-secret-2"}`))).
-			Capture(SecretSet(After, "secret-3", map[string]any{"value": "my-secret-3"})).
-			Capture(SecretSet(After, "secret-4", 42)).
-			Capture(SecretSet(After, "secret-5", nil)).
+			Do(DynamoDeleteItem(After, "TestTable", "code", "foo")).
+			Do(SecretSet(After, "secret-1", "my-secret-1")).
+			Do(SecretSet(After, "secret-2", []byte(`{"value": "my-secret-2"}`))).
+			Do(SecretSet(After, "secret-3", map[string]any{"value": "my-secret-3"})).
+			Do(SecretSet(After, "secret-4", 42)).
+			Do(SecretSet(After, "secret-5", nil)).
 			AssertEqual("my-secret-1", SecretGet("secret-1")).
 			AssertEqual("my-secret-3", JsonPath(Jsonify(SecretGet("secret-3")), "value")).
 			AssertEqual("my-db", JsonPath(Jsonify(SecretGet("db")), "name")),
 		Method("GET", "again").AssertOK().
-			Capture(S3CreateBucket(Before, "foo-bucket")).
+			Do(S3CreateBucket(Before, "foo-bucket")).
 			AssertEqual(0, DynamoItemsCount("TestTable")).
 			AssertEqual(0, S3ObjectsCount(testBucket, "")).
 			AssertEqual(0, S3ObjectsCount("foo-bucket", "")),

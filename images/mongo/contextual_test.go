@@ -45,7 +45,7 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 			AssertEqual(1, CollectionsCount("my-db")).
 			AssertEqual(2, IndicesCount("my-db", "my-collection")).
 			AssertEqual(0, DocumentsCount("my-db", "my-collection")).
-			Capture(InsertDocument(marrow.After, "new-db", "new-coll", marrow.JSON{"email": "bilbo@example.com"})),
+			Do(InsertDocument(marrow.After, "new-db", "new-coll", marrow.JSON{"email": "bilbo@example.com"})),
 		marrow.Method("GET", "again").AssertOK().
 			SetVar(marrow.Before, "find-email", "bilbo@example.com").
 			SetVar(marrow.Before, "doc", FindOne("new-db", "new-coll", marrow.JSON{"email": marrow.Var("find-email")}, nil)).
@@ -62,8 +62,8 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 			AssertEqual(1, ChangesCount("new-db", "")).
 			AssertEqual(1, ChangesCount("new-db", "new-coll")),
 		marrow.Method("GET", "again").AssertOK().
-			Capture(ClearCollection(marrow.Before, "new-db", "new-coll")).
-			Capture(DeleteDocuments(marrow.Before, "new-db", "new-coll", nil)).
+			Do(ClearCollection(marrow.Before, "new-db", "new-coll")).
+			Do(DeleteDocuments(marrow.Before, "new-db", "new-coll", nil)).
 			AssertEqual(0, DocumentsCount("new-db", "new-coll")).
 			AssertEqual(2, ChangesCount("", "")).
 			AssertEqual(2, ChangesCount("new-db", "")).

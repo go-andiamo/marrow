@@ -41,23 +41,23 @@ func TestCapturesAndListeners(t *testing.T) {
 	}
 	endpoint := marrow.Endpoint("/api", "",
 		marrow.Method("GET", "").AssertOK().
-			Capture(Publish(marrow.Before, "topic_foo", "foo", "bar1")).
-			Capture(Publish(marrow.Before, "topic_foo", "foo", "bar2")).
-			Capture(Publish(marrow.Before, "topic_foo", "foo", "bar3")).
-			Capture(Publish(marrow.Before, "topic_foo", "foo", "bar4")).
-			Capture(Publish(marrow.Before, "topic_foo", "foo", "bar5")).
-			Capture(Publish(marrow.Before, "topic_bar", "foo", "bar6")).
-			Capture(Publish(marrow.Before, "topic_baz", "foo", "bar7")).
+			Do(Publish(marrow.Before, "topic_foo", "foo", "bar1")).
+			Do(Publish(marrow.Before, "topic_foo", "foo", "bar2")).
+			Do(Publish(marrow.Before, "topic_foo", "foo", "bar3")).
+			Do(Publish(marrow.Before, "topic_foo", "foo", "bar4")).
+			Do(Publish(marrow.Before, "topic_foo", "foo", "bar5")).
+			Do(Publish(marrow.Before, "topic_bar", "foo", "bar6")).
+			Do(Publish(marrow.Before, "topic_baz", "foo", "bar7")).
 			Wait(marrow.Before, 1000).
 			AssertEqual(5, ReceivedMessages("topic_foo")).
 			AssertEqual("bar4", marrow.JsonPath(ReceivedMessage("topic_foo", -2), "value")).
 			AssertEqual(1, ReceivedMessages("topic_bar")).
 			Wait(marrow.After, 1000).
-			Capture(Publish(marrow.After, "topic_bar", "foo", []byte("bar8"))).
-			Capture(Publish(marrow.After, "topic_bar", "foo", []any{"bar9"})).
-			Capture(Publish(marrow.After, "topic_bar", "foo", marrow.JSON{"foo": "bar10"})).
-			Capture(Publish(marrow.After, "topic_bar", "foo", []int{42, 43})).
-			Capture(Publish(marrow.After, "topic_bar", "foo", 42)).
+			Do(Publish(marrow.After, "topic_bar", "foo", []byte("bar8"))).
+			Do(Publish(marrow.After, "topic_bar", "foo", []any{"bar9"})).
+			Do(Publish(marrow.After, "topic_bar", "foo", marrow.JSON{"foo": "bar10"})).
+			Do(Publish(marrow.After, "topic_bar", "foo", []int{42, 43})).
+			Do(Publish(marrow.After, "topic_bar", "foo", 42)).
 			CaptureFunc(marrow.After, func(ctx marrow.Context) error {
 				_, _ = marrow.ResolveValue(ReceivedMessages("not_listened_topic"), ctx)
 				return nil
@@ -66,7 +66,7 @@ func TestCapturesAndListeners(t *testing.T) {
 				_, _ = marrow.ResolveValue(ReceivedMessage("not_listened_topic", 0), ctx)
 				return nil
 			}).
-			Capture(Publish(marrow.After, "topic_foo", "", "", "not-kafka")),
+			Do(Publish(marrow.After, "topic_foo", "", "", "not-kafka")),
 	)
 	var cov *coverage.Coverage
 	s := marrow.Suite(endpoint).Init(

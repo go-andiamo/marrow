@@ -18,7 +18,7 @@ func TestApi(t *testing.T) {
 	s := marrow.Suite(endpoints...).Init(
 		with.ApiHost("localhost", port),
 		with.Testing(t),
-		with.Var("non-uuid", "00000000-0000-485c-0000-000000000000"),
+		with.Var(string(nonExistentId), "00000000-0000-485c-0000-000000000000"),
 	)
 
 	// run the suite...
