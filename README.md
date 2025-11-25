@@ -186,6 +186,8 @@ func TestApi(t *testing.T) {
 
 _Marrow_ comes with several ready-rolled supporting images for common dependencies (more to come)...
 
+- [Artemis](https://github.com/go-andiamo/marrow/tree/main/images/artemis)  
+  `go get github.com/go-andiamo/marrow/images/artemis`
 - [Dragonfly](https://github.com/go-andiamo/marrow/tree/main/images/dragonfly) (drop-in replacement for Redis)  
   `go get github.com/go-andiamo/marrow/images/dragonfly`
 - [Kafka](https://github.com/go-andiamo/marrow/tree/main/images/kafka)  
