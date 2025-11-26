@@ -2,6 +2,7 @@ package marrow
 
 import (
 	"bufio"
+	"bytes"
 	goctx "context"
 	"database/sql"
 	"encoding/json"
@@ -10,7 +11,12 @@ import (
 	"github.com/go-andiamo/columbus"
 	"github.com/go-andiamo/gopt"
 	"io"
+	"mime/multipart"
+	"net/http"
+	"net/textproto"
+	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -1044,4 +1050,181 @@ func (v OrValue) String() string {
 		}
 	}
 	return "Or(" + b.String() + ")"
+}
+
+type FormMultipart struct {
+	Parts []MultipartPart
+}
+
+// Multipart creates a FormMultipart for use as Method_.RequestBody
+//
+// the parts can Field or FileField
+func Multipart(parts ...MultipartPart) FormMultipart {
+	return FormMultipart{Parts: parts}
+}
+
+func (m FormMultipart) buildBody(ctx Context) (data []byte, dataLen int, contentType string, err error) {
+	buf := &bytes.Buffer{}
+	w := multipart.NewWriter(buf)
+	for _, part := range m.Parts {
+		if err = part.writePart(ctx, w); err != nil {
+			return
+		}
+	}
+	data = buf.Bytes()
+	dataLen = buf.Len()
+	contentType = w.FormDataContentType()
+	return
+}
+
+type MultipartPart interface {
+	writePart(ctx Context, w *multipart.Writer) error
+}
+
+type MultipartField struct {
+	Name  string
+	Value any
+}
+
+// Field creates a MultipartPart for use in Multipart
+//
+// the value can be any type including a resolvable value
+func Field(name string, value any) MultipartPart {
+	return MultipartField{Name: name, Value: value}
+}
+
+func (f MultipartField) writePart(ctx Context, w *multipart.Writer) (err error) {
+	var av any
+	if av, err = ResolveValue(f.Value, ctx); err == nil {
+		var data []byte
+		switch avt := av.(type) {
+		case []byte:
+			data = avt
+		case string:
+			data = []byte(avt)
+		default:
+			data = []byte(fmt.Sprintf("%v", av))
+		}
+		var fw io.Writer
+		if fw, err = w.CreateFormField(f.Name); err == nil {
+			_, err = fw.Write(data)
+		}
+	}
+	return err
+}
+
+type MultipartFile struct {
+	FieldName   string
+	FileName    string
+	Source      any
+	ContentType string
+}
+
+// FileField creates a MultipartPart for use in Multipart
+//
+// the source is the source data of the file - it can be a resolvable
+// and the type must be either []byte or string.  A string value indicates a filename to load the source data from
+func FileField(fieldName string, fileName string, source any, contentType string) MultipartPart {
+	return MultipartFile{
+		FieldName:   fieldName,
+		FileName:    fileName,
+		Source:      source,
+		ContentType: contentType,
+	}
+}
+
+func (f MultipartFile) writePart(ctx Context, w *multipart.Writer) (err error) {
+	var src any
+	if src, err = ResolveValue(f.Source, ctx); err == nil {
+		var data []byte
+		useFilename := f.FileName
+		switch st := src.(type) {
+		case []byte:
+			data = st
+		case string:
+			if useFilename == "" {
+				useFilename = filepath.Base(st)
+			}
+			data, err = os.ReadFile(st)
+		default:
+			err = fmt.Errorf("unsupported multipart file source type %T", src)
+		}
+		if err == nil {
+			fieldName := f.FieldName
+			if fieldName == "" {
+				fieldName = "file"
+			}
+			header := make(textproto.MIMEHeader)
+			disp := fmt.Sprintf(`form-data; name=%q`, fieldName)
+			if useFilename != "" {
+				disp += fmt.Sprintf(`; filename=%q`, useFilename)
+			}
+			header.Set("Content-Disposition", disp)
+			contentType := f.ContentType
+			if contentType == "" {
+				contentType = http.DetectContentType(data)
+			}
+			header.Set("Content-Type", contentType)
+			var fw io.Writer
+			if fw, err = w.CreatePart(header); err == nil {
+				_, err = fw.Write(data)
+			}
+		}
+	}
+	return err
+}
+
+type FormUrlEncoded struct {
+	Values map[string]any
+}
+
+// UrlEncoded creates a FormUrlEncoded for use as Method_.RequestBody
+//
+// the request body is encoded as "application/x-www-form-urlencoded"
+func UrlEncoded(values ...any) FormUrlEncoded {
+	vm := make(map[string]any, len(values)/2)
+	for i := 0; i < len(values); {
+		key := values[i]
+		switch vt := key.(type) {
+		case map[string]string:
+			i++
+			for k, v := range vt {
+				vm[k] = v
+			}
+		case map[string]any:
+			i++
+			for k, v := range vt {
+				vm[k] = v
+			}
+		default:
+			if i+1 < len(values) {
+				vm[fmt.Sprintf("%v", key)] = values[i+1]
+			}
+			i += 2
+		}
+	}
+	return FormUrlEncoded{Values: vm}
+}
+
+func (m FormUrlEncoded) buildBody(ctx Context) ([]byte, error) {
+	vals := url.Values{}
+	for k, v := range m.Values {
+		if av, err := ResolveValue(v, ctx); err == nil {
+			switch avt := av.(type) {
+			case []string:
+				for _, s := range avt {
+					vals.Add(k, s)
+				}
+			case []any:
+				for _, item := range avt {
+					vals.Add(k, fmt.Sprintf("%v", item))
+				}
+			default:
+				vals.Set(k, fmt.Sprintf("%v", av))
+			}
+		} else {
+			return nil, err
+		}
+	}
+	return []byte(vals.Encode()), nil
 }
