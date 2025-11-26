@@ -10,6 +10,7 @@ import (
 	"io"
 	"maps"
 	"net/http"
+	"reflect"
 	"strings"
 )
 
@@ -556,18 +557,22 @@ func (m *method) buildRequest(ctx Context) (request *http.Request, ok bool) {
 	}()
 	if url, err = m.buildRequestUrl(ctx); err == nil {
 		var body io.Reader
-		if body, err = m.buildRequestBody(ctx); err == nil {
+		var contentLen int
+		if body, contentLen, err = m.buildRequestBody(ctx); err == nil {
 			meth := string(m.method)
 			if meth == "" {
 				meth = http.MethodGet
 			}
 			if request, err = http.NewRequestWithContext(ctx.Ctx(), meth, url, body); err == nil {
+				if contentLen > 0 {
+					request.ContentLength = int64(contentLen)
+				}
 				seenContentType := false
 				for h, v := range m.headers {
 					var av any
 					if av, err = ResolveValue(v, ctx); err == nil {
 						request.Header.Set(h, fmt.Sprintf("%v", av))
-						seenContentType = (h == contentType) || seenContentType
+						seenContentType = seenContentType || (h == contentType)
 					} else {
 						return
 					}
@@ -586,7 +591,7 @@ func (m *method) buildRequest(ctx Context) (request *http.Request, ok bool) {
 	return
 }
 
-func (m *method) buildRequestBody(ctx Context) (body io.Reader, err error) {
+func (m *method) buildRequestBody(ctx Context) (body io.Reader, contentLen int, err error) {
 	if m.body != nil {
 		var av any
 		if av, err = ResolveValue(m.body, ctx); err == nil {
@@ -594,7 +599,34 @@ func (m *method) buildRequestBody(ctx Context) (body io.Reader, err error) {
 			if m.requestMarshal != nil {
 				data, err = m.requestMarshal(ctx, av)
 			} else {
-				data, err = json.Marshal(av)
+				switch avt := av.(type) {
+				case FormMultipart:
+					var ct string
+					if data, contentLen, ct, err = avt.buildBody(ctx); err == nil {
+						m.headers["Content-Type"] = ct
+					}
+				case FormUrlEncoded:
+					if data, err = avt.buildBody(ctx); err == nil {
+						m.headers["Content-Type"] = "application/x-www-form-urlencoded"
+					}
+				case string:
+					data = []byte(avt)
+				case []byte:
+					data = avt
+				case map[string]any:
+					data, err = json.Marshal(av)
+				case []any:
+					data, err = json.Marshal(av)
+				default:
+					if av != nil {
+						to := reflect.TypeOf(av)
+						if to.Kind() == reflect.Map || to.Kind() == reflect.Slice || to.Kind() == reflect.Struct {
+							data, err = json.Marshal(av)
+						} else {
+							data = []byte(fmt.Sprintf("%v", av))
+						}
+					}
+				}
 			}
 			if err == nil && len(data) > 0 {
 				body = bytes.NewReader(data)

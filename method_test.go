@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -170,6 +172,15 @@ func TestMethod_BuildRequest(t *testing.T) {
 		_, ok := raw.buildRequest(ctx)
 		require.False(t, ok)
 	})
+	t.Run("multipart len", func(t *testing.T) {
+		m := Method("", "")
+		m.RequestBody(Multipart(Field("foo", "bar")))
+		ctx := newTestContext(nil)
+		ctx.currEndpoint = Endpoint("/foos", "").(*endpoint)
+		raw := m.(*method)
+		_, ok := raw.buildRequest(ctx)
+		require.True(t, ok)
+	})
 }
 
 func TestMethod_BuildRequestUrl(t *testing.T) {
@@ -201,7 +212,7 @@ func TestMethod_BuildRequestBody(t *testing.T) {
 			"foo": 42,
 		})
 		raw := m.(*method)
-		body, err := raw.buildRequestBody(ctx)
+		body, _, err := raw.buildRequestBody(ctx)
 		require.NoError(t, err)
 		data, err := io.ReadAll(body)
 		require.NoError(t, err)
@@ -215,12 +226,126 @@ func TestMethod_BuildRequestBody(t *testing.T) {
 		})
 		ctx := newTestContext(nil)
 		raw := m.(*method)
-		body, err := raw.buildRequestBody(ctx)
+		body, _, err := raw.buildRequestBody(ctx)
 		require.NoError(t, err)
 		data, err := io.ReadAll(body)
 		require.NoError(t, err)
 		assert.Equal(t, "custom", string(data))
 	})
+	t.Run("bytes", func(t *testing.T) {
+		m := Method(GET, "")
+		m.RequestBody([]byte("foo"))
+		ctx := newTestContext(nil)
+		raw := m.(*method)
+		body, _, err := raw.buildRequestBody(ctx)
+		require.NoError(t, err)
+		data, err := io.ReadAll(body)
+		require.NoError(t, err)
+		assert.Equal(t, []byte("foo"), data)
+	})
+	t.Run("slice", func(t *testing.T) {
+		m := Method(GET, "")
+		m.RequestBody([]any{"foo"})
+		ctx := newTestContext(nil)
+		raw := m.(*method)
+		body, _, err := raw.buildRequestBody(ctx)
+		require.NoError(t, err)
+		data, err := io.ReadAll(body)
+		require.NoError(t, err)
+		assert.Equal(t, []byte(`["foo"]`), data)
+	})
+	t.Run("map", func(t *testing.T) {
+		m := Method(GET, "")
+		m.RequestBody(map[string]string{"foo": "bar"})
+		ctx := newTestContext(nil)
+		raw := m.(*method)
+		body, _, err := raw.buildRequestBody(ctx)
+		require.NoError(t, err)
+		data, err := io.ReadAll(body)
+		require.NoError(t, err)
+		assert.Equal(t, []byte(`{"foo":"bar"}`), data)
+	})
+	t.Run("int", func(t *testing.T) {
+		m := Method(GET, "")
+		m.RequestBody(42)
+		ctx := newTestContext(nil)
+		raw := m.(*method)
+		body, _, err := raw.buildRequestBody(ctx)
+		require.NoError(t, err)
+		data, err := io.ReadAll(body)
+		require.NoError(t, err)
+		assert.Equal(t, []byte(`42`), data)
+	})
+	t.Run("multipart", func(t *testing.T) {
+		m := Method(GET, "")
+		m.RequestBody(Multipart(
+			Field("foo", Var("foo")),
+			Field("bar", []byte("bar")),
+			Field("baz", 42),
+			FileField("", "myfile.txt", []byte(`my text file content`), ""),
+			FileField("spec", "", absPath("./_testdata/spec.json"), "application/json"),
+		))
+		ctx := newTestContext(map[Var]any{"foo": "bar"})
+		raw := m.(*method)
+		body, _, err := raw.buildRequestBody(ctx)
+		require.NoError(t, err)
+		assert.Contains(t, raw.headers["Content-Type"], "multipart/form-data; boundary=")
+		data, err := io.ReadAll(body)
+		require.NoError(t, err)
+		assert.Contains(t, string(data), `Content-Disposition: form-data; name="foo"`)
+		assert.Contains(t, string(data), `Content-Disposition: form-data; name="bar"`)
+		assert.Contains(t, string(data), `Content-Disposition: form-data; name="baz"`)
+		assert.Contains(t, string(data), `Content-Disposition: form-data; name="file"; filename="myfile.txt"`)
+		assert.Contains(t, string(data), `Content-Type: text/plain`)
+		assert.Contains(t, string(data), `my text file content`)
+		assert.Contains(t, string(data), `Content-Disposition: form-data; name="spec"; filename="spec.json"`)
+		assert.Contains(t, string(data), `Content-Type: application/json`)
+	})
+	t.Run("multipart errors", func(t *testing.T) {
+		m := Method(GET, "")
+		m.RequestBody(Multipart(
+			Field("foo", Var("foo")),
+		))
+		ctx := newTestContext(nil)
+		raw := m.(*method)
+		_, _, err := raw.buildRequestBody(ctx)
+		require.Error(t, err)
+	})
+	t.Run("url encoded", func(t *testing.T) {
+		m := Method(GET, "")
+		m.RequestBody(UrlEncoded(
+			"foo1", Var("foo1"),
+			map[string]string{"foo2": "foo2"},
+			map[string]any{"foo3": Var("foo3")},
+			"foo4", []any{"bar4", Var("foo4")},
+			"foo5", []string{"bar5", "bar5a"},
+		))
+		ctx := newTestContext(map[Var]any{"foo1": "bar", "foo3": "bar3", "foo4": "bar4a"})
+		raw := m.(*method)
+		body, _, err := raw.buildRequestBody(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "application/x-www-form-urlencoded", raw.headers["Content-Type"])
+		data, err := io.ReadAll(body)
+		require.NoError(t, err)
+		assert.Equal(t, "foo1=bar&foo2=foo2&foo3=bar3&foo4=bar4&foo4=bar4a&foo5=bar5&foo5=bar5a", string(data))
+	})
+	t.Run("url encoded errors", func(t *testing.T) {
+		m := Method(GET, "")
+		m.RequestBody(UrlEncoded("foo", Var("foo")))
+		ctx := newTestContext(nil)
+		raw := m.(*method)
+		_, _, err := raw.buildRequestBody(ctx)
+		require.Error(t, err)
+	})
+}
+
+func absPath(path string) string {
+	if !filepath.IsAbs(path) {
+		if cwd, err := os.Getwd(); err == nil {
+			return filepath.Join(cwd, path)
+		}
+	}
+	return path
 }
 
 func Test_normalizeBody(t *testing.T) {
