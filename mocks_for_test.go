@@ -194,6 +194,7 @@ func (nw *nullWriter) Write(p []byte) (n int, err error) {
 type dummyDo struct {
 	status int
 	body   []byte
+	hdrs   map[string]string
 	err    error
 }
 
@@ -230,9 +231,14 @@ func (d *dummyDo) Do(req *http.Request) (*http.Response, error) {
 			tt.GotFirstResponseByte()
 		}
 	}
+	hdrs := http.Header{}
+	for k, v := range d.hdrs {
+		hdrs.Add(k, v)
+	}
 	return &http.Response{
 		StatusCode: d.status,
 		Body:       io.NopCloser(bytes.NewReader(d.body)),
+		Header:     hdrs,
 	}, nil
 }
 
