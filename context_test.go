@@ -606,6 +606,18 @@ func TestContext_run(t *testing.T) {
 	})
 }
 
+func TestContext_Log(t *testing.T) {
+	ctx := newTestContext(nil)
+	var buf bytes.Buffer
+	ctx.testing = htesting.NewHelper(nil, &buf, &buf)
+
+	ctx.Log("foo", "bar", "baz")
+	assert.Contains(t, buf.String(), ": foo bar baz")
+
+	ctx.testing = htesting.NewHelper(t, nil, nil)
+	ctx.Log("foo", "bar", "baz")
+}
+
 func newTestContext(vars map[Var]any) *context {
 	result := &context{
 		coverage:     coverage.NewNullCoverage(),

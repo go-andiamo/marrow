@@ -79,6 +79,8 @@ type Context interface {
 	GetImage(name string) with.Image
 	// GetApiImage returns the main api (i.e. api under test) image, or nil if not running against an image
 	GetApiImage() with.ImageApi
+	// Log outputs the args in the test output
+	Log(args ...any)
 
 	setCurrentEndpoint(Endpoint_)
 	setCurrentMethod(Method_)
@@ -296,6 +298,10 @@ func (c *context) GetImage(name string) with.Image {
 
 func (c *context) GetApiImage() with.ImageApi {
 	return c.apiImage
+}
+
+func (c *context) Log(args ...any) {
+	c.testing.Log(args...)
 }
 
 func (c *context) setCurrentEndpoint(e Endpoint_) {

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 	"time"
 )
@@ -709,4 +710,70 @@ func (c *forEach) useVarName() Var {
 	default:
 		return Var(fmt.Sprintf("%v", c.varName))
 	}
+}
+
+type printVars struct {
+	resolve bool
+	frame   *framing.Frame
+}
+
+var _ Capture = (*printVars)(nil)
+
+//go:noinline
+func PrintVars(resolve bool) Capture {
+	return &printVars{
+		resolve: resolve,
+		frame:   framing.NewFrame(0),
+	}
+}
+
+func (p *printVars) Name() string {
+	if p.resolve {
+		return "PRINT VARS(resolved)"
+	}
+	return "PRINT VARS(unresolved)"
+}
+
+func (p *printVars) Run(ctx Context) error {
+	vars := ctx.Vars()
+	keys := make([]string, 0, len(vars))
+	for k := range vars {
+		keys = append(keys, string(k))
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	b.WriteString(p.Name())
+	b.WriteString("\n")
+
+	lastSlash := strings.LastIndex(p.frame.File, "/")
+	b.WriteString(fmt.Sprintf("Frame:\t%s:%d\n", p.frame.File[lastSlash+1:], p.frame.Line))
+	for _, k := range keys {
+		b.WriteString("\n")
+		v := vars[Var(k)]
+		if p.resolve {
+			if av, err := ResolveValue(v, ctx); err == nil {
+				t := strings.ReplaceAll(strings.TrimPrefix(fmt.Sprintf("%T", av), "marrow."), "interface {}", "any")
+				if vs, ok := av.(string); ok {
+					b.WriteString(fmt.Sprintf("Var(%s):\t(%s) %q", k, t, vs))
+				} else {
+					b.WriteString(fmt.Sprintf("Var(%s):\t(%s) %v", k, t, av))
+				}
+			} else {
+				b.WriteString(fmt.Sprintf("Var(%s):\tRESOLVE ERROR: %s", k, err.Error()))
+			}
+		} else {
+			t := strings.ReplaceAll(strings.TrimPrefix(fmt.Sprintf("%T", v), "marrow."), "interface {}", "any")
+			if vs, ok := v.(string); ok {
+				b.WriteString(fmt.Sprintf("Var(%s):\t(%s) %q", k, t, vs))
+			} else {
+				b.WriteString(fmt.Sprintf("Var(%s):\t(%s) %v", k, t, v))
+			}
+		}
+	}
+	ctx.Log(b.String())
+	return nil
+}
+
+func (p *printVars) Frame() *framing.Frame {
+	return p.frame
 }
