@@ -1228,3 +1228,95 @@ func (m FormUrlEncoded) buildBody(ctx Context) ([]byte, error) {
 	}
 	return []byte(vals.Encode()), nil
 }
+
+type ApiCallValue struct {
+	Method  MethodName
+	Url     any
+	Body    any
+	Headers Headers
+}
+
+type Headers map[string]any
+
+// ApiCall makes a call to the API under test - but not included as a test
+//
+// this is useful for preparatory calls before/after a test endpoint is called
+//
+// the value is resolved to the result of the call, represented as JSON map[string]any with the following properties...
+//   - "status" the response status code
+//   - "body" the response body (as []byte)
+//   - "headers" a map[string]any of the response headers
+func ApiCall(method MethodName, url any, body any, headers Headers) ApiCallValue {
+	return ApiCallValue{
+		Method:  method,
+		Url:     url,
+		Body:    body,
+		Headers: headers,
+	}
+}
+
+func (v ApiCallValue) ResolveValue(ctx Context) (av any, err error) {
+	var ap any
+	if ap, err = ResolveValue(v.Url, ctx); err == nil {
+		var ab any
+		if ab, err = ResolveValue(v.Body, ctx); err == nil {
+			var ah any
+			if ah, err = ResolveValue(map[string]any(v.Headers), ctx); err == nil {
+				actualUrl := fmt.Sprintf("%s%v", ctx.Host(), ap)
+				var body io.Reader
+				switch abt := ab.(type) {
+				case []byte:
+					body = bytes.NewReader(abt)
+				case string:
+					body = strings.NewReader(abt)
+				default:
+					if ab != nil {
+						to := reflect.TypeOf(ab)
+						if to.Kind() == reflect.Map || to.Kind() == reflect.Slice || to.Kind() == reflect.Struct {
+							var data []byte
+							if data, err = json.Marshal(ab); err == nil {
+								body = bytes.NewReader(data)
+							}
+						} else {
+							body = strings.NewReader(fmt.Sprintf("%v", ab))
+						}
+					}
+				}
+				if err == nil {
+					var req *http.Request
+					if req, err = http.NewRequestWithContext(ctx.Ctx(), string(v.Method), actualUrl, body); err == nil {
+						if hm, ok := ah.(map[string]any); ok {
+							for h, hv := range hm {
+								req.Header.Set(h, fmt.Sprintf("%v", hv))
+							}
+						}
+						var resp *http.Response
+						if resp, err = ctx.DoRequest(req); err == nil {
+							defer func() {
+								_ = resp.Body.Close()
+							}()
+							var rBody []byte
+							if rBody, err = io.ReadAll(resp.Body); err == nil {
+								result := map[string]any{
+									"status": resp.StatusCode,
+									"body":   rBody,
+								}
+								hm := make(map[string]any, len(resp.Header))
+								for k := range resp.Header {
+									hm[k] = resp.Header.Get(k)
+								}
+								result["headers"] = hm
+								av = result
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return av, err
+}
+
+func (v ApiCallValue) String() string {
+	return fmt.Sprintf("ApiCall(%s %s)", v.Method, v.Url)
+}

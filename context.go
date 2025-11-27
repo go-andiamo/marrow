@@ -81,6 +81,7 @@ type Context interface {
 	GetApiImage() with.ImageApi
 	// Log outputs the args in the test output
 	Log(args ...any)
+	DoRequest(req *http.Request) (*http.Response, error)
 
 	setCurrentEndpoint(Endpoint_)
 	setCurrentMethod(Method_)
@@ -328,6 +329,10 @@ func (c *context) setCurrentBody(body any) {
 
 func (c *context) setCurrentRequest(request *http.Request) {
 	c.currRequest = request
+}
+
+func (c *context) DoRequest(req *http.Request) (res *http.Response, err error) {
+	return c.httpDo.Do(req)
 }
 
 func (c *context) doRequest() (*http.Response, bool) {

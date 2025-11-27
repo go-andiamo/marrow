@@ -854,10 +854,58 @@ func Test_stringifyValue(t *testing.T) {
 			value:  Or(Var("foo"), ExpectEqual(0, 0)),
 			expect: `Or(Var(foo), ExpectEqual)`,
 		},
+		{
+			value:  ApiCall(GET, "/api/foo", nil, nil),
+			expect: `ApiCall(GET /api/foo)`,
+		},
 	}
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
 			assert.Equal(t, tc.expect, stringifyValue(tc.value))
 		})
 	}
+}
+
+func TestApiCall(t *testing.T) {
+	ctx := newTestContext(map[Var]any{
+		"foo": "fooey",
+		"id":  123,
+		"ct":  "application/json",
+	})
+	ctx.host = "localhost:8080"
+	ctx.httpDo = &dummyDo{
+		status: http.StatusOK,
+		body:   []byte(`{"foo": "bar"}`),
+		hdrs: map[string]string{
+			"Content-Type": "application/json",
+		},
+	}
+	t.Run("json body", func(t *testing.T) {
+		rv := ApiCall(GET, TemplateString("/api/foo/{$id}"), JSON{"foo": Var("foo")}, Headers{"Content-Type": Var("ct")})
+
+		v, err := ResolveValue(rv, ctx)
+		require.NoError(t, err)
+		mv := v.(map[string]any)
+		assert.Equal(t, http.StatusOK, mv["status"])
+		assert.Equal(t, []byte(`{"foo": "bar"}`), mv["body"].([]byte))
+		assert.Equal(t, "application/json", mv["headers"].(map[string]any)["Content-Type"])
+	})
+	t.Run("[]byte body", func(t *testing.T) {
+		rv := ApiCall(GET, TemplateString("/api/foo/{$id}"), []byte(`{"foo": "bar"}`), Headers{"Content-Type": Var("ct")})
+
+		_, err := ResolveValue(rv, ctx)
+		require.NoError(t, err)
+	})
+	t.Run("string body", func(t *testing.T) {
+		rv := ApiCall(GET, TemplateString("/api/foo/{$id}"), `{"foo": "bar"}`, Headers{"Content-Type": Var("ct")})
+
+		_, err := ResolveValue(rv, ctx)
+		require.NoError(t, err)
+	})
+	t.Run("int body", func(t *testing.T) {
+		rv := ApiCall(GET, TemplateString("/api/foo/{$id}"), Var("id"), Headers{"Content-Type": Var("ct")})
+
+		_, err := ResolveValue(rv, ctx)
+		require.NoError(t, err)
+	})
 }
