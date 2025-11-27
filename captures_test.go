@@ -1,10 +1,12 @@
 package marrow
 
 import (
+	"bytes"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
 	"github.com/go-andiamo/marrow/framing"
+	htesting "github.com/go-andiamo/marrow/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -616,5 +618,54 @@ func Test_forEach(t *testing.T) {
 		err := c.Run(ctx)
 		require.NoError(t, err)
 		assert.Equal(t, "baz", ctx.vars["last"])
+	})
+}
+
+func TestPrintVars(t *testing.T) {
+	t.Run("unresolved", func(t *testing.T) {
+		c := PrintVars(false)
+		assert.Equal(t, "PRINT VARS(unresolved)", c.Name())
+		assert.NotNil(t, c.Frame())
+		ctx := newTestContext(map[Var]any{
+			"foo": "fooval",
+			"bar": JSON{"foo": Var("foo")},
+			"baz": Var("foo"),
+		})
+		var buf bytes.Buffer
+		ctx.testing = htesting.NewHelper(nil, &buf, &buf)
+
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		s := buf.String()
+		assert.Contains(t, s, "PRINT VARS(unresolved)\n")
+		assert.Contains(t, s, "Frame:\t")
+		assert.Contains(t, s, "Var(bar):\t(JSON) map[foo:Var(foo)]")
+		assert.Contains(t, s, "Var(baz):\t(Var) Var(foo)")
+		assert.Contains(t, s, "Var(foo):\t(string) \"fooval\"")
+	})
+	t.Run("resolved", func(t *testing.T) {
+		c := PrintVars(true)
+		assert.Equal(t, "PRINT VARS(resolved)", c.Name())
+		assert.NotNil(t, c.Frame())
+		ctx := newTestContext(map[Var]any{
+			"foo": "fooval",
+			"bar": JSON{"foo": Var("foo")},
+			"baz": Var("foo"),
+			"err": Var("non-existent"),
+			"db":  Query("", "SELECT * FROM table"),
+		})
+		var buf bytes.Buffer
+		ctx.testing = htesting.NewHelper(nil, &buf, &buf)
+
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		s := buf.String()
+		assert.Contains(t, s, "PRINT VARS(resolved)\n")
+		assert.Contains(t, s, "Frame:\t")
+		assert.Contains(t, s, "Var(bar):\t(map[string]any) map[foo:fooval]")
+		assert.Contains(t, s, "Var(baz):\t(string) \"fooval\"")
+		assert.Contains(t, s, "Var(db):\tRESOLVE ERROR: db is nil")
+		assert.Contains(t, s, "Var(err):\tRESOLVE ERROR: unknown variable \"non-existent\"")
+		assert.Contains(t, s, "Var(foo):\t(string) \"fooval\"")
 	})
 }
