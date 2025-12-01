@@ -1262,7 +1262,7 @@ func (v ApiCallValue) ResolveValue(ctx Context) (av any, err error) {
 		if ab, err = ResolveValue(v.Body, ctx); err == nil {
 			var ah any
 			if ah, err = ResolveValue(map[string]any(v.Headers), ctx); err == nil {
-				actualUrl := fmt.Sprintf("%s%v", ctx.Host(), ap)
+				actualUrl := fmt.Sprintf("http://%s%v", ctx.Host(), ap)
 				var body io.Reader
 				switch abt := ab.(type) {
 				case []byte:

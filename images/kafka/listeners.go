@@ -3,6 +3,8 @@ package kafka
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-andiamo/marrow"
+	"github.com/go-andiamo/marrow/framing"
 	"math"
 	"sync"
 )
@@ -21,9 +23,72 @@ func (i *image) setupListeners() error {
 			msgs:        make([]any, 0, ln),
 		}
 		i.topicListeners[k] = l
-		i.client.Subscribe(k, l.receive)
+		l.close = i.client.Subscribe(k, l.receive)
 	}
 	return nil
+}
+
+// TopicListener is a before operation that starts a Kafka listener
+//
+// the name identifies the listener - for use in marrow.Events and marrow.EventsClear
+//
+// if a listener with that name has previously been created, it is cleared
+//
+//go:noinline
+func TopicListener(name string, topic string, options Subscriber, imgName ...string) marrow.BeforeAfter {
+	name, topic = nameAndDest(name, topic)
+	result := &kafkaListener{
+		capture: capture{
+			name:    fmt.Sprintf("Listener(%q)", topic),
+			when:    marrow.Before,
+			imgName: imgName,
+			frame:   framing.NewFrame(0),
+		},
+		listenerName: name,
+		topic:        topic,
+		options:      options,
+	}
+	result.run = result.runListener
+	return result
+}
+
+func nameAndDest(name string, dst string) (string, string) {
+	if name == "" && dst != "" {
+		return dst, dst
+	}
+	if name != "" && dst == "" {
+		return name, name
+	}
+	return name, dst
+}
+
+type kafkaListener struct {
+	capture
+	listenerName string
+	topic        string
+	options      Subscriber
+}
+
+func (k *kafkaListener) runListener(ctx marrow.Context, img *image) (err error) {
+	if existing := ctx.Listener(k.listenerName); existing == nil {
+		ln := k.options.MaxMessages
+		if ln <= 0 {
+			ln = math.MaxInt
+		}
+		l := &listener{
+			max:         ln,
+			mark:        k.options.Mark,
+			json:        k.options.JsonMessages,
+			unmarshaler: k.options.Unmarshaler,
+		}
+		l.close = img.Client().Subscribe(k.topic, l.receive)
+		ctx.RegisterListener(k.listenerName, l)
+	} else if _, ok := existing.(*listener); !ok {
+		err = fmt.Errorf("expected kafkaListener but got %T", existing)
+	} else {
+		existing.Clear()
+	}
+	return err
 }
 
 type listener struct {
@@ -33,7 +98,34 @@ type listener struct {
 	max         int
 	json        bool
 	unmarshaler func(msg Message) any
+	close       func()
 	mutex       sync.RWMutex
+}
+
+var _ marrow.Listener = (*listener)(nil)
+
+func (l *listener) Events() []any {
+	l.mutex.RLock()
+	defer l.mutex.RUnlock()
+	cp := make([]any, len(l.msgs))
+	copy(cp, l.msgs)
+	return cp
+}
+
+func (l *listener) EventsCount() int {
+	l.mutex.RLock()
+	defer l.mutex.RUnlock()
+	return len(l.msgs)
+}
+
+func (l *listener) Clear() {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+	l.msgs = make([]any, 0)
+}
+
+func (l *listener) Stop() {
+	l.close()
 }
 
 func (l *listener) receive(msg Message) (mark string) {

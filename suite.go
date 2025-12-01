@@ -455,6 +455,7 @@ func (s *suite) Run() error {
 	if s.reportCov != nil {
 		s.reportCov(actualCov)
 	}
+	ctx.stopListeners()
 	for _, sdfn := range s.shutdowns {
 		sdfn()
 	}
