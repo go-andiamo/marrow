@@ -2,6 +2,7 @@ package marrow
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-andiamo/marrow/common"
@@ -555,6 +556,18 @@ func TestResolveValue(t *testing.T) {
 				ctx.apiImage = &mockApiImage{}
 			},
 			expectErr: "no api image for logs",
+		},
+		{
+			value: func() (any, error) {
+				return "foo", nil
+			},
+			expect: "foo",
+		},
+		{
+			value: func() (any, error) {
+				return nil, errors.New("fooey")
+			},
+			expectErr: "fooey",
 		},
 	}
 	for i, tc := range testCases {

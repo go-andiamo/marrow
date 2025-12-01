@@ -26,6 +26,8 @@ type Method_ interface {
 	PathParam(value any) Method_
 	// RequestHeader sets a http header for the method call
 	RequestHeader(name string, value any) Method_
+	// AuthHeader sets the "Authorization" header for the method call
+	AuthHeader(scheme AuthScheme, value any) Method_
 	// RequestBody sets the http request body for the method call
 	RequestBody(value any) Method_
 	// UseCookie sets a named cookie to use on the method call
@@ -259,6 +261,11 @@ func (m *method) PathParam(value any) Method_ {
 
 func (m *method) RequestHeader(name string, value any) Method_ {
 	m.headers[name] = value
+	return m
+}
+
+func (m *method) AuthHeader(scheme AuthScheme, value any) Method_ {
+	m.headers["Authorization"] = AuthValue{Scheme: scheme, Value: value}
 	return m
 }
 

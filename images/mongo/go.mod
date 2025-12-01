@@ -2,6 +2,8 @@ module github.com/go-andiamo/marrow/images/mongo
 
 go 1.24.4
 
+replace github.com/go-andiamo/marrow => ../..
+
 require (
 	github.com/docker/go-connections v0.6.0
 	github.com/go-andiamo/marrow v0.0.0
@@ -36,6 +38,7 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3 // indirect
@@ -82,5 +85,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
-
-replace github.com/go-andiamo/marrow => ../..
