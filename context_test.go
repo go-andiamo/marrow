@@ -618,6 +618,24 @@ func TestContext_Log(t *testing.T) {
 	ctx.Log("foo", "bar", "baz")
 }
 
+func TestContext_Listeners(t *testing.T) {
+	ctx := newContext()
+	l := ctx.Listener("foo")
+	assert.Nil(t, l)
+
+	mock := &mockListener{}
+	ctx.RegisterListener("foo", mock)
+	l = ctx.Listener("foo")
+	assert.NotNil(t, l)
+	assert.Len(t, mock.calls, 0)
+
+	ctx.RegisterListener("foo", mock)
+	assert.Equal(t, []string{"clear"}, mock.calls)
+
+	ctx.stopListeners()
+	assert.Equal(t, []string{"clear", "stop"}, mock.calls)
+}
+
 func newTestContext(vars map[Var]any) *context {
 	result := &context{
 		coverage:     coverage.NewNullCoverage(),
@@ -626,6 +644,7 @@ func newTestContext(vars map[Var]any) *context {
 		vars:         make(map[Var]any),
 		cookieJar:    make(map[string]*http.Cookie),
 		mockServices: make(map[string]service.MockedService),
+		listeners:    make(map[string]Listener),
 	}
 	for k, v := range vars {
 		result.vars[k] = v

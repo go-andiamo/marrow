@@ -81,7 +81,12 @@ type Context interface {
 	GetApiImage() with.ImageApi
 	// Log outputs the args in the test output
 	Log(args ...any)
+	// DoRequest performs a http request (not as part of tests)
 	DoRequest(req *http.Request) (*http.Response, error)
+
+	Listener(name string) Listener
+	RegisterListener(name string, listener Listener)
+	stopListeners()
 
 	setCurrentEndpoint(Endpoint_)
 	setCurrentMethod(Method_)
@@ -114,6 +119,7 @@ type context struct {
 	currBody     any
 	cookieJar    map[string]*http.Cookie
 	mockServices map[string]service.MockedService
+	listeners    map[string]Listener
 	failed       bool
 }
 
@@ -126,6 +132,7 @@ func newContext() *context {
 		cookieJar:    make(map[string]*http.Cookie),
 		httpDo:       http.DefaultClient,
 		mockServices: make(map[string]service.MockedService),
+		listeners:    make(map[string]Listener),
 	}
 }
 
@@ -329,6 +336,24 @@ func (c *context) setCurrentBody(body any) {
 
 func (c *context) setCurrentRequest(request *http.Request) {
 	c.currRequest = request
+}
+
+func (c *context) Listener(name string) Listener {
+	return c.listeners[name]
+}
+
+func (c *context) RegisterListener(name string, listener Listener) {
+	if l, ok := c.listeners[name]; ok {
+		l.Clear()
+	} else {
+		c.listeners[name] = listener
+	}
+}
+
+func (c *context) stopListeners() {
+	for _, l := range c.listeners {
+		l.Stop()
+	}
 }
 
 func (c *context) DoRequest(req *http.Request) (res *http.Response, err error) {

@@ -3,7 +3,7 @@ package kafka
 import (
 	"bytes"
 	"fmt"
-	"github.com/go-andiamo/marrow"
+	. "github.com/go-andiamo/marrow"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
 	"github.com/go-andiamo/marrow/with"
@@ -39,37 +39,40 @@ func TestCapturesAndListeners(t *testing.T) {
 		Wait:                time.Second * 3,
 		InitialOffsetOldest: true,
 	}
-	endpoint := marrow.Endpoint("/api", "",
-		marrow.Method("GET", "").AssertOK().
-			Do(Publish(marrow.Before, "topic_foo", "foo", "bar1")).
-			Do(Publish(marrow.Before, "topic_foo", "foo", "bar2")).
-			Do(Publish(marrow.Before, "topic_foo", "foo", "bar3")).
-			Do(Publish(marrow.Before, "topic_foo", "foo", "bar4")).
-			Do(Publish(marrow.Before, "topic_foo", "foo", "bar5")).
-			Do(Publish(marrow.Before, "topic_bar", "foo", "bar6")).
-			Do(Publish(marrow.Before, "topic_baz", "foo", "bar7")).
-			Wait(marrow.Before, 1000).
+	endpoint := Endpoint("/api", "",
+		Method("GET", "").AssertOK().
+			Do(TopicListener("", "topic_foo", Subscriber{JsonMessages: true})).
+			Do(Publish(Before, "topic_foo", "foo", "bar1")).
+			Do(Publish(Before, "topic_foo", "foo", "bar2")).
+			Do(Publish(Before, "topic_foo", "foo", "bar3")).
+			Do(Publish(Before, "topic_foo", "foo", "bar4")).
+			Do(Publish(Before, "topic_foo", "foo", "bar5")).
+			Do(Publish(Before, "topic_bar", "foo", "bar6")).
+			Do(Publish(Before, "topic_baz", "foo", "bar7")).
+			Wait(Before, 1000).
 			AssertEqual(5, ReceivedMessages("topic_foo")).
-			AssertEqual("bar4", marrow.JsonPath(ReceivedMessage("topic_foo", -2), "value")).
+			AssertEqual("bar4", JsonPath(ReceivedMessage("topic_foo", -2), "value")).
 			AssertEqual(1, ReceivedMessages("topic_bar")).
-			Wait(marrow.After, 1000).
-			Do(Publish(marrow.After, "topic_bar", "foo", []byte("bar8"))).
-			Do(Publish(marrow.After, "topic_bar", "foo", []any{"bar9"})).
-			Do(Publish(marrow.After, "topic_bar", "foo", marrow.JSON{"foo": "bar10"})).
-			Do(Publish(marrow.After, "topic_bar", "foo", []int{42, 43})).
-			Do(Publish(marrow.After, "topic_bar", "foo", 42)).
-			CaptureFunc(marrow.After, func(ctx marrow.Context) error {
-				_, _ = marrow.ResolveValue(ReceivedMessages("not_listened_topic"), ctx)
+			AssertEqual(5, EventsCount("topic_foo")).
+			AssertEqual("bar5", JsonPath(Last(Events("topic_foo")), "value")).
+			Wait(After, 1000).
+			Do(Publish(After, "topic_bar", "foo", []byte("bar8"))).
+			Do(Publish(After, "topic_bar", "foo", []any{"bar9"})).
+			Do(Publish(After, "topic_bar", "foo", JSON{"foo": "bar10"})).
+			Do(Publish(After, "topic_bar", "foo", []int{42, 43})).
+			Do(Publish(After, "topic_bar", "foo", 42)).
+			CaptureFunc(After, func(ctx Context) error {
+				_, _ = ResolveValue(ReceivedMessages("not_listened_topic"), ctx)
 				return nil
 			}).
-			CaptureFunc(marrow.After, func(ctx marrow.Context) error {
-				_, _ = marrow.ResolveValue(ReceivedMessage("not_listened_topic", 0), ctx)
+			CaptureFunc(After, func(ctx Context) error {
+				_, _ = ResolveValue(ReceivedMessage("not_listened_topic", 0), ctx)
 				return nil
 			}).
-			Do(Publish(marrow.After, "topic_foo", "", "", "not-kafka")),
+			Do(Publish(After, "topic_foo", "", "", "not-kafka")),
 	)
 	var cov *coverage.Coverage
-	s := marrow.Suite(endpoint).Init(
+	s := Suite(endpoint).Init(
 		With(options),
 		with.HttpDo(do),
 		with.ReportCoverage(func(coverage *coverage.Coverage) {
@@ -83,8 +86,8 @@ func TestCapturesAndListeners(t *testing.T) {
 }
 
 func TestPublish(t *testing.T) {
-	w := Publish(marrow.After, "topic_foo", "bar", "baz")
-	assert.Equal(t, marrow.After, w.When())
+	w := Publish(After, "topic_foo", "bar", "baz")
+	assert.Equal(t, After, w.When())
 	assert.NotNil(t, w.Frame())
 }
 

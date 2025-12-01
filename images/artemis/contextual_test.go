@@ -3,7 +3,7 @@ package artemis
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/go-andiamo/marrow"
+	. "github.com/go-andiamo/marrow"
 	"github.com/go-andiamo/marrow/common"
 	"github.com/go-andiamo/marrow/coverage"
 	"github.com/go-andiamo/marrow/with"
@@ -50,26 +50,33 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 			},
 		},
 	}
-	endpoint := marrow.Endpoint("/api", "",
-		marrow.Method("GET", "").AssertOK().
-			Do(SendMessage(marrow.Before, "some_queue", "")).
-			Do(SendMessage(marrow.Before, "queue_foo", `{"foo":"bar1"}`)).
-			Do(SendMessage(marrow.Before, "queue_bar", `{"foo":"bar2"}`)).
-			Do(SendMessage(marrow.Before, "queue_bar", `{"foo":"bar3"}`)).
-			Do(SendMessage(marrow.Before, "queue_bar", `{"foo":"bar4"}`)).
-			Do(SendMessage(marrow.Before, "queue_bar", `{"foo":"bar5"}`)).
-			Do(SendMessage(marrow.Before, "queue_bar", "")).
-			Do(SendMessage(marrow.Before, "queue_baz", `{"foo":"bar6"}`)).
-			Do(PublishMessage(marrow.Before, "topic_foo", `{"foo":"bar7"}`)).
-			Wait(marrow.Before, 1000).
+	endpoint := Endpoint("/api", "",
+		Method("GET", "").AssertOK().
+			Do(QueueListener("", "some_queue", Receiver{JsonMessages: true})).
+			Do(TopicListener("", "topic_foo", Receiver{JsonMessages: true})).
+			Wait(Before, 1000).
+			Do(SendMessage(Before, "some_queue", `{"foo":"bar0"}`)).
+			Do(SendMessage(Before, "queue_foo", `{"foo":"bar1"}`)).
+			Do(SendMessage(Before, "queue_bar", `{"foo":"bar2"}`)).
+			Do(SendMessage(Before, "queue_bar", `{"foo":"bar3"}`)).
+			Do(SendMessage(Before, "queue_bar", `{"foo":"bar4"}`)).
+			Do(SendMessage(Before, "queue_bar", `{"foo":"bar5"}`)).
+			Do(SendMessage(Before, "queue_bar", "")).
+			Do(SendMessage(Before, "queue_baz", `{"foo":"bar6"}`)).
+			Do(PublishMessage(Before, "topic_foo", `{"foo":"bar7"}`)).
+			Wait(Before, 1000).
 			AssertEqual(1, ReceivedQueueMessages("queue_foo")).
 			AssertEqual(5, ReceivedQueueMessages("queue_bar")).
-			AssertEqual("bar5", marrow.JsonPath(ReceivedQueueMessage("queue_bar", -2), "foo")).
+			AssertEqual("bar5", JsonPath(ReceivedQueueMessage("queue_bar", -2), "foo")).
 			AssertEqual(1, ReceivedTopicMessages("topic_foo")).
-			AssertEqual("bar7", marrow.JsonPath(ReceivedTopicMessage("topic_foo", 0), "foo")),
+			AssertEqual("bar7", JsonPath(ReceivedTopicMessage("topic_foo", 0), "foo")).
+			AssertEqual(1, EventsCount("some_queue")).
+			AssertEqual("bar0", JsonPath(Last(Events("some_queue")), "foo")).
+			AssertEqual(1, EventsCount("topic_foo")).
+			AssertEqual("bar7", JsonPath(Last(Events("topic_foo")), "foo")),
 	)
 	var cov *coverage.Coverage
-	s := marrow.Suite(endpoint).Init(
+	s := Suite(endpoint).Init(
 		With(options),
 		with.HttpDo(do),
 		with.ReportCoverage(func(coverage *coverage.Coverage) {

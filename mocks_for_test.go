@@ -290,3 +290,27 @@ func (m *mockMockedService) MockCall(path string, method string, responseStatus 
 func (m *mockMockedService) AssertCalled(path string, method string) bool {
 	return m.called
 }
+
+type mockListener struct {
+	calls []string
+}
+
+var _ Listener = (*mockListener)(nil)
+
+func (m *mockListener) Events() []any {
+	m.calls = append(m.calls, "events")
+	return nil
+}
+
+func (m *mockListener) EventsCount() int {
+	m.calls = append(m.calls, "count")
+	return 0
+}
+
+func (m *mockListener) Clear() {
+	m.calls = append(m.calls, "clear")
+}
+
+func (m *mockListener) Stop() {
+	m.calls = append(m.calls, "stop")
+}
