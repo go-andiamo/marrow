@@ -40,6 +40,8 @@ func ResolveValue(value any, ctx Context) (av any, err error) {
 		av, err = vt(ctx.CurrentBody())
 	case func(any) (any, error):
 		av, err = vt(ctx.CurrentBody())
+	case func() (any, error):
+		av, err = vt()
 	case TemplateString:
 		av, err = resolveValueString(string(vt), ctx)
 	case map[string]any:

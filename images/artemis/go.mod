@@ -6,7 +6,7 @@ replace github.com/go-andiamo/marrow => ../..
 
 require (
 	github.com/docker/go-connections v0.6.0
-	github.com/go-andiamo/marrow v1.5.0
+	github.com/go-andiamo/marrow v0.0.0
 	github.com/go-stomp/stomp/v3 v3.1.5
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.40.0
@@ -38,6 +38,7 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect

@@ -135,6 +135,7 @@ func TestMethod_BuildRequest(t *testing.T) {
 		m.PathParam(Var("foo")).PathParam(Var("bar"))
 		m.QueryParam("q1", nil).QueryParam("q2", true).QueryParam("q3", Var("q3"))
 		m.RequestHeader("X-Foo", Var("foo"))
+		m.AuthHeader(BasicAuth, AuthUsernamePassword("foo", "bar"))
 		m.RequestBody(JSON{
 			"foo": Var("bar"),
 		})
@@ -156,6 +157,7 @@ func TestMethod_BuildRequest(t *testing.T) {
 		assert.Equal(t, "http://localhost:8080/foos/aaa/bars/42?q1&q2=true&q3=foo%3F%3F", req.URL.String())
 		assert.Equal(t, "aaa", req.Header.Get("X-Foo"))
 		assert.Equal(t, "application/json", req.Header.Get("Content-Type"))
+		assert.Equal(t, "Basic Zm9vOmJhcg==", req.Header.Get("Authorization"))
 		data, err := io.ReadAll(req.Body)
 		require.NoError(t, err)
 		assert.Equal(t, "{\"foo\":42}", string(data))
