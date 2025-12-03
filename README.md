@@ -198,6 +198,8 @@ _Marrow_ comes with several ready-rolled supporting images for common dependenci
   `go get github.com/go-andiamo/marrow/images/mongo`
 - [MySql](https://github.com/go-andiamo/marrow/tree/main/images/mysql)  
   `go get github.com/go-andiamo/marrow/images/mysql`
+- [Nats](https://github.com/go-andiamo/marrow/tree/main/images/nats)  
+  `go get github.com/go-andiamo/marrow/images/nats`
 - [Postgres](https://github.com/go-andiamo/marrow/tree/main/images/postgres)  
   `go get github.com/go-andiamo/marrow/images/postgres`
 - [Redis](https://github.com/go-andiamo/marrow/tree/main/images/redis7)  

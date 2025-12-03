@@ -56,6 +56,35 @@ func ResolveValue(value any, ctx Context) (av any, err error) {
 	return av, err
 }
 
+// ResolveData is the same as ResolveValue, except that the value is resolved to data (i.e. []byte)
+//
+// data for the value depends on type according to the following rules:
+//   - []byte - as is
+//   - string - []byte of that string
+//   - map, slice, struct - json data
+//   - other - []byte of fmt.Sprintf("%v")
+func ResolveData(value any, ctx Context) (data []byte, err error) {
+	var av any
+	if av, err = ResolveValue(value, ctx); err == nil {
+		switch avt := av.(type) {
+		case []byte:
+			data = avt
+		case string:
+			data = []byte(avt)
+		default:
+			if av != nil {
+				to := reflect.TypeOf(av)
+				if to.Kind() == reflect.Slice || to.Kind() == reflect.Map || to.Kind() == reflect.Struct {
+					data, err = json.Marshal(av)
+				} else {
+					data = []byte(fmt.Sprintf("%v", av))
+				}
+			}
+		}
+	}
+	return data, err
+}
+
 func deepResolveValue(v Resolvable, ctx Context) (av any, err error) {
 	if av, err = v.ResolveValue(ctx); err == nil {
 		if rv, ok := av.(Resolvable); ok {

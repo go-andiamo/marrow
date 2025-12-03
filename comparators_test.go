@@ -94,6 +94,24 @@ func Test_comparator_Met_Values(t *testing.T) {
 			expectOk: true,
 		},
 		{
+			v1:       "foo",
+			v2:       []byte("foo"),
+			comp:     compEqual,
+			expectOk: true,
+		},
+		{
+			v1:       []byte("foo"),
+			v2:       "foo",
+			comp:     compEqual,
+			expectOk: true,
+		},
+		{
+			v1:       []byte("foo"),
+			v2:       []byte("foo"),
+			comp:     compEqual,
+			expectOk: true,
+		},
+		{
 			v1:        "foo",
 			v2:        "foo",
 			comp:      compEqual,
