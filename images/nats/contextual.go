@@ -43,19 +43,17 @@ func Key(bucket any, name any, imgName ...string) marrow.Resolvable {
 		imgName: imgName,
 		run: func(ctx marrow.Context, img *image) (av any, err error) {
 			var bv any
-			if bv, err = marrow.ResolveValue(bucket, ctx); err == nil {
+			var kv any
+			if bv, kv, err = marrow.ResolveValues(bucket, name, ctx); err == nil {
 				bn := fmt.Sprintf("%v", bv)
-				var kv any
-				if kv, err = marrow.ResolveValue(name, ctx); err == nil {
-					kn := fmt.Sprintf("%v", kv)
-					var js nc.JetStreamContext
-					if js, err = img.client.JetStream(); err == nil {
-						var kvs nc.KeyValue
-						if kvs, err = js.KeyValue(bn); err == nil {
-							var kve nc.KeyValueEntry
-							if kve, err = kvs.Get(kn); err == nil {
-								av = kve.Value()
-							}
+				kn := fmt.Sprintf("%v", kv)
+				var js nc.JetStreamContext
+				if js, err = img.client.JetStream(); err == nil {
+					var kvs nc.KeyValue
+					if kvs, err = js.KeyValue(bn); err == nil {
+						var kve nc.KeyValueEntry
+						if kve, err = kvs.Get(kn); err == nil {
+							av = kve.Value()
 						}
 					}
 				}
@@ -76,21 +74,19 @@ func KeyExists(bucket any, name any, imgName ...string) marrow.Resolvable {
 		imgName: imgName,
 		run: func(ctx marrow.Context, img *image) (av any, err error) {
 			var bv any
-			if bv, err = marrow.ResolveValue(bucket, ctx); err == nil {
+			var kv any
+			if bv, kv, err = marrow.ResolveValues(bucket, name, ctx); err == nil {
 				bn := fmt.Sprintf("%v", bv)
-				var kv any
-				if kv, err = marrow.ResolveValue(name, ctx); err == nil {
-					kn := fmt.Sprintf("%v", kv)
-					var js nc.JetStreamContext
-					if js, err = img.client.JetStream(); err == nil {
-						var kvs nc.KeyValue
-						if kvs, err = js.KeyValue(bn); err == nil {
-							if _, err = kvs.Get(kn); err == nil {
-								av = true
-							} else if err == nc.ErrKeyNotFound {
-								err = nil
-								av = false
-							}
+				kn := fmt.Sprintf("%v", kv)
+				var js nc.JetStreamContext
+				if js, err = img.client.JetStream(); err == nil {
+					var kvs nc.KeyValue
+					if kvs, err = js.KeyValue(bn); err == nil {
+						if _, err = kvs.Get(kn); err == nil {
+							av = true
+						} else if err == nc.ErrKeyNotFound {
+							err = nil
+							av = false
 						}
 					}
 				}
@@ -114,19 +110,17 @@ func PutKey(when marrow.When, bucket any, name any, value any, imgName ...string
 		imgName: imgName,
 		run: func(ctx marrow.Context, img *image) (err error) {
 			var bv any
-			if bv, err = marrow.ResolveValue(bucket, ctx); err == nil {
+			var kv any
+			if bv, kv, err = marrow.ResolveValues(bucket, name, ctx); err == nil {
 				bn := fmt.Sprintf("%v", bv)
-				var kv any
-				if kv, err = marrow.ResolveValue(name, ctx); err == nil {
-					kn := fmt.Sprintf("%v", kv)
-					var data []byte
-					if data, err = marrow.ResolveData(value, ctx); err == nil {
-						var js nc.JetStreamContext
-						if js, err = img.client.JetStream(); err == nil {
-							var kvs nc.KeyValue
-							if kvs, err = js.KeyValue(bn); err == nil {
-								_, err = kvs.Put(kn, data)
-							}
+				kn := fmt.Sprintf("%v", kv)
+				var data []byte
+				if data, err = marrow.ResolveData(value, ctx); err == nil {
+					var js nc.JetStreamContext
+					if js, err = img.client.JetStream(); err == nil {
+						var kvs nc.KeyValue
+						if kvs, err = js.KeyValue(bn); err == nil {
+							_, err = kvs.Put(kn, data)
 						}
 					}
 				}
@@ -148,17 +142,15 @@ func DeleteKey(when marrow.When, bucket any, name any, imgName ...string) marrow
 		imgName: imgName,
 		run: func(ctx marrow.Context, img *image) (err error) {
 			var bv any
-			if bv, err = marrow.ResolveValue(bucket, ctx); err == nil {
+			var kv any
+			if bv, kv, err = marrow.ResolveValues(bucket, name, ctx); err == nil {
 				bn := fmt.Sprintf("%v", bv)
-				var kv any
-				if kv, err = marrow.ResolveValue(name, ctx); err == nil {
-					kn := fmt.Sprintf("%v", kv)
-					var js nc.JetStreamContext
-					if js, err = img.client.JetStream(); err == nil {
-						var kvs nc.KeyValue
-						if kvs, err = js.KeyValue(bn); err == nil {
-							err = kvs.Delete(kn)
-						}
+				kn := fmt.Sprintf("%v", kv)
+				var js nc.JetStreamContext
+				if js, err = img.client.JetStream(); err == nil {
+					var kvs nc.KeyValue
+					if kvs, err = js.KeyValue(bn); err == nil {
+						err = kvs.Delete(kn)
 					}
 				}
 			}
