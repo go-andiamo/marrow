@@ -610,6 +610,41 @@ func TestResolveValue(t *testing.T) {
 	}
 }
 
+func TestResolveData(t *testing.T) {
+	testCases := []struct {
+		value  any
+		expect string
+	}{
+		{
+			expect: "",
+		},
+		{
+			value:  []byte("foo"),
+			expect: "foo",
+		},
+		{
+			value:  "foo",
+			expect: "foo",
+		},
+		{
+			value:  JSON{"foo": 42},
+			expect: `{"foo":42}`,
+		},
+		{
+			value:  42,
+			expect: "42",
+		},
+	}
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {
+			ctx := newTestContext(nil)
+			data, err := ResolveData(tc.value, ctx)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expect, string(data))
+		})
+	}
+}
+
 func TestJsonify(t *testing.T) {
 	testCases := []struct {
 		ctx       Context

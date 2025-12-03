@@ -94,11 +94,23 @@ func (c *comparator) Met(ctx Context) (unmet error, err error) {
 	compared := false
 	comparison := 0
 	switch vt1 := ov1.Resolved.(type) {
+	case []byte:
+		switch vt2 := ov2.Resolved.(type) {
+		case []byte:
+			compared = true
+			comparison = strings.Compare(string(vt1), string(vt2))
+		case string:
+			compared = true
+			comparison = strings.Compare(string(vt1), vt2)
+		}
 	case string:
 		switch vt2 := ov2.Resolved.(type) {
 		case string:
 			compared = true
 			comparison = strings.Compare(vt1, vt2)
+		case []byte:
+			compared = true
+			comparison = strings.Compare(vt1, string(vt2))
 		case bool:
 			if c.comp == compEqual {
 				compared = true
