@@ -56,6 +56,14 @@ func ResolveValue(value any, ctx Context) (av any, err error) {
 	return av, err
 }
 
+// ResolveValues is the same as ResolveValue, except that it resolves two values
+func ResolveValues(value1 any, value2 any, ctx Context) (av1 any, av2 any, err error) {
+	if av1, err = ResolveValue(value1, ctx); err == nil {
+		av2, err = ResolveValue(value2, ctx)
+	}
+	return
+}
+
 // ResolveData is the same as ResolveValue, except that the value is resolved to data (i.e. []byte)
 //
 // data for the value depends on type according to the following rules:

@@ -610,6 +610,14 @@ func TestResolveValue(t *testing.T) {
 	}
 }
 
+func TestResolveValues(t *testing.T) {
+	ctx := newTestContext(map[Var]any{"foo": "bar", "bar": 42})
+	av1, av2, err := ResolveValues(Var("foo"), Var("bar"), ctx)
+	require.NoError(t, err)
+	assert.Equal(t, "bar", av1)
+	assert.Equal(t, 42, av2)
+}
+
 func TestResolveData(t *testing.T) {
 	testCases := []struct {
 		value  any
