@@ -7,7 +7,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	cwl "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
@@ -24,6 +26,7 @@ type image struct {
 	container    *tcls.LocalStackContainer
 	shuttingDown bool
 	services     map[Service]with.Image
+	cwlc         *cwl.Client
 	mutex        sync.RWMutex
 	host         string
 	mappedPort   string
@@ -51,7 +54,7 @@ func (i *image) Start() (err error) {
 	}
 	i.services = make(map[Service]with.Image, len(svcs))
 	ctx := context.Background()
-	if i.container, err = tcls.Run(ctx, i.options.useImage()); err == nil {
+	if i.container, err = tcls.Run(ctx, i.options.useImage(), i); err == nil {
 		var mp nat.Port
 		if mp, err = i.container.MappedPort(ctx, defaultNatPort); err == nil {
 			i.mappedPort = mp.Port()
@@ -63,6 +66,7 @@ func (i *image) Start() (err error) {
 				if i.host, err = provider.DaemonHost(ctx); err == nil {
 					var cfg aws.Config
 					if cfg, err = i.buildAwsConfig(ctx); err == nil {
+						i.cloudwatchClient(ctx, cfg)
 						for svc := range svcs {
 							switch svc {
 							case Dynamo:
@@ -75,6 +79,8 @@ func (i *image) Start() (err error) {
 								err = i.createSqsImage(ctx, cfg)
 							case SecretsManager:
 								err = i.createSecretsManagerImage(ctx, cfg)
+							case Lambda:
+								err = i.createLambdaImage(ctx, cfg)
 							}
 							if err != nil {
 								return err
@@ -96,6 +102,21 @@ func (i *image) Start() (err error) {
 		}
 	}
 	return err
+}
+
+func (i *image) cloudwatchClient(ctx context.Context, awsCfg aws.Config) {
+	i.cwlc = cwl.NewFromConfig(awsCfg,
+		func(o *cwl.Options) {
+			o.BaseEndpoint = i.baseEndpoint()
+			o.EndpointResolverV2 = cwl.NewDefaultEndpointResolverV2()
+		},
+	)
+}
+
+func (i *image) Customize(req *testcontainers.GenericContainerRequest) error {
+	req.Env["LAMBDA_EXECUTOR"] = "local"
+	req.Env["LOCALSTACK_LAMBDA_EXECUTOR"] = "local"
+	return nil
 }
 
 func (i *image) DynamoClient() (client *dynamodb.Client) {
@@ -129,6 +150,13 @@ func (i *image) SQSClient() (client *sqs.Client) {
 func (i *image) SecretsManagerClient() (client *secretsmanager.Client) {
 	if svc, ok := i.services[SecretsManager]; ok && svc != nil {
 		client = svc.(*secretsManagerImage).client
+	}
+	return client
+}
+
+func (i *image) LambdaClient() (client *lambda.Client) {
+	if svc, ok := i.services[Lambda]; ok && svc != nil {
+		client = svc.(*lambdaImage).client
 	}
 	return client
 }

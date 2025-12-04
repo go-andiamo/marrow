@@ -54,6 +54,9 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 				},
 			},
 		},
+		Lambda: LambdaOptions{
+			CreateFunctions: []string{"foo-func"},
+		},
 		SecretsManager: SecretsManagerOptions{
 			Secrets: map[string]string{
 				"foo": "bar",
@@ -110,7 +113,8 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 			Do(SecretSet(After, "secret-5", nil)).
 			AssertEqual("my-secret-1", SecretGet("secret-1")).
 			AssertEqual("my-secret-3", JsonPath(Jsonify(SecretGet("secret-3")), "value")).
-			AssertEqual("my-db", JsonPath(Jsonify(SecretGet("db")), "name")),
+			AssertEqual("my-db", JsonPath(Jsonify(SecretGet("db")), "name")).
+			AssertEqual(0, LambdaInvokedCount("func-foo")),
 		Method("GET", "again").AssertOK().
 			Do(S3CreateBucket(Before, "foo-bucket")).
 			AssertEqual(0, DynamoItemsCount("TestTable")).

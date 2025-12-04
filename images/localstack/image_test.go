@@ -1,6 +1,9 @@
 package localstack
 
 import (
+	"context"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -52,10 +55,16 @@ func TestImage(t *testing.T) {
 					"foo3": []byte("bar3"),
 				},
 			},
+			Lambda: LambdaOptions{
+				CreateFunctions: []string{"func-foo", "func-bar"},
+			},
 		},
 	}
 	err := img.Start()
 	require.NoError(t, err)
+	defer func() {
+		img.shutdown()
+	}()
 	_, ok := img.services[Dynamo]
 	require.True(t, ok)
 	_, ok = img.services[S3]
@@ -93,6 +102,7 @@ func TestImage(t *testing.T) {
 	assert.NotNil(t, img.SNSClient())
 	assert.NotNil(t, img.SQSClient())
 	assert.NotNil(t, img.SecretsManagerClient())
+	assert.NotNil(t, img.LambdaClient())
 
 	ds := img.services[Dynamo].(DynamoService)
 	err = ds.PutItem("TestTable", marrow.JSON{
@@ -112,4 +122,24 @@ func TestImage(t *testing.T) {
 	count, err = ds.CountItems("TestTable")
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), count)
+
+	svc, ok = img.services[Lambda]
+	require.True(t, ok)
+	lsvc, ok := svc.(*lambdaImage)
+	require.True(t, ok)
+	for i := 0; i < 10; i++ {
+		_, err = lsvc.Client().Invoke(context.Background(), &lambda.InvokeInput{
+			FunctionName: aws.String("func-foo"),
+			Payload:      []byte(`{"message":"hello"}`),
+		})
+		require.NoError(t, err)
+	}
+
+	invocations, err := lsvc.InvokedCount("func-foo")
+	require.NoError(t, err)
+	assert.Equal(t, 10, invocations)
+
+	invocations, err = lsvc.InvokedCount("unknown")
+	require.NoError(t, err)
+	assert.Equal(t, 0, invocations)
 }
