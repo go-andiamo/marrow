@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/go-andiamo/marrow/with"
+	"time"
 )
 
 type Options struct {
@@ -24,6 +25,7 @@ type Options struct {
 	SNS                 SNSOptions
 	SQS                 SQSOptions
 	SecretsManager      SecretsManagerOptions
+	Lambda              LambdaOptions
 	CustomServices      CustomServiceBuilders
 	DisableAutoShutdown bool // Deprecated: use with.DisableReaperShutdowns instead
 }
@@ -62,6 +64,12 @@ type SecretsManagerOptions struct {
 	JsonSecrets map[string]any
 }
 
+type LambdaOptions struct {
+	CreateFunctions []string
+	ActiveTimeout   time.Duration // defaults to 1 minute per lambda
+	PullTimeout     time.Duration // defaults to 5 minutes - to allow for runtime image pull
+}
+
 type Service int
 type Services []Service
 
@@ -72,9 +80,10 @@ const (
 	SNS                           // start SNS service
 	SQS                           // start SQS service
 	SecretsManager                // start SecretsManager service
+	Lambda                        // start Lambda service
 
 	DynamoDB           = Dynamo
-	maxService Service = SecretsManager + 1
+	maxService Service = Lambda + 1
 	// Except services following this are not started, e.g.
 	//    Options.Services = Services{All,Except,SQS}
 	Except Service = -1
@@ -138,7 +147,7 @@ func (o Options) sessionToken() string {
 func (o Options) services() map[Service]struct{} {
 	result := make(map[Service]struct{}, len(o.Services))
 	except := false
-	all := Services{Dynamo, S3, SNS, SQS, SecretsManager}
+	all := Services{Dynamo, S3, SNS, SQS, SecretsManager, Lambda}
 	for _, service := range o.Services {
 		switch service {
 		case All:
@@ -149,7 +158,7 @@ func (o Options) services() map[Service]struct{} {
 			}
 		case Except:
 			except = true
-		case Dynamo, S3, SNS, SQS, SecretsManager:
+		case Dynamo, S3, SNS, SQS, SecretsManager, Lambda:
 			if !except {
 				result[service] = struct{}{}
 			} else {
@@ -159,7 +168,7 @@ func (o Options) services() map[Service]struct{} {
 			if !except && service < 0 {
 				minusService := -service
 				switch minusService {
-				case Dynamo, S3, SNS, SQS, SecretsManager:
+				case Dynamo, S3, SNS, SQS, SecretsManager, Lambda:
 					delete(result, minusService)
 				}
 			}
