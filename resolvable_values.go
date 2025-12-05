@@ -165,8 +165,7 @@ func resolveValueString(s string, ctx Context) (string, error) {
 		nameStart := j + 2
 		nameEnd := nameStart
 		for nameEnd < len(s) {
-			c := s[nameEnd]
-			if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == ':' || c == '.' {
+			if s[nameEnd] != '}' {
 				nameEnd++
 				continue
 			}
@@ -184,6 +183,12 @@ func resolveValueString(s string, ctx Context) (string, error) {
 				b.WriteString(s)
 			} else {
 				return "", fmt.Errorf("unresolved env var: %q", after)
+			}
+		} else if after, ok = strings.CutPrefix(name, "svc:"); ok {
+			if s, ok := ctx.ResolveServiceValue(after); ok {
+				b.WriteString(s)
+			} else {
+				return "", fmt.Errorf("unresolved service var: %q", after)
 			}
 		} else if v, ok := vars[Var(name)]; ok {
 			if av, err := ResolveValue(v, ctx); err != nil {

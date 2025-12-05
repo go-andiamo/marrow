@@ -246,8 +246,7 @@ func (s *suite) resolveEnvString(str string) (string, error) {
 		nameStart := j + 2
 		nameEnd := nameStart
 		for nameEnd < len(str) {
-			c := str[nameEnd]
-			if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == ':' {
+			if str[nameEnd] != '}' {
 				nameEnd++
 				continue
 			}
