@@ -569,6 +569,28 @@ func TestResolveValue(t *testing.T) {
 			},
 			expectErr: "fooey",
 		},
+		{
+			value:     TemplateString("{$svc:foo:host}"),
+			expectErr: "unresolved service var:",
+		},
+		{
+			value: TemplateString("{$svc:foo:host}"),
+			setupCtx: func(ctx *context) {
+				ctx.images["foo"] = &mockImage{}
+			},
+			expect: "localhost",
+		},
+		{
+			value: TemplateString("{$svc:foo:host}--{$svc:foo:port}--{$svc:foo:mport}--{$svc:foo:username}--{$svc:foo:password}--{$svc:foo:region}"),
+			setupCtx: func(ctx *context) {
+				ctx.images["foo"] = &mockImage{
+					envs: map[string]string{
+						"region": "us-east-1",
+					},
+				}
+			},
+			expect: "localhost--8080--50080--foo--bar--us-east-1",
+		},
 	}
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {

@@ -71,6 +71,12 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 				"foo3": []byte("bar3"),
 			},
 		},
+		SSM: SSMOptions{
+			Prefix: "my-app/settings",
+			InitialParams: map[string]any{
+				"use-topic": TemplateString("{$svc:sns:arn:" + testTopic + "}"),
+			},
+		},
 	}
 	const (
 		varItem         = Var("item")
@@ -79,7 +85,11 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 		varLastQueueMsg = Var("last-queue-msg")
 	)
 	endpoint := Endpoint("/api", "",
+		SSMInitialise(Before, map[string]any{
+			"use-queue": TemplateString("{$svc:sqs:url:" + testQueue + "}"),
+		}),
 		Method("GET", "").AssertOK().
+			Do(SSMPutParameter(Before, "foo", 42)).
 			Do(SNSPublish(Before, testTopic, 42)).
 			Do(SNSPublish(Before, testTopic, &sns.PublishInput{Message: aws.String(`{"foo": "bar"}`)})).
 			Do(SNSPublish(Before, testTopic, `{"foo": "bar"}`)).

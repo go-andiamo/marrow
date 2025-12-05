@@ -26,7 +26,7 @@ func TestWithInit_Mocked(t *testing.T) {
 		},
 	})
 	init := newMockInit()
-	init.wg.Add(7)
+	init.wg.Add(8)
 
 	err := w.Init(init)
 	require.NoError(t, err)
@@ -40,8 +40,8 @@ func TestWithInit_Mocked(t *testing.T) {
 	init.wg.Wait()
 
 	// check suit init was called
-	assert.Len(t, init.called, 7)
-	assert.Len(t, init.images, 7)
+	assert.Len(t, init.called, 8)
+	assert.Len(t, init.images, 8)
 	_, ok := init.called["AddSupportingImage:dynamo"]
 	assert.True(t, ok)
 	_, ok = init.called["AddSupportingImage:s3"]
@@ -53,6 +53,8 @@ func TestWithInit_Mocked(t *testing.T) {
 	_, ok = init.called["AddSupportingImage:secrets-service"]
 	assert.True(t, ok)
 	_, ok = init.called["AddSupportingImage:lambda"]
+	assert.True(t, ok)
+	_, ok = init.called["AddSupportingImage:ssm"]
 	assert.True(t, ok)
 	_, ok = init.called["AddSupportingImage:custom"]
 	assert.True(t, ok)

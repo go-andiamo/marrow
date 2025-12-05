@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/docker/go-connections/nat"
 	"github.com/go-andiamo/marrow/with"
 	"github.com/testcontainers/testcontainers-go"
@@ -81,6 +82,8 @@ func (i *image) Start() (err error) {
 								err = i.createSecretsManagerImage(ctx, cfg)
 							case Lambda:
 								err = i.createLambdaImage(ctx, cfg)
+							case SSM:
+								err = i.createSSMImage(ctx, cfg)
 							}
 							if err != nil {
 								return err
@@ -157,6 +160,13 @@ func (i *image) SecretsManagerClient() (client *secretsmanager.Client) {
 func (i *image) LambdaClient() (client *lambda.Client) {
 	if svc, ok := i.services[Lambda]; ok && svc != nil {
 		client = svc.(*lambdaImage).client
+	}
+	return client
+}
+
+func (i *image) SSMClient() (client *ssm.Client) {
+	if svc, ok := i.services[SSM]; ok && svc != nil {
+		client = svc.(*ssmImage).client
 	}
 	return client
 }

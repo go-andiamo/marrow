@@ -3,10 +3,12 @@ package localstack
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/go-andiamo/marrow/with"
 	"github.com/testcontainers/testcontainers-go"
 )
@@ -20,6 +22,8 @@ type Image interface {
 	SNSClient() *sns.Client
 	SQSClient() *sqs.Client
 	SecretsManagerClient() *secretsmanager.Client
+	SSMClient() *ssm.Client
+	LambdaClient() *lambda.Client
 }
 
 // With creates a new localstack support image for use in marrow.Suite .Init()

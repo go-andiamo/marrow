@@ -16,6 +16,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.39.13
 	github.com/aws/aws-sdk-go-v2/service/sns v1.39.5
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.15
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.67.5
 	github.com/docker/go-connections v0.6.0
 	github.com/go-andiamo/marrow v0.0.0
 	github.com/stretchr/testify v1.11.1

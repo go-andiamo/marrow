@@ -70,15 +70,15 @@ func TestOptions_services(t *testing.T) {
 		},
 		{
 			services: Services{All},
-			expected: Services{Dynamo, S3, SNS, SQS, SecretsManager, Lambda},
+			expected: Services{Dynamo, S3, SNS, SQS, SecretsManager, Lambda, SSM},
 		},
 		{
 			services: Services{All, Except, S3},
-			expected: Services{Dynamo, SNS, SQS, SecretsManager, Lambda},
+			expected: Services{Dynamo, SNS, SQS, SecretsManager, Lambda, SSM},
 		},
 		{
 			services: Services{All, -S3},
-			expected: Services{Dynamo, SNS, SQS, SecretsManager, Lambda},
+			expected: Services{Dynamo, SNS, SQS, SecretsManager, Lambda, SSM},
 		},
 	}
 	for i, tc := range testCases {

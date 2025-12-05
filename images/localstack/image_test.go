@@ -103,6 +103,7 @@ func TestImage(t *testing.T) {
 	assert.NotNil(t, img.SQSClient())
 	assert.NotNil(t, img.SecretsManagerClient())
 	assert.NotNil(t, img.LambdaClient())
+	assert.NotNil(t, img.SSMClient())
 
 	ds := img.services[Dynamo].(DynamoService)
 	err = ds.PutItem("TestTable", marrow.JSON{

@@ -83,6 +83,16 @@ type Context interface {
 	Log(args ...any)
 	// DoRequest performs a http request (not as part of tests)
 	DoRequest(req *http.Request) (*http.Response, error)
+	// ResolveServiceValue resolves a service value
+	//
+	// example:
+	//	ResolveServiceValue("mysql:username")
+	// would resolve to the username setting on supporting image "mysql"
+	//
+	// all supporting images support "host", "port", "mport", "username" & "password"
+	//
+	// some services support additional settings, e.g. localstack supports "region", "accesskey", "secretkey", "sessiontoken" (and possibly "arn:<name>")
+	ResolveServiceValue(v string) (string, bool)
 
 	Listener(name string) Listener
 	RegisterListener(name string, listener Listener)
@@ -302,6 +312,32 @@ func (c *context) ClearMockServices() {
 
 func (c *context) GetImage(name string) with.Image {
 	return c.images[name]
+}
+
+func (c *context) ResolveServiceValue(v string) (string, bool) {
+	parts := strings.Split(v, ":")
+	if len(parts) > 1 {
+		if img, ok := c.images[parts[0]]; ok {
+			switch parts[1] {
+			case "host":
+				return img.Host(), true
+			case "port":
+				return img.Port(), true
+			case "mport":
+				return img.MappedPort(), true
+			case "username":
+				return img.Username(), true
+			case "password":
+				return img.Password(), true
+			default:
+				if ire, ok := img.(with.ImageResolveEnv); ok {
+					tokens := parts[1:]
+					return ire.ResolveEnv(tokens...)
+				}
+			}
+		}
+	}
+	return "", false
 }
 
 func (c *context) GetApiImage() with.ImageApi {
