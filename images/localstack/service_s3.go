@@ -84,10 +84,10 @@ func (s *s3Image) CreateBucket(bucket string) error {
 	return err
 }
 
-const s3ImageName = "s3"
+const S3ImageName = "s3"
 
 func (s *s3Image) Name() string {
-	return s3ImageName
+	return S3ImageName
 }
 
 func (s *s3Image) Host() string {
@@ -137,7 +137,7 @@ func (s *s3Image) ResolveEnv(tokens ...string) (string, bool) {
 func S3ObjectsCount(bucket string, prefix string, imgName ...string) marrow.Resolvable {
 	return &resolvable[S3Service]{
 		name:     fmt.Sprintf("S3ObjectsCount(%q, %q)", bucket, prefix),
-		defImage: s3ImageName,
+		defImage: S3ImageName,
 		imgName:  imgName,
 		run: func(ctx marrow.Context, img S3Service) (result any, err error) {
 			return img.CountObjects(bucket, prefix)
@@ -154,7 +154,7 @@ func S3CreateBucket(when marrow.When, bucket string, imgName ...string) marrow.B
 	return &capture[S3Service]{
 		name:     fmt.Sprintf("S3CreateBucket(%q)", bucket),
 		when:     when,
-		defImage: s3ImageName,
+		defImage: S3ImageName,
 		imgName:  imgName,
 		run: func(ctx marrow.Context, img S3Service) error {
 			return img.CreateBucket(bucket)

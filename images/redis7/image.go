@@ -70,10 +70,10 @@ func (i *image) Container() testcontainers.Container {
 	return i.container
 }
 
-const imageName = "redis"
+const ImageName = "redis"
 
 func (i *image) Name() string {
-	return imageName
+	return ImageName
 }
 
 func (i *image) Host() string {

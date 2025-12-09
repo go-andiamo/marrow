@@ -57,11 +57,13 @@ type mockImage struct {
 	err      error
 	shutdown bool
 	envs     map[string]string
+	initErr  error
 }
 
 var _ with.With = (*mockImage)(nil)
 var _ with.Image = (*mockImage)(nil)
 var _ with.ImageResolveEnv = (*mockImage)(nil)
+var _ ImageStartupInitializer = (*mockImage)(nil)
 
 func (m *mockImage) Init(init with.SuiteInit) error {
 	init.AddSupportingImage(m)
@@ -109,6 +111,10 @@ func (m *mockImage) Password() string {
 func (m *mockImage) ResolveEnv(tokens ...string) (string, bool) {
 	s, ok := m.envs[strings.Join(tokens, ":")]
 	return s, ok
+}
+
+func (m *mockImage) StartupInit(ctx Context) error {
+	return m.initErr
 }
 
 type mockApiImage struct {

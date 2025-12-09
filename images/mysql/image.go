@@ -121,8 +121,10 @@ func (i *image) Container() testcontainers.Container {
 	return i.container
 }
 
+const ImageName = "mysql"
+
 func (i *image) Name() string {
-	return "mysql"
+	return ImageName
 }
 
 func (i *image) Host() string {

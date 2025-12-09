@@ -12,7 +12,7 @@ func Test_snsImage(t *testing.T) {
 		mappedPort: "123",
 		host:       "localhost",
 	}
-	assert.Equal(t, snsImageName, img.Name())
+	assert.Equal(t, SNSImageName, img.Name())
 	assert.Equal(t, defaultPort, img.Port())
 	assert.Equal(t, "localhost", img.Host())
 	assert.Equal(t, "123", img.MappedPort())

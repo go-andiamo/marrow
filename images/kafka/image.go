@@ -69,10 +69,10 @@ func (i *image) Client() Client {
 	return i.client
 }
 
-const imageName = "kafka"
+const ImageName = "kafka"
 
 func (i *image) Name() string {
-	return imageName
+	return ImageName
 }
 
 func (i *image) Host() string {

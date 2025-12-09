@@ -71,6 +71,7 @@ type suite struct {
 	shutdowns     []func()
 	mockServices  map[string]service.MockedService
 	images        map[string]with.Image
+	orderedImages []with.Image
 	apiImage      with.ImageApi
 	mutex         sync.RWMutex
 }
@@ -179,6 +180,7 @@ func (s *suite) AddSupportingImage(info with.Image) {
 		}
 	}
 	s.images[name] = info
+	s.orderedImages = append(s.orderedImages, info)
 }
 
 func (s *suite) SetTraceTimings(collect bool) {
@@ -284,6 +286,9 @@ func (s *suite) resolveEnvString(str string) (string, error) {
 			}
 		case len(parts) > 1:
 			// name:port name:host name:username name:password ... where name is the name of a supporting image in s.images
+			if parts[0] == "svc" && len(parts) > 2 {
+				parts = parts[1:]
+			}
 			if img, ok := s.images[parts[0]]; ok {
 				switch parts[1] {
 				case "host":
@@ -337,67 +342,9 @@ func (s *suite) Init(withs ...with.With) Suite_ {
 	}
 }
 
-func (s *suite) runInits() error {
-	s.shutdowns = make([]func(), 0)
-	s.stdout = os.Stdout
-	s.stderr = os.Stderr
-	supporting := make([]with.With, 0, len(s.withs))
-	finals := make([]with.With, 0, len(s.withs))
-	for _, w := range s.withs {
-		if w != nil {
-			switch w.Stage() {
-			case with.Supporting:
-				supporting = append(supporting, w)
-			case with.Final:
-				finals = append(finals, w)
-			default:
-				if err := w.Init(s); err != nil {
-					return err
-				} else if sdfn := w.Shutdown(); sdfn != nil {
-					s.shutdowns = append(s.shutdowns, sdfn)
-				}
-			}
-		}
-	}
-	track := &initTrack{}
-	track.add(len(supporting))
-	for _, w := range supporting {
-		uw := w
-		go func() {
-			if !track.errored() {
-				track.addShutdown(uw.Shutdown())
-				if err := uw.Init(s); err != nil {
-					track.error(err)
-				}
-			}
-			track.done()
-		}()
-	}
-	if err := track.wait(); err != nil {
-		return err
-	}
-	track.add(len(finals))
-	for _, w := range finals {
-		uw := w
-		go func() {
-			if !track.errored() {
-				track.addShutdown(uw.Shutdown())
-				if err := uw.Init(s); err != nil {
-					track.error(err)
-				}
-			}
-			track.done()
-		}()
-	}
-	if err := track.wait(); err != nil {
-		return err
-	}
-	s.shutdowns = append(s.shutdowns, track.shutdowns...)
-	return nil
-}
-
 func (s *suite) Run() error {
-	if err := s.runInits(); err != nil {
+	ctx, err := s.runInits()
+	if err != nil {
 		return err
 	}
 	cov := coverage.NewNullCoverage()
@@ -418,7 +365,7 @@ func (s *suite) Run() error {
 		}
 	}
 	t := htesting.NewHelper(s.testing, s.stdout, s.stderr)
-	ctx := s.initContext(cov, t)
+	s.finalizeContext(ctx, cov, t)
 	for _, e := range s.endpoints {
 		if !ctx.run(e.Url(), e) {
 			break
@@ -461,30 +408,104 @@ func (s *suite) Run() error {
 	return nil
 }
 
-func (s *suite) initContext(cov coverage.Collector, t htesting.Helper) *context {
-	result := newContext()
-	result.coverage = cov
-	result.traceTimings = s.traceTimings
+func (s *suite) runInits() (*context, error) {
+	s.shutdowns = make([]func(), 0)
+	s.stdout = os.Stdout
+	s.stderr = os.Stderr
+	supporting := make([]with.With, 0, len(s.withs))
+	finals := make([]with.With, 0, len(s.withs))
+	for _, w := range s.withs {
+		if w != nil {
+			switch w.Stage() {
+			case with.Supporting:
+				supporting = append(supporting, w)
+			case with.Final:
+				finals = append(finals, w)
+			default:
+				if err := w.Init(s); err != nil {
+					return nil, err
+				} else if sdfn := w.Shutdown(); sdfn != nil {
+					s.shutdowns = append(s.shutdowns, sdfn)
+				}
+			}
+		}
+	}
+	track := &initTrack{}
+	track.add(len(supporting))
+	for _, w := range supporting {
+		uw := w
+		go func() {
+			if !track.errored() {
+				track.addShutdown(uw.Shutdown())
+				if err := uw.Init(s); err != nil {
+					track.error(err)
+				}
+			}
+			track.done()
+		}()
+	}
+	if err := track.wait(); err != nil {
+		return nil, err
+	}
+	ctx := s.initializeContext()
+	for _, img := range s.orderedImages {
+		if imgInit, ok := img.(ImageStartupInitializer); ok {
+			if err := imgInit.StartupInit(ctx); err != nil {
+				return nil, err
+			}
+		}
+	}
+	track.add(len(finals))
+	for _, w := range finals {
+		uw := w
+		go func() {
+			if !track.errored() {
+				track.addShutdown(uw.Shutdown())
+				if err := uw.Init(s); err != nil {
+					track.error(err)
+				}
+			}
+			track.done()
+		}()
+	}
+	if err := track.wait(); err != nil {
+		return nil, err
+	}
+	s.shutdowns = append(s.shutdowns, track.shutdowns...)
+	return ctx, nil
+}
+
+func (s *suite) initializeContext() *context {
+	ctx := newContext()
+	ctx.dbs = s.dbs
+	ctx.images = s.images
+	ctx.mockServices = s.mockServices
+	ctx.vars = s.vars
+	return ctx
+}
+
+func (s *suite) finalizeContext(ctx *context, cov coverage.Collector, t htesting.Helper) {
+	ctx.coverage = cov
+	ctx.traceTimings = s.traceTimings
 	if s.httpDo != nil {
-		result.httpDo = s.httpDo
+		ctx.httpDo = s.httpDo
 	}
 	host := s.host
 	if host == "" {
 		host = "localhost"
 	}
-	result.host = fmt.Sprintf("http://%s:%d", host, s.port)
-	result.dbs = maps.Clone(s.dbs)
-	result.images = maps.Clone(s.images)
-	result.apiImage = s.apiImage
-	result.testing = t
-	result.mockServices = maps.Clone(s.mockServices)
-	for k, v := range s.vars {
-		result.vars[k] = v
-	}
+	ctx.host = fmt.Sprintf("http://%s:%d", host, s.port)
+	ctx.apiImage = s.apiImage
+	ctx.testing = t
+	//ctx.dbs = maps.Clone(s.dbs)
+	//ctx.images = maps.Clone(s.images)
+	//ctx.mockServices = maps.Clone(s.mockServices)
+	//for k, v := range s.vars {
+	//	ctx.vars[k] = v
+	//}
 	for k, v := range s.cookies {
-		result.cookieJar[k] = v
+		ctx.cookieJar[k] = v
 	}
-	return result
 }
 
 type initTrack struct {
@@ -532,4 +553,11 @@ func (i *initTrack) wait() error {
 		}
 	}
 	return i.err
+}
+
+// ImageStartupInitializer is an additional interface that support images can implement if they need initializing
+//
+// image initialization occurs once all supporting images have been spun up
+type ImageStartupInitializer interface {
+	StartupInit(ctx Context) error
 }

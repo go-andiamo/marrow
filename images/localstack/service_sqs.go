@@ -67,10 +67,10 @@ func (s *sqsImage) Client() *sqs.Client {
 	return s.client
 }
 
-const sqsImageName = "sqs"
+const SQSImageName = "sqs"
 
 func (s *sqsImage) Name() string {
-	return sqsImageName
+	return SQSImageName
 }
 
 func (s *sqsImage) Host() string {
@@ -132,7 +132,7 @@ func SQSSend(when marrow.When, queue string, message any, imgName ...string) mar
 		name:     fmt.Sprintf("SQSSend(%q)", queue),
 		when:     when,
 		imgName:  imgName,
-		defImage: sqsImageName,
+		defImage: SQSImageName,
 		run: func(ctx marrow.Context, img SQSService) (err error) {
 			var am any
 			if am, err = marrow.ResolveValue(message, ctx); err == nil {
@@ -193,7 +193,7 @@ func SQSPurge(when marrow.When, queue string, imgName ...string) marrow.BeforeAf
 		name:     fmt.Sprintf("SQSPurge(%q)", queue),
 		when:     when,
 		imgName:  imgName,
-		defImage: sqsImageName,
+		defImage: SQSImageName,
 		run: func(ctx marrow.Context, img SQSService) (err error) {
 			if url, ok := img.QueueURL(queue); ok {
 				_, err = img.Client().PurgeQueue(context.Background(), &sqs.PurgeQueueInput{QueueUrl: &url})
@@ -215,7 +215,7 @@ func SQSPurge(when marrow.When, queue string, imgName ...string) marrow.BeforeAf
 func SQSReceiveMessages(queue string, maxMessages int, wait int, imgName ...string) marrow.Resolvable {
 	return &resolvable[SQSService]{
 		name:     fmt.Sprintf("SQSReceiveMessages(%q)", queue),
-		defImage: sqsImageName,
+		defImage: SQSImageName,
 		imgName:  imgName,
 		run: func(ctx marrow.Context, img SQSService) (result any, err error) {
 			if url, ok := img.QueueURL(queue); ok {

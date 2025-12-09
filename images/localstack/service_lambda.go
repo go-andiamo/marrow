@@ -176,10 +176,10 @@ func (s *lambdaImage) InvokedCount(name string) (count int, err error) {
 	return count, err
 }
 
-const lambdaImageName = "lambda"
+const LambdaImageName = "lambda"
 
 func (s *lambdaImage) Name() string {
-	return lambdaImageName
+	return LambdaImageName
 }
 
 func (s *lambdaImage) Host() string {
@@ -234,7 +234,7 @@ func (s *lambdaImage) ResolveEnv(tokens ...string) (string, bool) {
 func LambdaInvokedCount(name string, imgName ...string) marrow.Resolvable {
 	return &resolvable[LambdaService]{
 		name:     fmt.Sprintf("LambdaInvokeCount(%q)", name),
-		defImage: lambdaImageName,
+		defImage: LambdaImageName,
 		imgName:  imgName,
 		run: func(ctx marrow.Context, img LambdaService) (result any, err error) {
 			return img.InvokedCount(name)

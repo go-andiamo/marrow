@@ -307,11 +307,11 @@ func (r *resolvable) ResolveValue(ctx marrow.Context) (av any, err error) {
 }
 
 func (r *resolvable) String() string {
-	return imageName + "." + r.name
+	return ImageName + "." + r.name
 }
 
 func imageFromContext(ctx marrow.Context, name []string) (*image, error) {
-	n := imageName
+	n := ImageName
 	if len(name) > 0 && name[0] != "" {
 		n = name[0]
 	}

@@ -171,10 +171,10 @@ func valueToAttributeValue(v any) (types.AttributeValue, error) {
 	return nil, fmt.Errorf("unknown DynamoDB attribute type: %T", v)
 }
 
-const dynamoImageName = "dynamo"
+const DynamoImageName = "dynamo"
 
 func (s *dynamoImage) Name() string {
-	return dynamoImageName
+	return DynamoImageName
 }
 
 func (s *dynamoImage) Host() string {
@@ -225,7 +225,7 @@ func DynamoPutItem(when marrow.When, tableName string, item any, imgName ...stri
 	return &capture[DynamoService]{
 		name:     fmt.Sprintf("DynamoPutItem(%q)", tableName),
 		when:     when,
-		defImage: dynamoImageName,
+		defImage: DynamoImageName,
 		imgName:  imgName,
 		run: func(ctx marrow.Context, img DynamoService) (err error) {
 			var actual any
@@ -250,7 +250,7 @@ func DynamoDeleteItem(when marrow.When, tableName string, keyProperty string, ke
 	return &capture[DynamoService]{
 		name:     fmt.Sprintf("DynamoDeleteItem(%q)", tableName),
 		when:     when,
-		defImage: dynamoImageName,
+		defImage: DynamoImageName,
 		imgName:  imgName,
 		run: func(ctx marrow.Context, img DynamoService) (err error) {
 			var akv any
@@ -270,7 +270,7 @@ func DynamoDeleteItem(when marrow.When, tableName string, keyProperty string, ke
 func DynamoGetItem(tableName string, keyProperty string, keyValue any, imgName ...string) marrow.Resolvable {
 	return &resolvable[DynamoService]{
 		name:     fmt.Sprintf("DynamoGetItem(%q)", tableName),
-		defImage: dynamoImageName,
+		defImage: DynamoImageName,
 		imgName:  imgName,
 		run: func(ctx marrow.Context, img DynamoService) (result any, err error) {
 			var akv any
@@ -290,7 +290,7 @@ func DynamoGetItem(tableName string, keyProperty string, keyValue any, imgName .
 func DynamoItemsCount(tableName string, imgName ...string) marrow.Resolvable {
 	return &resolvable[DynamoService]{
 		name:     fmt.Sprintf("DynamoItemsCount(%q)", tableName),
-		defImage: dynamoImageName,
+		defImage: DynamoImageName,
 		imgName:  imgName,
 		run: func(ctx marrow.Context, img DynamoService) (result any, err error) {
 			return img.CountItems(tableName)

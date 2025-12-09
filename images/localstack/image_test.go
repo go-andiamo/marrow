@@ -42,7 +42,7 @@ func TestImage(t *testing.T) {
 				},
 			},
 			SecretsManager: SecretsManagerOptions{
-				Secrets: map[string]string{
+				Secrets: map[string]any{
 					"foo": "bar",
 				},
 				JsonSecrets: map[string]any{
@@ -83,19 +83,6 @@ func TestImage(t *testing.T) {
 	assert.True(t, ok)
 	assert.Contains(t, s, "/"+testName)
 	assert.Contains(t, s, "http://sqs.us-east-1.")
-	sssvc := img.services[SecretsManager].(SecretsManagerService)
-	v, ok := sssvc.Secret("foo")
-	assert.True(t, ok)
-	assert.Equal(t, "bar", v)
-	_, ok = sssvc.(with.ImageResolveEnv).ResolveEnv("arn", "foo")
-	assert.True(t, ok)
-	v, ok = sssvc.(with.ImageResolveEnv).ResolveEnv("value", "foo")
-	assert.True(t, ok)
-	assert.Equal(t, "bar", v)
-	_, ok = sssvc.SecretARN("foo")
-	assert.True(t, ok)
-	_, ok = sssvc.SecretBinary("db")
-	assert.True(t, ok)
 
 	assert.NotNil(t, img.DynamoClient())
 	assert.NotNil(t, img.S3Client())
@@ -104,6 +91,28 @@ func TestImage(t *testing.T) {
 	assert.NotNil(t, img.SecretsManagerClient())
 	assert.NotNil(t, img.LambdaClient())
 	assert.NotNil(t, img.SSMClient())
+	assert.Equal(t, ImageName, img.Name())
+	assert.Equal(t, "localhost", img.Host())
+	assert.Equal(t, defaultPort, img.Port())
+	assert.NotEqual(t, defaultPort, img.MappedPort())
+	assert.True(t, img.IsDocker())
+	assert.Equal(t, "", img.Username())
+	assert.Equal(t, "", img.Password())
+
+	s, ok = img.ResolveEnv("Region")
+	assert.True(t, ok)
+	assert.Equal(t, defaultRegion, s)
+	s, ok = img.ResolveEnv("AccessKey")
+	assert.True(t, ok)
+	assert.Equal(t, defaultAccessKey, s)
+	s, ok = img.ResolveEnv("SecretKey")
+	assert.True(t, ok)
+	assert.Equal(t, defaultSecretKey, s)
+	s, ok = img.ResolveEnv("SessionToken")
+	assert.True(t, ok)
+	assert.Equal(t, defaultSessionToken, s)
+	_, ok = img.ResolveEnv("Foo")
+	assert.False(t, ok)
 
 	ds := img.services[Dynamo].(DynamoService)
 	err = ds.PutItem("TestTable", marrow.JSON{

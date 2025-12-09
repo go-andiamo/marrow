@@ -27,18 +27,23 @@ type Image interface {
 }
 
 // With creates a new localstack support image for use in marrow.Suite .Init()
+//
+// the supporting images added is according to the Options.Services
 func With(options Options) Image {
 	return &image{options: options}
 }
 
 var _ with.With = (*image)(nil)
+var _ with.Image = (*image)(nil)
+var _ with.ImageResolveEnv = (*image)(nil)
 
 func (i *image) Init(init with.SuiteInit) error {
 	if err := i.Start(); err != nil {
 		return fmt.Errorf("with localstack image init error: %w", err)
 	}
-	for _, si := range i.services {
-		init.AddSupportingImage(si)
+	init.AddSupportingImage(i)
+	for _, s := range i.services {
+		init.AddSupportingImage(s)
 	}
 	return nil
 }

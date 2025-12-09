@@ -10,7 +10,7 @@ func Test_s3Image(t *testing.T) {
 		mappedPort: "123",
 		host:       "localhost",
 	}
-	assert.Equal(t, s3ImageName, img.Name())
+	assert.Equal(t, S3ImageName, img.Name())
 	assert.Equal(t, defaultPort, img.Port())
 	assert.Equal(t, "localhost", img.Host())
 	assert.Equal(t, "123", img.MappedPort())

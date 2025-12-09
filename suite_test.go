@@ -264,7 +264,7 @@ func TestWithDatabase(t *testing.T) {
 	s := Suite().Init(with.Database("", db, common.DatabaseArgs{Style: common.NumberedDbArgs}))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	err = raw.runInits()
+	_, err = raw.runInits()
 	require.NoError(t, err)
 	ndb, ok := raw.dbs[""]
 	assert.True(t, ok)
@@ -277,7 +277,7 @@ func TestWithHttpDo(t *testing.T) {
 	s := Suite().Init(with.HttpDo(&dummyDo{}))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	err := raw.runInits()
+	_, err := raw.runInits()
 	require.NoError(t, err)
 	assert.NotNil(t, raw.httpDo)
 }
@@ -286,7 +286,7 @@ func TestWithApiHost(t *testing.T) {
 	s := Suite().Init(with.ApiHost("localhost", 8080))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	err := raw.runInits()
+	_, err := raw.runInits()
 	require.NoError(t, err)
 	assert.Equal(t, "localhost", raw.host)
 	assert.Equal(t, 8080, raw.port)
@@ -296,7 +296,7 @@ func TestWithTesting(t *testing.T) {
 	s := Suite().Init(with.Testing(t))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	err := raw.runInits()
+	_, err := raw.runInits()
 	require.NoError(t, err)
 	assert.NotNil(t, raw.testing)
 }
@@ -305,7 +305,7 @@ func TestWithVar(t *testing.T) {
 	s := Suite().Init(with.Var("foo", "bar"))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	err := raw.runInits()
+	_, err := raw.runInits()
 	require.NoError(t, err)
 	assert.Len(t, raw.vars, 1)
 }
@@ -314,7 +314,7 @@ func TestWithCookie(t *testing.T) {
 	s := Suite().Init(with.Cookie(&http.Cookie{Name: "foo", Value: "bar"}))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	err := raw.runInits()
+	_, err := raw.runInits()
 	require.NoError(t, err)
 	assert.Len(t, raw.cookies, 1)
 	assert.Equal(t, "bar", raw.cookies["foo"].Value)
@@ -324,7 +324,7 @@ func TestWithReportCoverage(t *testing.T) {
 	s := Suite().Init(with.ReportCoverage(func(coverage *coverage.Coverage) {}))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	err := raw.runInits()
+	_, err := raw.runInits()
 	require.NoError(t, err)
 	assert.NotNil(t, raw.reportCov)
 }
@@ -333,7 +333,7 @@ func TestWithCoverageCollector(t *testing.T) {
 	s := Suite().Init(with.CoverageCollector(coverage.NewNullCoverage()))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	err := raw.runInits()
+	_, err := raw.runInits()
 	require.NoError(t, err)
 	assert.NotNil(t, raw.covCollector)
 }
@@ -342,7 +342,7 @@ func TestWithOAS(t *testing.T) {
 	s := Suite().Init(with.OAS(strings.NewReader("")))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	err := raw.runInits()
+	_, err := raw.runInits()
 	require.NoError(t, err)
 	assert.NotNil(t, raw.oasReader)
 }
@@ -351,7 +351,7 @@ func TestWithRepeats(t *testing.T) {
 	s := Suite().Init(with.Repeats(10, true, func() {}))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	err := raw.runInits()
+	_, err := raw.runInits()
 	require.NoError(t, err)
 	assert.Equal(t, 10, raw.repeats)
 	assert.True(t, raw.stopOnFailure)
@@ -363,7 +363,7 @@ func TestWithLogging(t *testing.T) {
 	s := Suite().Init(with.Logging(nw, nw))
 	raw, ok := s.(*suite)
 	require.True(t, ok)
-	err := raw.runInits()
+	_, err := raw.runInits()
 	require.NoError(t, err)
 	assert.NotNil(t, raw.stdout)
 	assert.Equal(t, nw, raw.stdout)
@@ -377,7 +377,7 @@ func TestAddSupportingImage(t *testing.T) {
 		s := Suite().Init(img, img)
 		raw, ok := s.(*suite)
 		require.True(t, ok)
-		err := raw.runInits()
+		_, err := raw.runInits()
 		require.NoError(t, err)
 		assert.Len(t, raw.shutdowns, 2)
 		assert.Len(t, raw.images, 2)
@@ -392,17 +392,26 @@ func TestAddSupportingImage(t *testing.T) {
 		s := Suite().Init(img, img)
 		raw, ok := s.(*suite)
 		require.True(t, ok)
-		err := raw.runInits()
+		_, err := raw.runInits()
 		require.Error(t, err)
 		assert.Len(t, raw.shutdowns, 0)
 		assert.True(t, img.shutdown)
+	})
+	t.Run("startup init errors", func(t *testing.T) {
+		img := &mockImage{initErr: errors.New("fooey")}
+		s := Suite().Init(img, img)
+		raw, ok := s.(*suite)
+		require.True(t, ok)
+		_, err := raw.runInits()
+		require.Error(t, err)
+		assert.Len(t, raw.shutdowns, 0)
 	})
 	t.Run("with api image", func(t *testing.T) {
 		img := &mockApiImage{}
 		s := Suite().Init(img)
 		raw, ok := s.(*suite)
 		require.True(t, ok)
-		err := raw.runInits()
+		_, err := raw.runInits()
 		require.NoError(t, err)
 		assert.Len(t, raw.shutdowns, 1)
 		assert.Len(t, raw.images, 0)
@@ -496,6 +505,15 @@ func TestSuite_ResolveEnv(t *testing.T) {
 		},
 		{
 			value: "{$foo:bar:baz}",
+			images: map[string]with.Image{
+				"foo": &mockImage{
+					envs: map[string]string{"bar:baz": "buzz"},
+				},
+			},
+			expect: "buzz",
+		},
+		{
+			value: "{$svc:foo:bar:baz}",
 			images: map[string]with.Image{
 				"foo": &mockImage{
 					envs: map[string]string{"bar:baz": "buzz"},
