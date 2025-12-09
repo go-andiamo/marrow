@@ -12,7 +12,7 @@ func Test_lambdaImage(t *testing.T) {
 		host:       "localhost",
 		arns:       map[string]string{"foo-func": arn},
 	}
-	assert.Equal(t, lambdaImageName, img.Name())
+	assert.Equal(t, LambdaImageName, img.Name())
 	assert.Equal(t, defaultPort, img.Port())
 	assert.Equal(t, "localhost", img.Host())
 	assert.Equal(t, "123", img.MappedPort())

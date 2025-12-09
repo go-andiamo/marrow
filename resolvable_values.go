@@ -671,7 +671,12 @@ func (v JsonTraverseValue) ResolveValue(ctx Context) (av any, err error) {
 
 // TemplateString is a string type that can contain variable markers - which are resolved to produce the final string
 //
-// variable markers are in the format "{$name}"
+// variable markers are in the format "{$name}" - or as a concatenated string, e.g. "{$var1}-{$var2}"
+//
+// markers can also be in the format...
+//   - "{$env:name}" - where "name" is the name of an environment variable
+//   - "{$svc:name:token}" - where "name" is the name of a registered supporting image and token is the setting in that service
+//     e.g. "host", "port", "mport" (mapped port), "username", "password" (and some supporting services support other tokens, e.g. "{$svc:aws:region}")
 //
 // when being resolved (against a Context), any variables not found will cause an error in the test
 //
@@ -1363,4 +1368,64 @@ func (v ApiCallValue) ResolveValue(ctx Context) (av any, err error) {
 
 func (v ApiCallValue) String() string {
 	return fmt.Sprintf("ApiCall(%s %s)", v.Method, v.Url)
+}
+
+type FormatValue struct {
+	Format string
+	Args   []any
+}
+
+// Format is a resolvable value, similar to fmt.Sprintf except that args are resolved
+func Format(format string, args ...any) FormatValue {
+	return FormatValue{
+		Format: format,
+		Args:   args,
+	}
+}
+
+func (v FormatValue) ResolveValue(ctx Context) (any, error) {
+	aargs := make([]any, len(v.Args))
+	for i, arg := range v.Args {
+		if av, err := ResolveValue(arg, ctx); err == nil {
+			aargs[i] = av
+		} else {
+			return nil, err
+		}
+	}
+	return fmt.Sprintf(v.Format, aargs...), nil
+}
+
+type ImageValue struct {
+	Service string
+	Tokens  []any
+}
+
+// ImageVal is a resolvable value that resolves to a setting (value) of a supporting image
+//
+// svc is the name of the supporting image, e.g. "mysql", "aws" etc.
+//
+// tokens can be "host", "port", "mport" (mapped port), "username", "password" or any token that the supporting image resolves
+func ImageVal(svc string, tokens ...any) ImageValue {
+	return ImageValue{
+		Service: svc,
+		Tokens:  tokens,
+	}
+}
+
+func (v ImageValue) ResolveValue(ctx Context) (any, error) {
+	var b strings.Builder
+	b.WriteString(v.Service)
+	for _, arg := range v.Tokens {
+		if av, err := ResolveValue(arg, ctx); err == nil {
+			b.WriteRune(':')
+			b.WriteString(fmt.Sprintf("%v", av))
+		} else {
+			return nil, err
+		}
+	}
+	if av, ok := ctx.ResolveServiceValue(b.String()); ok {
+		return av, nil
+	} else {
+		return nil, fmt.Errorf("unable to resolve image value: %q", b.String())
+	}
 }

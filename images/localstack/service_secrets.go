@@ -17,7 +17,6 @@ type SecretsManagerService interface {
 	Client() *secretsmanager.Client
 	SecretARN(name string) (string, bool)
 	Secret(name string) (string, bool)
-	SecretBinary(name string) ([]byte, bool)
 	setArn(name string, arn string)
 }
 
@@ -32,6 +31,7 @@ type secretsManagerImage struct {
 var _ with.Image = (*secretsManagerImage)(nil)
 var _ with.ImageResolveEnv = (*secretsManagerImage)(nil)
 var _ SecretsManagerService = (*secretsManagerImage)(nil)
+var _ marrow.ImageStartupInitializer = (*secretsManagerImage)(nil)
 
 func (i *image) createSecretsManagerImage(ctx context.Context, awsCfg aws.Config) (err error) {
 	img := &secretsManagerImage{
@@ -46,46 +46,36 @@ func (i *image) createSecretsManagerImage(ctx context.Context, awsCfg aws.Config
 		),
 		arns: make(map[string]string),
 	}
-	err = img.createSecrets(ctx)
-	if err == nil {
-		i.services[SecretsManager] = img
-	}
+	i.services[SecretsManager] = img
 	return err
 }
 
-func (s *secretsManagerImage) createSecrets(ctx context.Context) error {
+func (s *secretsManagerImage) StartupInit(ctx marrow.Context) error {
 	for k, v := range s.options.SecretsManager.Secrets {
-		if out, err := s.client.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
-			Name:         aws.String(k),
-			SecretString: aws.String(v),
-		}); err == nil {
-			s.arns[k] = *out.ARN
+		if av, err := marrow.ResolveValue(v, ctx); err == nil {
+			avs := fmt.Sprintf("%v", av)
+			if out, err := s.client.CreateSecret(context.Background(), &secretsmanager.CreateSecretInput{
+				Name:         aws.String(k),
+				SecretString: aws.String(avs),
+			}); err == nil {
+				s.arns[k] = *out.ARN
+			} else {
+				return err
+			}
 		} else {
 			return err
 		}
 	}
 	for k, v := range s.options.SecretsManager.JsonSecrets {
-		var av []byte
-		switch vt := v.(type) {
-		case string:
-			av = []byte(vt)
-		case []byte:
-			av = vt
-		default:
-			if v != nil {
-				to := reflect.ValueOf(v)
-				if to.Kind() == reflect.Map || to.Kind() == reflect.Slice || to.Kind() == reflect.Struct {
-					av, _ = json.Marshal(v)
-				}
+		if data, err := marrow.ResolveData(v, ctx); err == nil {
+			if out, err := s.client.CreateSecret(context.Background(), &secretsmanager.CreateSecretInput{
+				Name:         aws.String(k),
+				SecretBinary: data,
+			}); err == nil {
+				s.arns[k] = *out.ARN
 			} else {
-				return fmt.Errorf("invalid json secret type: %T", v)
+				return err
 			}
-		}
-		if out, err := s.client.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
-			Name:         aws.String(k),
-			SecretBinary: av,
-		}); err == nil {
-			s.arns[k] = *out.ARN
 		} else {
 			return err
 		}
@@ -97,10 +87,10 @@ func (s *secretsManagerImage) Client() *secretsmanager.Client {
 	return s.client
 }
 
-const secretsServiceImageName = "secrets-service"
+const SecretsServiceImageName = "secrets-service"
 
 func (s *secretsManagerImage) Name() string {
-	return secretsServiceImageName
+	return SecretsServiceImageName
 }
 
 func (s *secretsManagerImage) Host() string {
@@ -161,21 +151,12 @@ func (s *secretsManagerImage) Secret(name string) (string, bool) {
 		if out, err := s.client.GetSecretValue(context.Background(), &secretsmanager.GetSecretValueInput{SecretId: aws.String(arn)}); err == nil {
 			if out.SecretString != nil {
 				return *out.SecretString, true
+			} else {
+				return string(out.SecretBinary), true
 			}
 		}
 	}
 	return "", false
-}
-
-func (s *secretsManagerImage) SecretBinary(name string) ([]byte, bool) {
-	if arn, ok := s.arns[name]; ok {
-		if out, err := s.client.GetSecretValue(context.Background(), &secretsmanager.GetSecretValueInput{SecretId: aws.String(arn)}); err == nil {
-			if out.SecretString == nil {
-				return out.SecretBinary, true
-			}
-		}
-	}
-	return nil, false
 }
 
 func (s *secretsManagerImage) setArn(name string, arn string) {
@@ -195,7 +176,7 @@ func SecretSet(when marrow.When, name string, value any, imgName ...string) marr
 		name:     fmt.Sprintf("SecretSet(%q)", name),
 		when:     when,
 		imgName:  imgName,
-		defImage: secretsServiceImageName,
+		defImage: SecretsServiceImageName,
 		run: func(ctx marrow.Context, img SecretsManagerService) (err error) {
 			var av any
 			if av, err = marrow.ResolveValue(value, ctx); err == nil {
@@ -241,7 +222,7 @@ func SecretSet(when marrow.When, name string, value any, imgName ...string) marr
 func SecretGet(name string, imgName ...string) marrow.Resolvable {
 	return &resolvable[SecretsManagerService]{
 		name:     fmt.Sprintf("SecretGet(%q)", name),
-		defImage: secretsServiceImageName,
+		defImage: SecretsServiceImageName,
 		imgName:  imgName,
 		run: func(ctx marrow.Context, img SecretsManagerService) (result any, err error) {
 			if arn, ok := img.SecretARN(name); ok {

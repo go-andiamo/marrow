@@ -87,10 +87,10 @@ func (i *image) Client() Client {
 	return i.client
 }
 
-const imageName = "artemis"
+const ImageName = "artemis"
 
 func (i *image) Name() string {
-	return imageName
+	return ImageName
 }
 
 func (i *image) Host() string {

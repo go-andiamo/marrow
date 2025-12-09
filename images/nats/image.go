@@ -121,10 +121,10 @@ func (i *image) Client() *nc.Conn {
 	return i.client
 }
 
-const imageName = "nats"
+const ImageName = "nats"
 
 func (i *image) Name() string {
-	return imageName
+	return ImageName
 }
 
 func (i *image) Host() string {

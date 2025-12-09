@@ -10,7 +10,7 @@ func Test_secretsManagerImage(t *testing.T) {
 		mappedPort: "123",
 		host:       "localhost",
 	}
-	assert.Equal(t, secretsServiceImageName, img.Name())
+	assert.Equal(t, SecretsServiceImageName, img.Name())
 	assert.Equal(t, defaultPort, img.Port())
 	assert.Equal(t, "localhost", img.Host())
 	assert.Equal(t, "123", img.MappedPort())

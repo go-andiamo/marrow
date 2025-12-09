@@ -591,6 +591,40 @@ func TestResolveValue(t *testing.T) {
 			},
 			expect: "localhost--8080--50080--foo--bar--us-east-1",
 		},
+		{
+			value:     Format("%v", Var("foo")),
+			expectErr: fmt.Sprintf("unknown variable \"foo\""),
+		},
+		{
+			value: Format("%v-%s", Var("foo"), Var("bar")),
+			ctx: newTestContext(map[Var]any{
+				"foo": 42,
+				"bar": "xyz",
+			}),
+			expect: "42-xyz",
+		},
+		{
+			value:     ImageVal("mysql", "username"),
+			expectErr: "unable to resolve image value:",
+		},
+		{
+			value: ImageVal("mysql", "password"),
+			setupCtx: func(ctx *context) {
+				ctx.images["mysql"] = &mockImage{}
+			},
+			expect: "bar",
+		},
+		{
+			value: ImageVal("foo-svc", "region"),
+			setupCtx: func(ctx *context) {
+				ctx.images["foo-svc"] = &mockImage{
+					envs: map[string]string{
+						"region": "us-east-1",
+					},
+				}
+			},
+			expect: "us-east-1",
+		},
 	}
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("[%d]", i+1), func(t *testing.T) {

@@ -108,8 +108,10 @@ func (i *image) Container() testcontainers.Container {
 	return i.container
 }
 
+const ImageName = "postgres"
+
 func (i *image) Name() string {
-	return "postgres"
+	return ImageName
 }
 
 func (i *image) Host() string {

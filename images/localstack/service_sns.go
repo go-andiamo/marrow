@@ -88,10 +88,10 @@ func (s *snsImage) Client() *sns.Client {
 	return s.client
 }
 
-const snsImageName = "sns"
+const SNSImageName = "sns"
 
 func (s *snsImage) Name() string {
-	return snsImageName
+	return SNSImageName
 }
 
 func (s *snsImage) Host() string {
@@ -153,7 +153,7 @@ func SNSPublish(when marrow.When, topic string, message any, imgName ...string) 
 		name:     fmt.Sprintf("SNSPublish(%q)", topic),
 		when:     when,
 		imgName:  imgName,
-		defImage: snsImageName,
+		defImage: SNSImageName,
 		run: func(ctx marrow.Context, img SNSService) (err error) {
 			var am any
 			if am, err = marrow.ResolveValue(message, ctx); err == nil {
@@ -216,7 +216,7 @@ func buildPublishInput(topic string, msg any, img SNSService) (result *sns.Publi
 func SNSMessagesCount(topic string, imgName ...string) marrow.Resolvable {
 	return &resolvable[SNSService]{
 		name:     fmt.Sprintf("SNSMessagesCount(%q)", topic),
-		defImage: snsImageName,
+		defImage: SNSImageName,
 		imgName:  imgName,
 		run: func(ctx marrow.Context, img SNSService) (result any, err error) {
 			if l := img.topicListener(); l != nil {
@@ -237,7 +237,7 @@ func SNSMessagesCount(topic string, imgName ...string) marrow.Resolvable {
 func SNSMessages(topic string, imgName ...string) marrow.Resolvable {
 	return &resolvable[SNSService]{
 		name:     fmt.Sprintf("SNSMessages(%q)", topic),
-		defImage: snsImageName,
+		defImage: SNSImageName,
 		imgName:  imgName,
 		run: func(ctx marrow.Context, img SNSService) (result any, err error) {
 			if l := img.topicListener(); l != nil {

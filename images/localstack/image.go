@@ -19,6 +19,7 @@ import (
 	"github.com/go-andiamo/marrow/with"
 	"github.com/testcontainers/testcontainers-go"
 	tcls "github.com/testcontainers/testcontainers-go/modules/localstack"
+	"strings"
 	"sync"
 )
 
@@ -206,4 +207,50 @@ func (i *image) shutdown() {
 
 func (i *image) Container() testcontainers.Container {
 	return i.container
+}
+
+const ImageName = "aws"
+
+func (i *image) Name() string {
+	return ImageName
+}
+
+func (i *image) Host() string {
+	return i.host
+}
+
+func (i *image) Port() string {
+	return defaultPort
+}
+
+func (i *image) MappedPort() string {
+	return i.mappedPort
+}
+
+func (i *image) IsDocker() bool {
+	return true
+}
+
+func (i *image) Username() string {
+	return ""
+}
+
+func (i *image) Password() string {
+	return ""
+}
+
+func (i *image) ResolveEnv(tokens ...string) (string, bool) {
+	if len(tokens) > 0 {
+		switch strings.ToLower(tokens[0]) {
+		case "region":
+			return i.options.region(), true
+		case "accesskey":
+			return i.options.accessKey(), true
+		case "secretkey":
+			return i.options.secretKey(), true
+		case "sessiontoken":
+			return i.options.sessionToken(), true
+		}
+	}
+	return "", false
 }

@@ -10,11 +10,12 @@ func Test_ssmImage(t *testing.T) {
 		mappedPort: "123",
 		host:       "localhost",
 	}
-	assert.Equal(t, ssmImageName, img.Name())
+	assert.Equal(t, SSMImageName, img.Name())
 	assert.Equal(t, defaultPort, img.Port())
 	assert.Equal(t, "localhost", img.Host())
 	assert.Equal(t, "123", img.MappedPort())
 	assert.True(t, img.IsDocker())
+	assert.Nil(t, img.Client())
 	assert.Equal(t, "", img.Username())
 	assert.Equal(t, "", img.Password())
 	s, ok := img.ResolveEnv("Region")

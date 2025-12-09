@@ -14,7 +14,6 @@ import (
 
 type SSMService interface {
 	Client() *ssm.Client
-	SetParameters(parameters map[string]string) error
 	PutParameter(name string, value string) error
 }
 
@@ -28,6 +27,7 @@ type ssmImage struct {
 var _ with.Image = (*ssmImage)(nil)
 var _ with.ImageResolveEnv = (*ssmImage)(nil)
 var _ SSMService = (*ssmImage)(nil)
+var _ marrow.ImageStartupInitializer = (*ssmImage)(nil)
 
 func (i *image) createSSMImage(ctx context.Context, awsCfg aws.Config) (err error) {
 	img := &ssmImage{
@@ -45,14 +45,37 @@ func (i *image) createSSMImage(ctx context.Context, awsCfg aws.Config) (err erro
 	return err
 }
 
+func (s *ssmImage) StartupInit(ctx marrow.Context) (err error) {
+	var av any
+	if av, err = marrow.ResolveValue(s.options.SSM.InitialParams, ctx); err == nil {
+		mv := av.(map[string]any)
+		for k, v := range mv {
+			name := k
+			if s.options.SSM.Prefix != "" {
+				name = s.options.SSM.Prefix + "/" + name
+			}
+			if _, err = s.client.PutParameter(context.Background(), &ssm.PutParameterInput{
+				Name:      aws.String(name),
+				Value:     aws.String(fmt.Sprintf("%v", v)),
+				Type:      types.ParameterTypeString,
+				Overwrite: aws.Bool(true),
+			}); err != nil {
+				err = fmt.Errorf("failed to set SSM parameter %q: %w", name, err)
+				break
+			}
+		}
+	}
+	return err
+}
+
 func (s *ssmImage) Client() *ssm.Client {
 	return s.client
 }
 
-const ssmImageName = "ssm"
+const SSMImageName = "ssm"
 
 func (s *ssmImage) Name() string {
-	return ssmImageName
+	return SSMImageName
 }
 
 func (s *ssmImage) Host() string {
@@ -95,25 +118,6 @@ func (s *ssmImage) ResolveEnv(tokens ...string) (string, bool) {
 	return "", false
 }
 
-func (s *ssmImage) SetParameters(parameters map[string]string) (err error) {
-	for k, v := range parameters {
-		name := k
-		if s.options.SSM.Prefix != "" {
-			name = s.options.SSM.Prefix + "/" + name
-		}
-		if _, err = s.client.PutParameter(context.Background(), &ssm.PutParameterInput{
-			Name:      aws.String(name),
-			Value:     aws.String(v),
-			Type:      types.ParameterTypeString,
-			Overwrite: aws.Bool(true),
-		}); err != nil {
-			err = fmt.Errorf("failed to set parameter %q: %w", name, err)
-			break
-		}
-	}
-	return err
-}
-
 func (s *ssmImage) PutParameter(name string, value string) error {
 	if _, err := s.client.PutParameter(context.Background(), &ssm.PutParameterInput{
 		Name:      aws.String(name),
@@ -126,45 +130,6 @@ func (s *ssmImage) PutParameter(name string, value string) error {
 	return nil
 }
 
-// SSMInitialise can be used as a before/after on marrow.Method .Capture
-// and initialises SSM (System Manager) parameters
-//
-//go:noinline
-func SSMInitialise(when marrow.When, overrides map[string]any, imgName ...string) marrow.BeforeAfter {
-	return &capture[SSMService]{
-		name:     "SSMInitialise()",
-		when:     when,
-		defImage: ssmImageName,
-		imgName:  imgName,
-		run: func(ctx marrow.Context, img SSMService) (err error) {
-			aimg := img.(*ssmImage)
-			opts := aimg.options.SSM.InitialParams
-			params := make(map[string]string, len(opts))
-			var av any
-			if av, err = marrow.ResolveValue(opts, ctx); err == nil {
-				mv := av.(map[string]any)
-				if len(overrides) > 0 {
-					var ov any
-					if ov, err = marrow.ResolveValue(overrides, ctx); err == nil {
-						mov := ov.(map[string]any)
-						for k, v := range mov {
-							mv[k] = v
-						}
-					}
-				}
-				if err == nil {
-					for k, v := range mv {
-						params[k] = fmt.Sprintf("%v", v)
-					}
-					err = img.SetParameters(params)
-				}
-			}
-			return err
-		},
-		frame: framing.NewFrame(0),
-	}
-}
-
 // SSMPutParameter can be used as a before/after on marrow.Method .Capture
 // and puts an SSM (System Manager) parameter
 //
@@ -175,7 +140,7 @@ func SSMPutParameter(when marrow.When, name any, value any, imgName ...string) m
 	return &capture[SSMService]{
 		name:     fmt.Sprintf("SSMPutParameter(%q)", name),
 		when:     when,
-		defImage: ssmImageName,
+		defImage: SSMImageName,
 		imgName:  imgName,
 		run: func(ctx marrow.Context, img SSMService) (err error) {
 			var nv any

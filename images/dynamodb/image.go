@@ -136,8 +136,10 @@ func (i *image) Database() *sql.DB {
 	return i.db
 }
 
+const ImageName = "dynamodb"
+
 func (i *image) Name() string {
-	return "dynamodb"
+	return ImageName
 }
 
 func (i *image) Host() string {

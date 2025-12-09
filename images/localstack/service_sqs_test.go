@@ -10,7 +10,7 @@ func Test_sqsImage(t *testing.T) {
 		mappedPort: "123",
 		host:       "localhost",
 	}
-	assert.Equal(t, sqsImageName, img.Name())
+	assert.Equal(t, SQSImageName, img.Name())
 	assert.Equal(t, defaultPort, img.Port())
 	assert.Equal(t, "localhost", img.Host())
 	assert.Equal(t, "123", img.MappedPort())

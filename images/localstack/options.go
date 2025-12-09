@@ -12,13 +12,16 @@ import (
 )
 
 type Options struct {
-	ImageVersion        string // defaults to "latest"
-	Image               string // defaults to "localstack/localstack"
-	LeaveRunning        bool   // if set, the container is not shutdown
-	Region              string // defaults to "us-east-1"
-	AccessKey           string // defaults to "dummy"
-	SecretKey           string // defaults to "dummy"
-	SessionToken        string // defaults to "SESSION"
+	ImageVersion string // defaults to "latest"
+	Image        string // defaults to "localstack/localstack"
+	LeaveRunning bool   // if set, the container is not shutdown
+	Region       string // defaults to "us-east-1"
+	AccessKey    string // defaults to "dummy"
+	SecretKey    string // defaults to "dummy"
+	SessionToken string // defaults to "SESSION"
+	// Services is the list of services (supporting images) to start
+	//
+	// use Services{All} to start all available supporting images
 	Services            Services
 	Dynamo              DynamoOptions
 	S3                  S3Options
@@ -61,7 +64,7 @@ type SQSOptions struct {
 }
 
 type SecretsManagerOptions struct {
-	Secrets     map[string]string
+	Secrets     map[string]any
 	JsonSecrets map[string]any
 }
 
@@ -75,9 +78,12 @@ type SSMOptions struct {
 	Prefix string // is the prefix for all parameters
 	// InitialParams are a map of initial parameter names and their values
 	//
-	// the values can be any - and are resolved when used
-	//
-	// these initial params are not set until you run SSMInitialise in your tests
+	// the values can be any - and are resolved when the supporting image is initialized -
+	// therefore, they can be values resolved from other images.  For example, you may want
+	// the connection URL from a supporting database...
+	//	InitialParams: map[string]any{
+	//	    "db-conn": marrow.TemplateString("{$svc:mysql:host}:{$svc:mysql:mport}"),
+	//	}
 	InitialParams map[string]any
 }
 

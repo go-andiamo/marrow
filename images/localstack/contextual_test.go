@@ -58,10 +58,12 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 			CreateFunctions: []string{"foo-func"},
 		},
 		SecretsManager: SecretsManagerOptions{
-			Secrets: map[string]string{
-				"foo": "bar",
+			Secrets: map[string]any{
+				"foo":            "bar",
+				"secret-topic-1": TemplateString("{$svc:sns:arn:" + testTopic + "}"),
 			},
 			JsonSecrets: map[string]any{
+				"secret-topic-2": TemplateString("{$svc:sns:arn:" + testTopic + "}"),
 				"db": map[string]any{
 					"name":     "my-db",
 					"user":     "my-user",
@@ -69,6 +71,9 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 				},
 				"foo2": "bar2",
 				"foo3": []byte("bar3"),
+				"foo4": map[string]any{
+					"foo": "bar4",
+				},
 			},
 		},
 		SSM: SSMOptions{
@@ -85,9 +90,6 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 		varLastQueueMsg = Var("last-queue-msg")
 	)
 	endpoint := Endpoint("/api", "",
-		SSMInitialise(Before, map[string]any{
-			"use-queue": TemplateString("{$svc:sqs:url:" + testQueue + "}"),
-		}),
 		Method("GET", "").AssertOK().
 			Do(SSMPutParameter(Before, "foo", 42)).
 			Do(SNSPublish(Before, testTopic, 42)).
@@ -124,7 +126,10 @@ func TestResolvablesAndBeforeAfters(t *testing.T) {
 			AssertEqual("my-secret-1", SecretGet("secret-1")).
 			AssertEqual("my-secret-3", JsonPath(Jsonify(SecretGet("secret-3")), "value")).
 			AssertEqual("my-db", JsonPath(Jsonify(SecretGet("db")), "name")).
-			AssertEqual(0, LambdaInvokedCount("func-foo")),
+			AssertEqual(0, LambdaInvokedCount("func-foo")).
+			AssertNotEqual("", TemplateString("{$svc:secrets-service:arn:foo}")).
+			AssertEqual("bar", TemplateString("{$svc:secrets-service:value:foo}")).
+			AssertEqual(`{"foo":"bar4"}`, TemplateString("{$svc:secrets-service:value:foo4}")),
 		Method("GET", "again").AssertOK().
 			Do(S3CreateBucket(Before, "foo-bucket")).
 			AssertEqual(0, DynamoItemsCount("TestTable")).
