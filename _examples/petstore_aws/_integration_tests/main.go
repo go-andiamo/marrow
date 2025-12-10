@@ -11,6 +11,7 @@ import (
 	"github.com/go-andiamo/marrow/with"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 const (
@@ -41,8 +42,8 @@ var endpoints = []Endpoint_{
 				AssertCreated().
 				AssertOnlyHasProperties(Body, "id", "name", "dob", "category", "$ref").
 				SetVar(After, "created-pet-id", JsonPath(Body, "id")).
-				Wait(After, 250). // wait for SNS messages to propagate
-				AssertGreaterThan(localstack.SNSMessagesCount(""), Var("msgs-count-before")),
+				// wait for SNS messages to propagate...
+				WaitFor(After, ExpectGreaterThan(localstack.SNSMessagesCount(""), Var("msgs-count-before")), time.Second),
 			Method(GET, "Get pets (non-empty)").
 				AssertOK().
 				AssertLen(Body, 1),

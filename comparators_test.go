@@ -10,13 +10,13 @@ import (
 
 func Test_newComparator(t *testing.T) {
 	c := newComparator(0, "", nil, nil, compEqual, false, false)
-	assert.Equal(t, "==", c.Name())
+	assert.Equal(t, "<nil> == <nil>", c.Name())
 	f := c.Frame()
 	assert.NotNil(t, f)
 	assert.Equal(t, t.Name(), f.Name)
 
 	c = newComparator(0, "", nil, nil, compEqual, true, false)
-	assert.Equal(t, "NOT(==)", c.Name())
+	assert.Equal(t, "NOT(<nil> == <nil>)", c.Name())
 
 	c = newComparator(0, "Test", nil, nil, compEqual, true, false)
 	assert.Equal(t, "Test", c.Name())
@@ -33,21 +33,21 @@ func Test_comparator_Met_WithNils(t *testing.T) {
 		c := newComparator(0, "", nil, nil, compEqual, true, false)
 		unmet, err := c.Met(nil)
 		assert.Error(t, unmet)
-		assert.Equal(t, "expected NOT(==)", unmet.Error())
+		assert.Equal(t, "expected NOT(<nil> == <nil>)", unmet.Error())
 		assert.NoError(t, err)
 	})
 	t.Run("== one nil", func(t *testing.T) {
 		c := newComparator(0, "", "foo", nil, compEqual, false, false)
 		unmet, err := c.Met(nil)
 		assert.Error(t, unmet)
-		assert.Equal(t, "expected ==", unmet.Error())
+		assert.Equal(t, "expected \"foo\" == <nil>", unmet.Error())
 		assert.NoError(t, err)
 	})
 	t.Run("== one nil (flipped)", func(t *testing.T) {
 		c := newComparator(0, "", nil, "foo", compEqual, false, false)
 		unmet, err := c.Met(nil)
 		assert.Error(t, unmet)
-		assert.Equal(t, "expected ==", unmet.Error())
+		assert.Equal(t, "expected <nil> == \"foo\"", unmet.Error())
 		assert.NoError(t, err)
 	})
 	t.Run("> both nil", func(t *testing.T) {
@@ -117,7 +117,7 @@ func Test_comparator_Met_Values(t *testing.T) {
 			comp:      compEqual,
 			not:       true,
 			expectOk:  false,
-			expectErr: "expected NOT(==)",
+			expectErr: "expected NOT(\"foo\" == \"foo\")",
 		},
 		{
 			v1:       "true",
@@ -136,14 +136,14 @@ func Test_comparator_Met_Values(t *testing.T) {
 			v2:        true,
 			comp:      compGreaterThan,
 			expectOk:  false,
-			expectErr: "cannot compare > on: v1 (left) = string, v2 (right) = bool",
+			expectErr: "cannot compare \"true\" > true on: v1 (left) = string, v2 (right) = bool",
 		},
 		{
 			v1:        true,
 			v2:        "true",
 			comp:      compGreaterThan,
 			expectOk:  false,
-			expectErr: "cannot compare > on: v1 (left) = bool, v2 (right) = string",
+			expectErr: "cannot compare true > \"true\" on: v1 (left) = bool, v2 (right) = string",
 		},
 		{
 			v1:       "1",
@@ -204,7 +204,7 @@ func Test_comparator_Met_Values(t *testing.T) {
 			v1:        true,
 			v2:        0,
 			comp:      compEqual,
-			expectErr: "expected ==",
+			expectErr: "expected true == 0",
 		},
 		{
 			v1:       1,
@@ -216,7 +216,7 @@ func Test_comparator_Met_Values(t *testing.T) {
 			v1:        0,
 			v2:        true,
 			comp:      compEqual,
-			expectErr: "expected ==",
+			expectErr: "expected 0 == true",
 		},
 		{
 			v1:       true,
@@ -228,7 +228,7 @@ func Test_comparator_Met_Values(t *testing.T) {
 			v1:        true,
 			v2:        int64(0),
 			comp:      compEqual,
-			expectErr: "expected ==",
+			expectErr: "expected true == 0",
 		},
 		{
 			v1:       int64(1),
@@ -240,7 +240,7 @@ func Test_comparator_Met_Values(t *testing.T) {
 			v1:        int64(0),
 			v2:        true,
 			comp:      compEqual,
-			expectErr: "expected ==",
+			expectErr: "expected 0 == true",
 		},
 		{
 			v1:       true,
@@ -252,7 +252,7 @@ func Test_comparator_Met_Values(t *testing.T) {
 			v1:        true,
 			v2:        0.0,
 			comp:      compEqual,
-			expectErr: "expected ==",
+			expectErr: "expected true == 0",
 		},
 		{
 			v1:       1.0,
@@ -264,7 +264,7 @@ func Test_comparator_Met_Values(t *testing.T) {
 			v1:        0.0,
 			v2:        true,
 			comp:      compEqual,
-			expectErr: "expected ==",
+			expectErr: "expected 0 == true",
 		},
 		{
 			v1:       true,
@@ -276,7 +276,7 @@ func Test_comparator_Met_Values(t *testing.T) {
 			v1:        true,
 			v2:        decimal.NewFromFloat(0.0),
 			comp:      compEqual,
-			expectErr: "expected ==",
+			expectErr: "expected true == 0",
 		},
 		{
 			v1:       decimal.NewFromFloat(1.0),
@@ -288,7 +288,7 @@ func Test_comparator_Met_Values(t *testing.T) {
 			v1:        decimal.NewFromFloat(0.0),
 			v2:        true,
 			comp:      compEqual,
-			expectErr: "expected ==",
+			expectErr: "expected 0 == true",
 		},
 		{
 			v1:       1,
@@ -441,56 +441,64 @@ func Test_comparator_Met_Values(t *testing.T) {
 			v1:          "not a number",
 			v2:          1,
 			comp:        compEqual,
-			expectErr:   "cannot compare == on: v1 (left) = string, v2 (right) = int",
+			expectErr:   "cannot compare \"not a number\" == 1 on: v1 (left) = string, v2 (right) = int",
 			expectV1Err: true,
 		},
 		{
 			v1:          "not a number",
 			v2:          int64(1),
 			comp:        compEqual,
-			expectErr:   "cannot compare == on: v1 (left) = string, v2 (right) = int64",
+			expectErr:   "cannot compare \"not a number\" == 1 on: v1 (left) = string, v2 (right) = int64",
 			expectV1Err: true,
 		},
 		{
 			v1:          "not a number",
 			v2:          float64(1),
 			comp:        compEqual,
-			expectErr:   "cannot compare == on: v1 (left) = string, v2 (right) = float64",
+			expectErr:   "cannot compare \"not a number\" == 1 on: v1 (left) = string, v2 (right) = float64",
 			expectV1Err: true,
 		},
 		{
 			v1:          "not a number",
 			v2:          decimal.NewFromInt(1),
 			comp:        compEqual,
-			expectErr:   "cannot compare == on: v1 (left) = string, v2 (right) = decimal.Decimal",
+			expectErr:   "cannot compare \"not a number\" == 1 on: v1 (left) = string, v2 (right) = decimal.Decimal",
 			expectV1Err: true,
 		},
 		{
 			v1:          1,
 			v2:          "not a number",
 			comp:        compEqual,
-			expectErr:   "cannot compare == on: v1 (left) = int, v2 (right) = string",
+			expectErr:   "cannot compare 1 == \"not a number\" on: v1 (left) = int, v2 (right) = string",
 			expectV2Err: true,
 		},
 		{
 			v1:          int64(1),
 			v2:          "not a number",
 			comp:        compEqual,
-			expectErr:   "cannot compare == on: v1 (left) = int64, v2 (right) = string",
+			expectErr:   "cannot compare 1 == \"not a number\" on: v1 (left) = int64, v2 (right) = string",
 			expectV2Err: true,
 		},
 		{
 			v1:          float64(1),
 			v2:          "not a number",
 			comp:        compEqual,
-			expectErr:   "cannot compare == on: v1 (left) = float64, v2 (right) = string",
+			expectErr:   "cannot compare 1 == \"not a number\" on: v1 (left) = float64, v2 (right) = string",
 			expectV2Err: true,
 		},
 		{
 			v1:          decimal.NewFromInt(1),
 			v2:          "not a number",
 			comp:        compEqual,
-			expectErr:   "cannot compare == on: v1 (left) = decimal.Decimal, v2 (right) = string",
+			expectErr:   "cannot compare 1 == \"not a number\" on: v1 (left) = decimal.Decimal, v2 (right) = string",
+			expectV2Err: true,
+		},
+		{
+			v1:          decimal.NewFromInt(1),
+			v2:          "not a number",
+			comp:        compEqual,
+			not:         true,
+			expectErr:   "cannot compare NOT(1 == \"not a number\") on: v1 (left) = decimal.Decimal, v2 (right) = string",
 			expectV2Err: true,
 		},
 	}
