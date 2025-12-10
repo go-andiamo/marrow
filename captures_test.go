@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestSetVar(t *testing.T) {
@@ -311,6 +312,87 @@ func TestWait(t *testing.T) {
 	assert.Equal(t, "WAIT 10ms", c.Name())
 	assert.NotNil(t, c.Frame())
 	require.NoError(t, c.Run(nil))
+}
+
+func TestWaitFor(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		c := WaitFor(true, 10*time.Millisecond)
+		assert.Equal(t, "WAITFOR(true, 10ms)", c.Name())
+		assert.NotNil(t, c.Frame())
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.NoError(t, err)
+	})
+	t.Run("one delay", func(t *testing.T) {
+		calls := 0
+		condFn := func() (any, error) {
+			calls++
+			return calls > 1, nil
+		}
+		c := WaitFor(condFn, 10*time.Millisecond, 4*time.Millisecond)
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, 2, calls)
+	})
+	t.Run("multiple delays", func(t *testing.T) {
+		calls := 0
+		condFn := func() (any, error) {
+			calls++
+			return calls > 3, nil
+		}
+		c := WaitFor(condFn, 10*time.Millisecond, 2*time.Millisecond, 2*time.Millisecond)
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, 4, calls)
+	})
+	t.Run("multiple delays - timeout", func(t *testing.T) {
+		calls := 0
+		condFn := func() (any, error) {
+			calls++
+			return calls > 3, nil
+		}
+		c := WaitFor(condFn, 10*time.Millisecond, 5*time.Millisecond, 5*time.Millisecond)
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "timeout waiting for ")
+	})
+	t.Run("timeout", func(t *testing.T) {
+		c := WaitFor(false, 10*time.Millisecond)
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "timeout waiting for ")
+	})
+	t.Run("expectation", func(t *testing.T) {
+		c := WaitFor(ExpectEqual(0, 0), 10*time.Millisecond)
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.NoError(t, err)
+	})
+	t.Run("expectation always unmet", func(t *testing.T) {
+		c := WaitFor(ExpectEqual(0, 2), 10*time.Millisecond)
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "timeout waiting for ")
+	})
+	t.Run("expectation errors", func(t *testing.T) {
+		c := WaitFor(ExpectEqual(0, Var("non-existent-var")), 10*time.Millisecond)
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unknown variable ")
+	})
+	t.Run("invalid condition", func(t *testing.T) {
+		c := WaitFor("not a bool or expectation", 10*time.Millisecond)
+		ctx := newTestContext(nil)
+		err := c.Run(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid condition type: ")
+	})
 }
 
 func TestSetEnv(t *testing.T) {

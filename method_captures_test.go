@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"
+	"time"
 )
 
 func TestMethod_Authorize(t *testing.T) {
@@ -183,6 +184,19 @@ func TestMethod_Wait(t *testing.T) {
 	m := Method(GET, "").
 		Wait(Before, 10).
 		Wait(After, 10)
+	raw, ok := m.(*method)
+	require.True(t, ok)
+	assert.Len(t, raw.preCaptures, 1)
+	assert.Len(t, raw.postCaptures, 1)
+	assert.Len(t, raw.postOps, 1)
+	assert.False(t, raw.postOps[0].isExpectation)
+	assert.Equal(t, 0, raw.postOps[0].index)
+}
+
+func TestMethod_WaitFor(t *testing.T) {
+	m := Method(GET, "").
+		WaitFor(Before, true, 10*time.Microsecond).
+		WaitFor(After, true, 10*time.Microsecond)
 	raw, ok := m.(*method)
 	require.True(t, ok)
 	assert.Len(t, raw.preCaptures, 1)

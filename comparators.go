@@ -33,14 +33,13 @@ type comparator struct {
 }
 
 var _ Expectation = (*comparator)(nil)
-
-//var _ Runnable = (*comparator)(nil)
+var _ Runnable = (*comparator)(nil)
 
 func (c *comparator) Name() string {
 	if c.name != "" {
 		return c.name
 	}
-	return c.string()
+	return c.String()
 }
 
 func (c *comparator) newComparisonUnmet(msg string, ov1, ov2 OperandValue) UnmetError {
@@ -48,13 +47,13 @@ func (c *comparator) newComparisonUnmet(msg string, ov1, ov2 OperandValue) Unmet
 		msg:          msg,
 		name:         c.Name(),
 		isComparator: true,
-		comparator:   c.string(),
+		comparator:   c.String(),
 		left:         ov1,
 		right:        ov2,
 		frame:        c.frame,
 	}
 	if result.msg == "" {
-		result.msg = "expected " + c.string()
+		result.msg = "expected " + c.String()
 	}
 	return result
 }
@@ -298,7 +297,7 @@ func (c *comparator) Met(ctx Context) (unmet error, err error) {
 		}
 	}
 	if !compared {
-		unmet = c.newComparisonUnmet(fmt.Sprintf("cannot compare %s on: v1 (left) = %T, v2 (right) = %T", c.string(), ov1.Resolved, ov2.Resolved), ov1, ov2)
+		unmet = c.newComparisonUnmet(fmt.Sprintf("cannot compare %s on: v1 (left) = %T, v2 (right) = %T", c.String(), ov1.Resolved, ov2.Resolved), ov1, ov2)
 		return
 	}
 	switch c.comp {
@@ -323,11 +322,18 @@ func (c *comparator) Frame() *framing.Frame {
 	return c.frame
 }
 
-func (c *comparator) string() string {
+func (c *comparator) String() string {
+	s := fmt.Sprintf("%s %s %s", stringifyValue(c.v1), compStrings[c.comp], stringifyValue(c.v2))
 	if c.not {
-		return "NOT(" + compStrings[c.comp] + ")"
+		return "NOT(" + s + ")"
 	}
-	return compStrings[c.comp]
+	return s
+	/*
+		if c.not {
+			return "NOT(" + compStrings[c.comp] + ")"
+		}
+		return compStrings[c.comp]
+	*/
 }
 
 // ExpectEqual asserts that the supplied values are equal

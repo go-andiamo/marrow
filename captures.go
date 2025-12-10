@@ -428,6 +428,86 @@ func (w *wait) Frame() *framing.Frame {
 	return w.frame
 }
 
+type waitFor struct {
+	condition any
+	maxTime   time.Duration
+	delays    []time.Duration
+	frame     *framing.Frame
+}
+
+var _ Capture = (*waitFor)(nil)
+
+// WaitFor waits for a specified condition to be met
+//
+// Notes:
+//   - the condition arg can be a bool value (or value that resolves to a bool) or an Expectation (e.g. ExpectEqual, ExpectNotEqual, etc.)
+//   - if the condition arg is an Expectation, and the expectation is unmet, this does not report a failure or unmet, instead the condition is re-evaluated until maxTime is exceeded
+//   - any condition that is not a bool or Expectation will cause an error during tests
+//
+// delays specifies the durations to wait on each poll cycle...
+//   - if not delays specified, there is no initial delay and polls occur every 250ms
+//   - if only one delay specified, there is no initial delay and polls occur at that specified duration
+//   - if more than one delay is specified, the initial delay is the first duration and subsequent poll delays are the remaining durations
+//
+//go:noinline
+func WaitFor(condition any, maxTime time.Duration, delays ...time.Duration) Capture {
+	return &waitFor{
+		condition: condition,
+		maxTime:   maxTime,
+		delays:    delays,
+		frame:     framing.NewFrame(0),
+	}
+}
+
+func (w *waitFor) Name() string {
+	return fmt.Sprintf("WAITFOR(%s, %s)", stringifyValue(w.condition), w.maxTime)
+}
+
+func (w *waitFor) Run(ctx Context) (err error) {
+	deadline := time.Now().Add(w.maxTime)
+	var delay time.Duration
+	poll := 0
+	if len(w.delays) > 1 {
+		delay = w.delays[0]
+		poll = 1
+	}
+	for err == nil {
+		if time.Now().After(deadline) {
+			err = fmt.Errorf("timeout waiting for %s", stringifyValue(w.condition))
+			break
+		}
+		time.Sleep(delay)
+		if exp, ok := w.condition.(Expectation); ok {
+			var unmet error
+			if unmet, err = exp.Met(ctx); unmet == nil && err == nil {
+				break
+			}
+		} else {
+			var av any
+			if av, err = ResolveValue(w.condition, ctx); err == nil {
+				if b, ok := av.(bool); ok {
+					if b {
+						break
+					}
+				} else {
+					err = fmt.Errorf("invalid condition type: %T", av)
+				}
+			}
+		}
+		if len(w.delays) == 0 {
+			delay = 250 * time.Millisecond
+		} else if poll < len(w.delays) {
+			delay = w.delays[poll]
+		}
+		poll++
+	}
+	return err
+}
+
+func (w *waitFor) Frame() *framing.Frame {
+	return w.frame
+}
+
 type setEnv struct {
 	name  string
 	value any
@@ -574,7 +654,7 @@ func (c *conditional) Run(ctx Context) (err error) {
 			}
 		}
 	}
-	if do {
+	if do && err == nil {
 		for i, o := range c.ops {
 			if o == nil {
 				continue

@@ -3,6 +3,7 @@ package marrow
 import (
 	"github.com/go-andiamo/marrow/framing"
 	"strings"
+	"time"
 )
 
 type MethodCaptures interface {
@@ -26,6 +27,18 @@ type MethodCaptures interface {
 	//
 	// Note: the wait time is not included in the coverage timings
 	Wait(when When, ms int) Method_
+	// WaitFor waits for a specified condition to be met
+	//
+	// Notes:
+	//   * the condition arg can be a bool value (or value that resolves to a bool) or an Expectation (e.g. ExpectEqual, ExpectNotEqual, etc.)
+	//   * if the condition arg is an Expectation, and the expectation is unmet, this does not report a failure or unmet, instead the condition is re-evaluated until maxTime is exceeded
+	//   * any condition that is not a bool or Expectation will cause an error during tests
+	//
+	// delays specifies the durations to wait on each poll cycle...
+	//   * if not delays specified, there is no initial delay and polls occur every 250ms
+	//   * if only one delay specified, there is no initial delay and polls occur at that specified duration
+	//   * if more than one delay is specified, the initial delay is the first duration and subsequent poll delays are the remaining durations
+	WaitFor(when When, condition any, maxTime time.Duration, delays ...time.Duration) Method_
 	// Do adds before/after operations
 	Do(ops ...BeforeAfter) Method_
 	// Capture adds a before/after operations
@@ -146,6 +159,26 @@ func (m *method) Wait(when When, ms int) Method_ {
 		m.addPostCapture(&wait{
 			ms:    ms,
 			frame: framing.NewFrame(0),
+		})
+	}
+	return m
+}
+
+//go:noinline
+func (m *method) WaitFor(when When, condition any, maxTime time.Duration, delays ...time.Duration) Method_ {
+	if when == Before {
+		m.preCaptures = append(m.preCaptures, &waitFor{
+			condition: condition,
+			maxTime:   maxTime,
+			delays:    delays,
+			frame:     framing.NewFrame(0),
+		})
+	} else {
+		m.addPostCapture(&waitFor{
+			condition: condition,
+			maxTime:   maxTime,
+			delays:    delays,
+			frame:     framing.NewFrame(0),
 		})
 	}
 	return m
