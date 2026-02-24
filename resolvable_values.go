@@ -38,6 +38,8 @@ func ResolveValue(value any, ctx Context) (av any, err error) {
 		av, err = deepResolveValue(vt, ctx)
 	case BodyReader:
 		av, err = vt(ctx.CurrentBody())
+	case func(Context) (any, error):
+		av, err = vt(ctx)
 	case func(any) (any, error):
 		av, err = vt(ctx.CurrentBody())
 	case func() (any, error):
