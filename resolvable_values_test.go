@@ -570,6 +570,13 @@ func TestResolveValue(t *testing.T) {
 			expectErr: "fooey",
 		},
 		{
+			ctx: newTestContext(map[Var]any{"foo": "bar"}),
+			value: func(ctx Context) (any, error) {
+				return ctx.Vars()["foo"], nil
+			},
+			expect: "bar",
+		},
+		{
 			value:     TemplateString("{$svc:foo:host}"),
 			expectErr: "unresolved service var:",
 		},
