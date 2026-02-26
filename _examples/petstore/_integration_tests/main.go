@@ -65,6 +65,7 @@ var endpoints = []Endpoint_{
 		),
 		Endpoint("/categories", "Categories",
 			Method(GET, "Get categories").
+				SkipWhen(ExpectTrue(VarIsRepeat)).
 				AssertOK().
 				AssertGreaterThan(JsonPath(Body, LEN), 0),
 			Endpoint("/{categoryId}", "Category",

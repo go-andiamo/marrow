@@ -50,6 +50,11 @@ type Method_ interface {
 	MethodExpectations
 	MethodCaptures
 
+	// SkipWhen indicates the method call should be skipped when the provided expectation is met
+	//
+	// This is useful when running repeat tests and a method should not be called for a repeat run, e.g.
+	//   Method(POST, "").SkipWhen(ExpectTrue(VarIsRepeat))
+	SkipWhen(exp Expectation) Method_
 	// If runs the operations when the condition arg is met
 	//
 	// Notes:
@@ -193,6 +198,7 @@ type method struct {
 	queryParams       queryParams
 	headers           map[string]any
 	body              any
+	skips             []Expectation
 	preCaptures       []Runnable
 	authFns           []Runnable
 	postOps           []postOp
@@ -311,6 +317,14 @@ func (m *method) ResponseUnmarshal(fn func(response *http.Response) (any, error)
 }
 
 //go:noinline
+func (m *method) SkipWhen(exp Expectation) Method_ {
+	if exp != nil {
+		m.skips = append(m.skips, exp)
+	}
+	return m
+}
+
+//go:noinline
 func (m *method) If(when When, condition any, ops ...Runnable) Method_ {
 	if when == Before {
 		m.preCaptures = append(m.preCaptures, &conditional{
@@ -369,21 +383,33 @@ func (m *method) ForEach(when When, value any, iterVar any, ops ...Runnable) Met
 }
 
 func (m *method) Run(ctx Context) error {
-	ctx.setCurrentMethod(m)
-	if m.preRun(ctx) {
-		if request, ok := m.buildRequest(ctx); ok {
-			if m.preRequestRun(ctx) {
-				ctx.setCurrentRequest(request)
-				if response, ok := ctx.doRequest(); ok {
-					if m.unmarshalResponseBody(ctx, response) {
-						m.postRun(ctx)
+	if !m.isSkipped(ctx) {
+		ctx.setCurrentMethod(m)
+		if m.preRun(ctx) {
+			if request, ok := m.buildRequest(ctx); ok {
+				if m.preRequestRun(ctx) {
+					ctx.setCurrentRequest(request)
+					if response, ok := ctx.doRequest(); ok {
+						if m.unmarshalResponseBody(ctx, response) {
+							m.postRun(ctx)
+						}
 					}
 				}
 			}
 		}
+		ctx.setCurrentMethod(nil)
 	}
-	ctx.setCurrentMethod(nil)
 	return nil
+}
+
+func (m *method) isSkipped(ctx Context) bool {
+	for _, skip := range m.skips {
+		if unmet, err := skip.Met(ctx); unmet == nil && err == nil {
+			ctx.Log("--- SKIP: "+ctx.CurrentEndpoint().Path()+"/"+string(m.method), skip.Name())
+			return true
+		}
+	}
+	return false
 }
 
 func (m *method) preRun(ctx Context) bool {

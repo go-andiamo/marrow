@@ -342,6 +342,11 @@ func (s *suite) Init(withs ...with.With) Suite_ {
 	}
 }
 
+const (
+	VarIsRepeat = Var("IS_REPEAT")
+	VarRepeat   = Var("REPEAT")
+)
+
 func (s *suite) Run() error {
 	ctx, err := s.runInits()
 	if err != nil {
@@ -375,12 +380,14 @@ func (s *suite) Run() error {
 	if s.repeats > 0 && (!s.stopOnFailure || !cov.HasFailures()) {
 		_, _ = fmt.Fprintln(s.stdout, "")
 		ctx.vars = maps.Clone(s.vars)
+		ctx.vars[VarIsRepeat] = true
 		ctx.cookieJar = maps.Clone(s.cookies)
 		ctx.testing = nil
 		ctx.currTesting = nil
 		ctx.failed = false
 		for r := 0; r < s.repeats; r++ {
 			_, _ = fmt.Fprintf(s.stdout, ">>> REPEAT %d/%d\n", r+1, s.repeats)
+			ctx.vars[VarRepeat] = r
 			for _, reset := range s.repeatResets {
 				reset()
 			}
@@ -497,15 +504,11 @@ func (s *suite) finalizeContext(ctx *context, cov coverage.Collector, t htesting
 	ctx.host = fmt.Sprintf("http://%s:%d", host, s.port)
 	ctx.apiImage = s.apiImage
 	ctx.testing = t
-	//ctx.dbs = maps.Clone(s.dbs)
-	//ctx.images = maps.Clone(s.images)
-	//ctx.mockServices = maps.Clone(s.mockServices)
-	//for k, v := range s.vars {
-	//	ctx.vars[k] = v
-	//}
 	for k, v := range s.cookies {
 		ctx.cookieJar[k] = v
 	}
+	ctx.vars[VarIsRepeat] = false
+	ctx.vars[VarRepeat] = -1
 }
 
 type initTrack struct {
