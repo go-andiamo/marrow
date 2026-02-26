@@ -345,7 +345,11 @@ func (c *context) GetApiImage() with.ImageApi {
 }
 
 func (c *context) Log(args ...any) {
-	c.testing.Log(args...)
+	if c.testing != nil {
+		c.testing.Log(args...)
+	} else {
+		fmt.Println(args...)
+	}
 }
 
 func (c *context) setCurrentEndpoint(e Endpoint_) {

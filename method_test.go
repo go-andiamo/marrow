@@ -745,4 +745,16 @@ func TestMethod_Run(t *testing.T) {
 		assert.Len(t, ec.Timings, 1)
 		assert.Len(t, mc.Failures, 1)
 	})
+	t.Run("skipped", func(t *testing.T) {
+		ctx := newTestContext(map[Var]any{
+			"SKIP": true,
+		})
+		ctx.currEndpoint = Endpoint("/foos", "")
+		m := Method(GET, "").
+			SkipWhen(ExpectTrue(Var("SKIP"))).
+			AssertGreaterThan(1, Var("missing"))
+		err := m.Run(ctx)
+		require.NoError(t, err)
+		require.False(t, ctx.failed)
+	})
 }
