@@ -10,7 +10,6 @@ import (
 	htesting "github.com/go-andiamo/marrow/testing"
 	"github.com/go-andiamo/marrow/with"
 	"io"
-	"maps"
 	"net/http"
 	"os"
 	"strconv"
@@ -379,9 +378,9 @@ func (s *suite) Run() error {
 	t.End()
 	if s.repeats > 0 && (!s.stopOnFailure || !cov.HasFailures()) {
 		_, _ = fmt.Fprintln(s.stdout, "")
-		ctx.vars = maps.Clone(s.vars)
+		//ctx.vars = maps.Clone(s.vars)
+		//ctx.cookieJar = maps.Clone(s.cookies)
 		ctx.vars[VarIsRepeat] = true
-		ctx.cookieJar = maps.Clone(s.cookies)
 		ctx.testing = nil
 		ctx.currTesting = nil
 		ctx.failed = false
